@@ -1,13 +1,204 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" href="/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Hello Jobs - Placement & Manpower Solutions</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Hello Jobs - Placement & Manpower Solutions</title>
+  <link rel="icon" href="/favicon.ico" />
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f2f2f2;
+      color: #222;
+    }
+    header {
+      background: #283593;
+      color: white;
+      padding: 1.5rem 2rem;
+      text-align: center;
+    }
+    h1 {
+      margin: 0.2em 0 0.1em 0;
+    }
+    main {
+      max-width: 900px;
+      margin: 2rem auto;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      padding: 2rem;
+    }
+    section {
+      margin-bottom: 2rem;
+    }
+    .job-list {
+      list-style: none;
+      padding: 0;
+    }
+    .job-card {
+      background: #e8eaf6;
+      border: 1px solid #c5cae9;
+      margin-bottom: 1rem;
+      padding: 1rem;
+      border-radius: 6px;
+      transition: box-shadow 0.2s;
+    }
+    .job-card:hover {
+      box-shadow: 0 2px 6px rgba(40,53,147,0.08);
+      background: #d1c4e9;
+    }
+    .job-title {
+      font-size: 1.2em;
+      font-weight: bold;
+      margin-bottom: 0.2em;
+    }
+    .job-company {
+      color: #283593;
+      font-weight: bold;
+    }
+    .job-type {
+      background: #c5cae9;
+      color: #333;
+      border-radius: 3px;
+      padding: 0.2em 0.8em;
+      font-size: 0.9em;
+      margin-left: 1em;
+    }
+    .filter-group {
+      margin-bottom: 1rem;
+    }
+    .filter-group label {
+      margin-right: 0.5em;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 1em;
+      margin-top: 1em;
+    }
+    input, textarea {
+      padding: 0.6em;
+      border-radius: 4px;
+      border: 1px solid #bbb;
+      font-size: 1em;
+    }
+    button {
+      background: #283593;
+      color: white;
+      padding: 0.7em 1.5em;
+      border: none;
+      border-radius: 4px;
+      font-size: 1em;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #1a237e;
+    }
+    .success-message {
+      color: green;
+      margin-top: 1em;
+      font-weight: bold;
+    }
+    @media (max-width: 600px) {
+      main { padding: 1rem; }
+      header { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Hello Jobs</h1>
+    <p>Connecting talent with opportunity</p>
+  </header>
+  <main>
+    <section>
+      <h2>Find Your Next Job</h2>
+      <div class="filter-group">
+        <label for="typeFilter">Filter by type:</label>
+        <select id="typeFilter" onchange="filterJobs()">
+          <option value="all">All</option>
+          <option value="Full-Time">Full-Time</option>
+          <option value="Part-Time">Part-Time</option>
+          <option value="Remote">Remote</option>
+        </select>
+      </div>
+      <ul class="job-list" id="jobList">
+        <!-- Jobs will be injected here -->
+      </ul>
+    </section>
+    <section>
+      <h2>Contact Us</h2>
+      <form id="contactForm" onsubmit="return submitForm(event)">
+        <input type="text" id="name" placeholder="Your Name" required />
+        <input type="email" id="email" placeholder="Your Email" required />
+        <textarea id="message" placeholder="Your message" required></textarea>
+        <button type="submit">Send Message</button>
+      </form>
+      <div class="success-message" id="successMsg" style="display:none;">
+        Thank you for contacting us! We'll get back to you soon.
+      </div>
+    </section>
+  </main>
+  <footer style="text-align:center; padding:1.5rem 0; color:#555;">
+    &copy; 2025 Hello Jobs. All rights reserved.
+  </footer>
+  <script>
+    // Sample job data
+    const jobs = [
+      { title: "Frontend Developer", company: "Webify", type: "Full-Time", description: "Work with React, CSS, and HTML." },
+      { title: "Backend Engineer", company: "DataCore", type: "Full-Time", description: "Node.js, Express, and databases." },
+      { title: "Customer Support", company: "HelpHub", type: "Part-Time", description: "Assist customers online." },
+      { title: "Product Designer", company: "CreativeWorks", type: "Remote", description: "Design UI/UX for web apps." },
+      { title: "Content Writer", company: "Textual", type: "Remote", description: "Write blogs and marketing content." }
+    ];
+
+    function displayJobs(jobArray) {
+      const jobList = document.getElementById('jobList');
+      jobList.innerHTML = '';
+      if (jobArray.length === 0) {
+        jobList.innerHTML = '<li>No jobs found for this type.</li>';
+        return;
+      }
+      jobArray.forEach(job => {
+        const li = document.createElement('li');
+        li.className = 'job-card';
+        li.innerHTML = `
+          <div class="job-title">${job.title} <span class="job-type">${job.type}</span></div>
+          <div class="job-company">${job.company}</div>
+          <div>${job.description}</div>
+        `;
+        jobList.appendChild(li);
+      });
+    }
+
+    function filterJobs() {
+      const type = document.getElementById('typeFilter').value;
+      if (type === 'all') {
+        displayJobs(jobs);
+      } else {
+        const filtered = jobs.filter(job => job.type === type);
+        displayJobs(filtered);
+      }
+    }
+
+    function submitForm(event) {
+      event.preventDefault();
+      // You can handle form data submission here (e.g., send to backend)
+      document.getElementById('contactForm').reset();
+      document.getElementById('successMsg').style.display = 'block';
+      setTimeout(() => {
+        document.getElementById('successMsg').style.display = 'none';
+      }, 3000);
+      return false;
+    }
+
+    // Initial display
+    document.addEventListener('DOMContentLoaded', () => {
+      displayJobs(jobs);
+    });
+  </script>
+</body>
 </html>

@@ -1,0 +1,226 @@
+// Hello Jobs — core schema.
+// One pipeline (JobInteraction) powers both inbound applications and outbound talent hunting.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  WORKER
+  EMPLOYER
+  ADMIN
+}
+
+enum WorkerCategory {
+  SKILLED
+  SEMI_SKILLED
+}
+
+enum Trade {
+  FITTER
+  TURNER
+  MACHINIST
+  WELDER
+  ELECTRICIAN
+  CNC_VMC_OPERATOR
+  WIREMAN
+  DIESEL_MECHANIC
+  HELPER
+  PACKER
+  LOADER
+  ASSEMBLY_LINE
+  OTHER
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum JobStatus {
+  OPEN
+  PAUSED
+  CLOSED
+}
+
+enum InteractionSource {
+  WORKER_APPLY
+  EMPLOYER_HUNT
+}
+
+enum InteractionStage {
+  INITIATED
+  SHORTLISTED
+  OFFERED
+  JOINED
+  REJECTED
+  WITHDRAWN
+}
+
+model User {
+  id        String   @id @default(cuid())
+  phone     String   @unique // E.164, e.g. +919876543210
+  role      Role
+  language  String   @default("hi") // hi | en | mr | gu | ta
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workerProfile   WorkerProfile?
+  employerProfile EmployerProfile?
+  reports         AgentFeeReport[]
+}
+
+// Short-lived OTP challenges. Only a hash of the code is stored.
+model OtpChallenge {
+  id         String    @id @default(cuid())
+  phone      String
+  codeHash   String
+  expiresAt  DateTime
+  attempts   Int       @default(0)
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([phone, createdAt])
+}
+
+model WorkerProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  fullName String
+  category WorkerCategory
+  trade    Trade
+  // Free-form machine/tool tags: "CNC", "Lathe", "MIG Welding", "VMC"...
+  machineTags     String[]
+  experienceYears Int      @default(0)
+
+  // Credentials. We store verification *status* only — never raw Aadhaar numbers.
+  itiCertified    Boolean            @default(false)
+  ncvtRollNumber  String?
+  ncvtStatus      VerificationStatus @default(UNVERIFIED)
+  aadhaarStatus   VerificationStatus @default(UNVERIFIED)
+
+  currentState        String
+  currentDistrict     String
+  willingToRelocate   Boolean  @default(true)
+  preferredStates     String[]
+  expectedSalaryMonthly Int?
+  availableImmediately  Boolean @default(true)
+
+  skillVideoUrl String? // 30s practical video CV
+
+  // Workers can opt out of the employer-facing directory.
+  visibleInDirectory Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  interactions JobInteraction[]
+
+  @@index([trade, visibleInDirectory])
+  @@index([currentState])
+}
+
+model EmployerProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  companyName    String
+  contactPerson  String
+  hrPhone        String
+  industrialCluster String // e.g. "Noida Sector 63", "Pimpri-Chinchwad"
+  city           String
+  state          String
+
+  gstin          String?
+  udyamNumber    String?
+  kybStatus      VerificationStatus @default(UNVERIFIED)
+
+  // Outbound "Hunt Employees" credits. New factories get a small free trial.
+  huntCredits Int @default(5)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  jobs         JobPosting[]
+  interactions JobInteraction[]
+}
+
+model JobPosting {
+  id         String          @id @default(cuid())
+  employerId String
+  employer   EmployerProfile @relation(fields: [employerId], references: [id], onDelete: Cascade)
+
+  title    String
+  trade    Trade
+  category WorkerCategory
+  openings Int            @default(1)
+  city     String
+  state    String
+  description String?
+  minExperienceYears Int @default(0)
+
+  // Wage transparency is mandatory — no "as per industry standards".
+  grossSalaryMonthly   Int
+  inHandSalaryMonthly  Int
+  overtimeRatePerHour  Int
+  shiftHours           Int  @default(8)
+
+  hasHostel          Boolean @default(false)
+  hasCanteen         Boolean @default(false)
+  hasPfEsi           Boolean @default(false)
+  hasTravelAllowance Boolean @default(false)
+
+  status    JobStatus @default(OPEN)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  interactions JobInteraction[]
+
+  @@index([status, trade, state])
+  @@index([employerId])
+}
+
+// Unified two-way state machine:
+// WORKER_APPLY  -> worker taps Apply on a job
+// EMPLOYER_HUNT -> employer finds a worker in the directory and invites them to a job
+model JobInteraction {
+  id         String @id @default(cuid())
+  jobId      String
+  job        JobPosting @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  workerId   String
+  worker     WorkerProfile @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  employerId String
+  employer   EmployerProfile @relation(fields: [employerId], references: [id], onDelete: Cascade)
+
+  source InteractionSource
+  stage  InteractionStage   @default(INITIATED)
+  note   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // One interaction per worker per job, regardless of who started it.
+  @@unique([jobId, workerId])
+  @@index([employerId, stage])
+  @@index([workerId])
+}
+
+// Anti-exploitation SOS: workers report agents demanding fees or salary cuts.
+model AgentFeeReport {
+  id          String   @id @default(cuid())
+  reporterId  String?
+  reporter    User?    @relation(fields: [reporterId], references: [id], onDelete: SetNull)
+  jobId       String?
+  description String
+  createdAt   DateTime @default(now())
+}

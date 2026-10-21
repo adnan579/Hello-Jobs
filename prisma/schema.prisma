@@ -224,3 +224,22 @@ model AgentFeeReport {
   description String
   createdAt   DateTime @default(now())
 }
+
+// Append-only trail of sensitive actions (contact reveals, stage changes,
+// verification decisions, account deletion). actorId deliberately has no
+// foreign key: entries must survive deletion of the user they describe.
+// metadata must never contain phone numbers or other personal data.
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actorRole  String?
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
+}

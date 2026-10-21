@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { AUDIT, audit } from "@/lib/audit";
 import { homeFor, safeNext } from "@/lib/auth";
 import { sendOtp, verifyOtp } from "@/lib/otp";
 import { createSession, destroySession } from "@/lib/session";
@@ -74,6 +75,13 @@ export async function verifyOtpAction(_prev: AuthState, formData: FormData): Pro
   }
 
   await createSession({ userId: user.id, role: user.role });
+  await audit({
+    actorId: user.id,
+    actorRole: user.role,
+    action: AUDIT.LOGIN,
+    entityType: "User",
+    entityId: user.id,
+  });
   redirect(safeNext(next, homeFor(user)));
 }
 

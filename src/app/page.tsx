@@ -19,9 +19,19 @@ const pillars = [
   ["Fee demanded? Tell us", "One tap to report any agent who asks for money. No login needed."],
 ];
 
-export default function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ deleted?: string }>;
+}) {
+  const sp = await searchParams;
   return (
     <>
+      {sp.deleted && (
+        <p role="status" className="bg-emerald-100 px-4 py-3 text-center font-medium text-emerald-900">
+          Your account and data have been deleted.
+        </p>
+      )}
       <section className="bg-slate-900 text-white">
         <div className="mx-auto max-w-6xl px-4 py-16 sm:py-24">
           <p className="text-sm font-semibold uppercase tracking-widest text-amber-400">

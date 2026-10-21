@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
+import { AUDIT, audit } from "@/lib/audit";
 import { requireAdmin, requireEmployer } from "@/lib/auth";
 import { canEmployerMove } from "@/lib/pipeline";
 import { STAGES, type StageValue } from "@/lib/constants";
@@ -45,11 +46,22 @@ export async function saveEmployerProfileAction(
     kybStatus,
   };
 
-  await db.employerProfile.upsert({
+  const saved = await db.employerProfile.upsert({
     where: { userId: user.id },
     create: { userId: user.id, ...fields },
     update: fields,
   });
+
+  if (kybStatus === "PENDING" && (!existing || idsChanged)) {
+    await audit({
+      actorId: user.id,
+      actorRole: "EMPLOYER",
+      action: AUDIT.KYB_SUBMITTED,
+      entityType: "EmployerProfile",
+      entityId: saved.id,
+      metadata: { hasGstin: !!d.gstin, hasUdyam: !!d.udyamNumber },
+    });
+  }
 
   revalidatePath("/employer");
   redirect(existing ? "/employer?saved=1" : "/employer?welcome=1");
@@ -99,10 +111,20 @@ export async function setJobStatusAction(formData: FormData): Promise<void> {
   if (!user.employerProfile) redirect("/employer/onboarding");
 
   // updateMany with the owner in the filter = ownership check + update in one step.
-  await db.jobPosting.updateMany({
+  const updated = await db.jobPosting.updateMany({
     where: { id: jobId, employerId: user.employerProfile.id },
     data: { status: status as "OPEN" | "PAUSED" | "CLOSED" },
   });
+  if (updated.count === 1) {
+    await audit({
+      actorId: user.id,
+      actorRole: "EMPLOYER",
+      action: AUDIT.JOB_STATUS_CHANGED,
+      entityType: "JobPosting",
+      entityId: jobId,
+      metadata: { to: status },
+    });
+  }
   revalidatePath("/employer");
   revalidatePath("/jobs");
   redirect("/employer");
@@ -120,7 +142,28 @@ export async function moveInteractionAction(formData: FormData): Promise<void> {
   if (!interaction || interaction.employerId !== user.employerProfile.id) redirect("/employer");
   if (!canEmployerMove(interaction.stage as StageValue, to)) redirect("/employer?error=stage");
 
-  await db.jobInteraction.update({ where: { id: interaction.id }, data: { stage: to } });
+  // Compare-and-set on the current stage so two concurrent clicks cannot both
+  // apply (e.g. reject and offer the same candidate).
+  const moved = await db.$transaction(async (tx: Prisma.TransactionClient) => {
+    const res = await tx.jobInteraction.updateMany({
+      where: { id: interaction.id, employerId: user.employerProfile!.id, stage: interaction.stage },
+      data: { stage: to },
+    });
+    if (res.count !== 1) return false;
+    await audit(
+      {
+        actorId: user.id,
+        actorRole: "EMPLOYER",
+        action: AUDIT.STAGE_CHANGED,
+        entityType: "JobInteraction",
+        entityId: interaction.id,
+        metadata: { from: interaction.stage, to },
+      },
+      tx,
+    );
+    return true;
+  });
+  if (!moved) redirect("/employer?error=stage");
   revalidatePath("/employer");
   redirect("/employer");
 }
@@ -168,7 +211,7 @@ export async function inviteWorkerAction(
       });
       if (spent.count === 0) return { error: "You are out of Talent Hunt credits." };
 
-      await tx.jobInteraction.create({
+      const created = await tx.jobInteraction.create({
         data: {
           jobId: job.id,
           workerId: worker.id,
@@ -176,6 +219,18 @@ export async function inviteWorkerAction(
           source: "EMPLOYER_HUNT",
         },
       });
+      // Record who got access to whose contact details, and why. IDs only.
+      await audit(
+        {
+          actorId: user.id,
+          actorRole: "EMPLOYER",
+          action: AUDIT.CONTACT_REVEALED_ON_INVITE,
+          entityType: "JobInteraction",
+          entityId: created.id,
+          metadata: { workerId: worker.id, jobId: job.id, employerId: employer.id },
+        },
+        tx,
+      );
       return { ok: true };
     });
     if (result.ok) {
@@ -192,12 +247,30 @@ export async function inviteWorkerAction(
 // ---------- Admin: factory verification (KYB) ----------
 
 export async function reviewEmployerAction(formData: FormData): Promise<void> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const employerId = String(formData.get("employerId") ?? "");
   const decision = String(formData.get("decision") ?? "");
   if (decision !== "VERIFIED" && decision !== "REJECTED") redirect("/admin/employers");
 
-  await db.employerProfile.update({ where: { id: employerId }, data: { kybStatus: decision } });
+  // Only factories actually waiting for review can be decided on.
+  await db.$transaction(async (tx: Prisma.TransactionClient) => {
+    const res = await tx.employerProfile.updateMany({
+      where: { id: employerId, kybStatus: "PENDING" },
+      data: { kybStatus: decision },
+    });
+    if (res.count !== 1) return;
+    await audit(
+      {
+        actorId: admin.id,
+        actorRole: "ADMIN",
+        action: AUDIT.KYB_REVIEWED,
+        entityType: "EmployerProfile",
+        entityId: employerId,
+        metadata: { decision },
+      },
+      tx,
+    );
+  });
   revalidatePath("/admin/employers");
   redirect("/admin/employers");
 }

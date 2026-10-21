@@ -13,7 +13,8 @@
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "jobs:cleanup": "tsx scripts/cleanup.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

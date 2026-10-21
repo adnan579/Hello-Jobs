@@ -2,8 +2,11 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
+import { AUDIT, audit } from "@/lib/audit";
 import { getCurrentUser, requireWorker } from "@/lib/auth";
+import { destroySession } from "@/lib/session";
 import { canWorkerWithdraw } from "@/lib/pipeline";
 import type { StageValue } from "@/lib/constants";
 import {
@@ -77,17 +80,34 @@ export async function applyToJobAction(formData: FormData): Promise<void> {
   if (!job || job.status !== "OPEN") redirect("/jobs?error=closed");
 
   // One interaction per worker per job. If the factory already invited this
-  // worker, applying again just takes them to the existing conversation.
-  await db.jobInteraction.upsert({
-    where: { jobId_workerId: { jobId: job.id, workerId: user.workerProfile.id } },
-    create: {
-      jobId: job.id,
-      workerId: user.workerProfile.id,
-      employerId: job.employerId,
-      source: "WORKER_APPLY",
-    },
-    update: {},
-  });
+  // worker (or the worker already applied), applying again just takes them to
+  // the existing conversation.
+  const workerId = user.workerProfile.id;
+  try {
+    await db.$transaction(async (tx: Prisma.TransactionClient) => {
+      const existing = await tx.jobInteraction.findUnique({
+        where: { jobId_workerId: { jobId: job.id, workerId } },
+      });
+      if (existing) return;
+      const created = await tx.jobInteraction.create({
+        data: { jobId: job.id, workerId, employerId: job.employerId, source: "WORKER_APPLY" },
+      });
+      await audit(
+        {
+          actorId: user.id,
+          actorRole: "WORKER",
+          action: AUDIT.WORKER_APPLIED,
+          entityType: "JobInteraction",
+          entityId: created.id,
+          metadata: { jobId: job.id, employerId: job.employerId },
+        },
+        tx,
+      );
+    });
+  } catch (e) {
+    // Two taps at once: the unique (jobId, workerId) rule already did its job.
+    if ((e as { code?: string }).code !== "P2002") throw e;
+  }
 
   revalidatePath("/worker");
   redirect("/worker?applied=1");
@@ -102,12 +122,67 @@ export async function withdrawInteractionAction(formData: FormData): Promise<voi
   if (!interaction || interaction.workerId !== user.workerProfile.id) redirect("/worker");
   if (!canWorkerWithdraw(interaction.stage as StageValue)) redirect("/worker");
 
-  await db.jobInteraction.update({
-    where: { id: interaction.id },
-    data: { stage: "WITHDRAWN" },
+  await db.$transaction(async (tx: Prisma.TransactionClient) => {
+    await tx.jobInteraction.update({
+      where: { id: interaction.id },
+      data: { stage: "WITHDRAWN" },
+    });
+    await audit(
+      {
+        actorId: user.id,
+        actorRole: "WORKER",
+        action: AUDIT.STAGE_CHANGED,
+        entityType: "JobInteraction",
+        entityId: interaction.id,
+        metadata: { from: interaction.stage, to: "WITHDRAWN" },
+      },
+      tx,
+    );
   });
   revalidatePath("/worker");
   redirect("/worker");
+}
+
+/**
+ * "Delete my data": permanently removes the worker's account, Trade Card,
+ * applications and invites. Reports they filed are kept but detached from them
+ * (the abuse record matters more than the link). Only an audit entry with no
+ * personal data remains.
+ */
+export async function deleteWorkerAccountAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const user = await requireWorker("/worker/account");
+
+  const confirmation = String(formData.get("confirm") ?? "").trim().toUpperCase();
+  if (confirmation !== "DELETE") {
+    return { errors: { confirm: 'Type DELETE to confirm' } };
+  }
+
+  await db.$transaction(async (tx: Prisma.TransactionClient) => {
+    const interactionCount = user.workerProfile
+      ? await tx.jobInteraction.count({ where: { workerId: user.workerProfile.id } })
+      : 0;
+    await audit(
+      {
+        actorId: user.id,
+        actorRole: "WORKER",
+        action: AUDIT.ACCOUNT_DELETED,
+        entityType: "User",
+        entityId: user.id,
+        metadata: { hadProfile: !!user.workerProfile, interactionCount },
+      },
+      tx,
+    );
+    // Login codes are keyed by phone number, so they go too.
+    await tx.otpChallenge.deleteMany({ where: { phone: user.phone } });
+    // Cascades to WorkerProfile and JobInteraction; AgentFeeReport.reporterId becomes null.
+    await tx.user.delete({ where: { id: user.id } });
+  });
+
+  await destroySession();
+  redirect("/?deleted=1");
 }
 
 /** Anti-exploitation SOS. Works for logged-out users too — fear of retaliation is real. */

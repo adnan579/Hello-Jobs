@@ -89,9 +89,14 @@ export default async function WorkerDashboard({
             {profile.visibleInDirectory ? <Badge tone="green">Visible to factories</Badge> : <Badge>Hidden from factories</Badge>}
           </div>
         </div>
-        <Link href="/worker/onboarding" className="mt-3 inline-block text-sm font-semibold text-amber-800 underline">
-          Edit Trade Card
-        </Link>
+        <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm font-semibold">
+          <Link href="/worker/onboarding" className="text-amber-800 underline">
+            Edit Trade Card
+          </Link>
+          <Link href="/worker/account" className="text-slate-600 underline">
+            Delete my data
+          </Link>
+        </div>
       </section>
 
       {invites.length > 0 && (

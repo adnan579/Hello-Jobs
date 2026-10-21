@@ -21,7 +21,8 @@ test("worker journey: sign up, build a Trade Card, apply to a job", async ({ pag
 
   // Wage-transparent job card → detail → one-tap apply.
   await page.getByRole("link", { name: "ITI Fitter — Assembly Line" }).first().click();
-  await expect(page.getByText("In-hand / month")).toBeVisible();
+  await expect(page).toHaveURL(/\/jobs\/[^/?]+$/);
+  await expect(page.getByRole("heading", { name: "Pay, exactly" })).toBeVisible();
   await page.getByRole("button", { name: "Apply in one tap" }).click();
 
   await expect(page).toHaveURL(/\/worker\?applied=1/);

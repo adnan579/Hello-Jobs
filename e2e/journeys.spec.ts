@@ -10,7 +10,7 @@ test("worker journey: sign up, build a Trade Card, apply to a job", async ({ pag
   await expect(page).toHaveURL(/\/worker\/onboarding/);
   await page.getByLabel("Full name").fill("E2E Worker");
   await page.getByLabel("Current state", { exact: true }).selectOption("Uttar Pradesh");
-  await page.getByLabel("District").fill("Lucknow");
+  await page.getByLabel("District", { exact: true }).fill("Lucknow");
   await page.getByLabel("Category", { exact: true }).selectOption("SKILLED");
   await page.getByLabel("Trade", { exact: true }).selectOption("FITTER");
   await page.getByLabel("Years of floor experience").fill("4");

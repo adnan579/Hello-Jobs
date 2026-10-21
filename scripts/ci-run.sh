@@ -11,4 +11,8 @@ if [ "$status" -ne 0 ] && [ -n "${GITHUB_ACTIONS:-}" ]; then
   msg=$(tail -n 80 "$log" | sed -e 's/\x1b\[[0-9;]*[A-Za-z]//g' -e 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
   echo "::error title=${name} failed (exit ${status})::${msg}"
 fi
+if [ "$status" -eq 0 ] && [ -n "${GITHUB_ACTIONS:-}" ]; then
+  msg=$(tail -n 12 "$log" | sed -e 's/\x1b\[[0-9;]*[A-Za-z]//g' -e 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+  echo "::notice title=${name} passed::${msg}"
+fi
 exit "$status"

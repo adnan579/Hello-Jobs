@@ -11,10 +11,21 @@ concurrency:
 
 jobs:
   check:
-    name: Lint, types, unit tests, build
+    name: Lint, types, migrations, tests, build
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: hello_jobs
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s
+          --health-timeout 5s --health-retries 10
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/hello_jobs
+      SESSION_SECRET: ci-session-secret-ci-session-secret-0000
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -26,4 +37,15 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+
+      # Migrations are the source of truth for every environment.
+      - name: Apply committed migrations to a fresh database
+        run: npx prisma migrate deploy
+      - name: Fail if schema.prisma has changes without a migration
+        run: |
+          npx prisma migrate diff \
+            --from-schema-datasource prisma/schema.prisma \
+            --to-schema-datamodel prisma/schema.prisma \
+            --exit-code
+
       - run: npm run build

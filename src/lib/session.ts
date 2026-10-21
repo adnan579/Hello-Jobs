@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { cookies } from "next/headers";
 
-const COOKIE_NAME = "hj_session";
+export const COOKIE_NAME = "hj_session";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 30; // 30 days
 
 export type SessionRole = "WORKER" | "EMPLOYER" | "ADMIN";

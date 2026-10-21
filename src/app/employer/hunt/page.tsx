@@ -45,7 +45,7 @@ export default async function HuntPage({ searchParams }: { searchParams: Promise
   const [workers, total, openJobs] = await Promise.all([
     db.workerProfile.findMany({
       where,
-      orderBy: [{ ncvtStatus: "asc" }, { experienceYears: "desc" }],
+      orderBy: [{ experienceYears: "desc" }, { createdAt: "desc" }],
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
       // No phone, no Aadhaar, no last name: contact is revealed only on invite.

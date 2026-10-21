@@ -8,7 +8,7 @@ export default async function Header() {
 
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3">
         <Link href="/" className="flex items-center gap-2 text-lg font-extrabold tracking-tight text-slate-900">
           <span aria-hidden className="grid h-9 w-9 place-items-center rounded-lg bg-amber-500 text-slate-900">
             HJ
@@ -16,7 +16,7 @@ export default async function Header() {
           Hello Jobs
         </Link>
 
-        <nav aria-label="Main" className="flex items-center gap-1 text-sm font-medium text-slate-700 sm:gap-3">
+        <nav aria-label="Main" className="flex flex-wrap items-center gap-1 text-sm font-medium text-slate-700 sm:gap-3">
           <Link href="/jobs" className="rounded-md px-3 py-2 hover:bg-slate-100">
             Jobs
           </Link>

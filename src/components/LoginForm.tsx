@@ -1,11 +1,8 @@
 "use client";
 
 import { useActionState } from "react";
-import {
-  requestOtpAction,
-  verifyOtpAction,
-  type AuthState,
-} from "@/app/actions/auth";
+import { requestOtpAction, verifyOtpAction } from "@/app/actions/auth";
+import type { AuthState } from "@/app/actions/auth";
 import { Field, FormMessage, SubmitButton, TextInput } from "@/components/ui";
 
 export default function LoginForm({

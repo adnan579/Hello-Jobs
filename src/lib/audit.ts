@@ -9,6 +9,7 @@ export const AUDIT = {
   KYB_SUBMITTED: "KYB_SUBMITTED",
   KYB_REVIEWED: "KYB_REVIEWED",
   ACCOUNT_DELETED: "ACCOUNT_DELETED",
+  ADMIN_CREATED: "ADMIN_CREATED",
 } as const;
 export type AuditAction = (typeof AUDIT)[keyof typeof AUDIT];
 

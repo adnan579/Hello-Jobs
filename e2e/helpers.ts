@@ -16,7 +16,7 @@ export const SEED = {
 };
 
 /**
- * Log in through the real UI. In development the OTP is echoed on screen, which
+ * Log in through the real UI. In development (and on the private test site) the OTP is echoed on screen, which
  * is what makes this possible without an SMS provider.
  */
 export async function login(page: Page, phone: string, role: "WORKER" | "EMPLOYER" = "WORKER") {
@@ -24,7 +24,7 @@ export async function login(page: Page, phone: string, role: "WORKER" | "EMPLOYE
   await page.getByLabel("Mobile number").fill(phone);
   await page.getByRole("button", { name: "Send code" }).click();
 
-  const hint = page.locator("p", { hasText: "Development mode" });
+  const hint = page.locator("p", { hasText: "Test mode" });
   await expect(hint).toBeVisible();
   const code = (await hint.locator("strong").textContent())?.trim() ?? "";
   expect(code).toMatch(/^\d{4}$/);

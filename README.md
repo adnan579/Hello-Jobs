@@ -113,6 +113,7 @@ In development the OTP is printed in the server console **and** shown on the log
 | `npm run test:integration` | Server-action tests against a real PostgreSQL (see below) |
 | `npm run e2e` | Playwright browser journeys (needs a migrated + seeded database) |
 | `npm run jobs:cleanup` | Delete expired OTP login codes |
+| `npm run admin:create -- <mobile>` | Create an admin account (never converts a worker or factory) |
 | `npm run typecheck` | TypeScript check |
 | `npm run lint` | ESLint |
 | `npm run db:deploy` | Apply committed migrations (fresh setup, staging, production) |
@@ -163,6 +164,10 @@ The e2e tests sign in through the real login screen, which only shows the OTP in
 
 Every push and pull request runs, on PostgreSQL 16: Prisma validate, lint, typecheck, unit tests, migrations on an empty database, the migration drift check, integration tests and the production build. A second job runs the Playwright journeys and uploads a report on failure. If a step fails, its output tail is also shown as an annotation on the run page.
 
+## 🌐 Deploying for testing
+
+Step-by-step guide for **Vercel + Neon** (including the private test login mode, creating an admin, a phone smoke-test checklist and troubleshooting): [`docs/DEPLOY.md`](docs/DEPLOY.md).
+
 ## 🧹 Maintenance & Privacy
 
 * **Audit log (`AuditLog`):** records who did what, with IDs only and no phone numbers or names: logins, applications, **every contact reveal on invite**, pipeline moves, job status changes, factory verification submissions and decisions, account deletions. Entries are written in the same transaction as the action.
@@ -189,4 +194,5 @@ Every push and pull request runs, on PostgreSQL 16: Prisma validate, lint, typec
 * **Vernacular UI:** labels are English with Hindi trade names. Full Hindi/Marathi/Gujarati/Tamil translation and voice-assisted onboarding are planned.
 * **WhatsApp bot, audio job cards, digital offer letters, retention tracker, payments for credits / pay-per-hire, ITI campus drives.**
 * **Factory account deletion:** only workers have a self-service "delete my data" flow so far.
-* **Hosting:** the `.github/workflows/nextjs.yml` GitHub Pages template cannot host this app (it needs a server and a database). Deploy to a Node host (Vercel, Render, Railway, Fly.io) with a managed PostgreSQL, run `npm run db:deploy` on release, and schedule the cleanup endpoint.
+* **Production login codes:** a deployed site only works in the allowlisted private test mode until a provider is wired in.
+* **Hosting:** GitHub Pages cannot host this app (it needs a server and a database). See [`docs/DEPLOY.md`](docs/DEPLOY.md) for Vercel + Neon.

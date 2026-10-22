@@ -39,7 +39,7 @@ export default function LoginForm({
         </p>
         {requestState.devCode && (
           <p className="rounded-lg border border-dashed border-amber-500 bg-amber-50 p-3 text-sm text-amber-900">
-            Development mode — your code is <strong className="text-lg tracking-widest">{requestState.devCode}</strong>
+            Test mode — your code is <strong className="text-lg tracking-widest">{requestState.devCode}</strong>
           </p>
         )}
 

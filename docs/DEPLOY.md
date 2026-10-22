@@ -18,21 +18,32 @@ current limits and terms before relying on them (Vercel's Hobby plan is for pers
 
 ## 2. Create the tables
 
-On your computer, in the repo folder:
+### Option A: from the GitHub website (nothing to install, recommended)
+
+1. In GitHub open the repo → **Settings → Secrets and variables → Actions → New repository secret**.
+   Name: `DATABASE_URL_DIRECT`. Value: the **direct** connection string from step 1 (paste it exactly, no quotes).
+2. Open the repo's **Actions** tab → **Database tasks** (left list) → **Run workflow** → task **migrate** → **Run workflow**.
+   After a minute or two a green tick means the tables exist. A red cross means something is wrong: click the run
+   to read the error message (see Troubleshooting).
+3. Optional demo data (fake factories, jobs and workers, so the job feed is not empty): run **Database tasks** again
+   with task **seed-demo-data**.
+
+The seeded accounts use obviously fake numbers (`90000 00001` etc.). They can only log in if you put them on the
+allowlist in step 4. Do not seed a database that holds real people's data.
+
+### Option B: from your own computer
+
+You need [Node.js 22](https://nodejs.org) and [Git](https://git-scm.com). In a terminal:
 
 ```bash
+git clone https://github.com/adnan579/Hello-Jobs.git
+cd Hello-Jobs
 npm install
 DATABASE_URL="<DIRECT connection string>" npm run db:deploy
+DATABASE_URL="<DIRECT connection string>" npm run db:seed     # optional demo data
 ```
 
-Optional demo data (fake factories, jobs and workers, so the job feed is not empty):
-
-```bash
-DATABASE_URL="<DIRECT connection string>" npm run db:seed
-```
-
-The seeded accounts use obviously fake numbers (`90000 00001` etc.). They can only log in if you put them on
-the allowlist in step 4. Do not seed a database that holds real people's data.
+On Windows PowerShell, set the variable first: `$env:DATABASE_URL="<DIRECT connection string>"`, then run the `npm run` command on its own line.
 
 ## 3. Deploy the app (Vercel)
 
@@ -41,9 +52,9 @@ the allowlist in step 4. Do not seed a database that holds real people's data.
 
 | Name | Value |
 | :--- | :--- |
-| `DATABASE_URL` | The **pooled** string with `&pgbouncer=true&connect_timeout=15` added at the end |
-| `SESSION_SECRET` | 32+ random characters: `openssl rand -base64 48`. The app refuses to start without it. |
-| `CRON_SECRET` | 16+ random characters: `openssl rand -base64 32`. Needed for the daily cleanup job. |
+| `DATABASE_URL` | The **pooled** string (host contains `-pooler`) with `&pgbouncer=true&connect_timeout=15` added at the very end. If it contains `channel_binding=require`, delete that part. |
+| `SESSION_SECRET` | 40+ random characters from a password generator (or `openssl rand -base64 48` in a terminal). Letters and digits only is fine. The app refuses to start without it. |
+| `CRON_SECRET` | 20+ random characters from a password generator (or `openssl rand -base64 32`). Needed for the daily cleanup job. |
 | `OTP_DEMO_MODE` | `true` (private test mode, see step 4) |
 | `OTP_DEMO_ALLOWLIST` | Comma-separated mobile numbers allowed to log in, e.g. `98765 43210, 99887 76655` |
 
@@ -64,11 +75,10 @@ Security consequences, plainly:
 
 Create your admin account (the person who approves factories) and add the same number to the allowlist:
 
-```bash
-DATABASE_URL="<DIRECT connection string>" npm run admin:create -- 98765 43210
-```
+- **From GitHub:** Actions → **Database tasks** → Run workflow → task **create-admin** → type the mobile number in the box → Run.
+- **From your computer:** `DATABASE_URL="<DIRECT connection string>" npm run admin:create -- 98765 43210`
 
-Then log in on the site with that number (choose either option, an admin goes to `/admin/employers`).
+Then log in on the site with that number (choose either option; an admin goes to `/admin/employers`).
 It will not convert a number that is already a worker or factory.
 
 ## 5. Smoke test on a phone
@@ -89,13 +99,15 @@ can run once per day at most and may fire anywhere within the scheduled hour. Ve
 ## 7. Changing the database later
 
 1. Create and test the migration locally (`npm run db:migrate -- --name what_changed`) and merge it. CI checks it.
-2. Apply it to the hosted database **before** (or together with) deploying the code that needs it:
-   `DATABASE_URL="<DIRECT string>" npm run db:deploy`.
+2. Apply it to the hosted database **before** (or together with) deploying the code that needs it: run
+   **Database tasks → migrate** on GitHub, or `DATABASE_URL="<DIRECT string>" npm run db:deploy` from your computer.
 
 ## Troubleshooting
 
 | Symptom | Likely cause and fix |
 | :--- | :--- |
+| Database tasks run says "Missing secret" | Add the repository secret `DATABASE_URL_DIRECT` (step 2, Option A). |
+| Database tasks run says "Cannot reach the database" | Use the **direct** string (no `-pooler` in the host name), pasted without quotes or spaces. If it contains `channel_binding=require`, delete that part (the app does not need it; I have not tested it with Prisma). |
 | Build fails with a Prisma error | `npm install` runs `prisma generate` automatically. Make sure the install step was not skipped or cached oddly (redeploy with "clear build cache"). |
 | App error mentioning `SESSION_SECRET` | Missing or shorter than 32 characters. Set it and redeploy. |
 | "Can't reach database server" right after idle | Neon wakes a sleeping database on the first request. Keep `connect_timeout=15` on the URL and retry. |

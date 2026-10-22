@@ -1,0 +1,90 @@
+name: Database tasks
+
+# Run database set-up from the GitHub website, with nothing installed on your computer:
+#   Actions tab → "Database tasks" → Run workflow → pick a task.
+#
+# Needs one repository secret (Settings → Secrets and variables → Actions):
+#   DATABASE_URL_DIRECT = the DIRECT (non-pooled) PostgreSQL connection string.
+#
+# Tasks:
+#   migrate          Create / update all tables from the committed migrations (safe to repeat).
+#   seed-demo-data   Add FAKE demo factories, jobs and workers. Never use on a database with real people.
+#   create-admin     Create an admin account for the mobile number you type in.
+#
+# Only people with write access to the repository can run this workflow.
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: What to do
+        type: choice
+        required: true
+        options:
+          - migrate
+          - seed-demo-data
+          - create-admin
+      admin_phone:
+        description: "Mobile number (only for create-admin), e.g. 98765 43210"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: database-tasks
+  cancel-in-progress: false
+
+jobs:
+  run:
+    name: ${{ inputs.task }}
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL_DIRECT }}
+    steps:
+      - name: Check the database secret is set
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error title=Missing secret::Add a repository secret named DATABASE_URL_DIRECT (Settings → Secrets and variables → Actions → New repository secret) containing your direct PostgreSQL connection string."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      # Free-tier databases sleep when idle; the first connection wakes them up and can time out.
+      - name: Wake up the database
+        run: |
+          for i in 1 2 3 4; do
+            if psql "$DATABASE_URL" -tAc "select 'database reachable'"; then exit 0; fi
+            echo "Attempt $i failed. The database may be waking up; retrying in 10 seconds."
+            sleep 10
+          done
+          echo "::error title=Cannot reach the database::Check that DATABASE_URL_DIRECT is the DIRECT connection string (no '-pooler' in the host name) and has no extra spaces or quotes."
+          exit 1
+
+      - name: Create / update tables
+        if: inputs.task == 'migrate'
+        run: |
+          npx prisma migrate deploy
+          npx prisma migrate status
+
+      - name: Add demo data
+        if: inputs.task == 'seed-demo-data'
+        run: npm run db:seed
+
+      - name: Create admin
+        if: inputs.task == 'create-admin'
+        env:
+          ADMIN_PHONE: ${{ inputs.admin_phone }}
+        run: |
+          if [ -z "$ADMIN_PHONE" ]; then
+            echo "::error title=Missing number::Fill in the 'Mobile number' box when running create-admin."
+            exit 1
+          fi
+          npm run admin:create -- "$ADMIN_PHONE"

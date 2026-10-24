@@ -39,7 +39,9 @@ import { screenJobPosting } from './src/modules/domain.ts';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const DATA_DIR = path.join(__dirname, 'data');
+const IS_VERCEL = Boolean(process.env.VERCEL);
+const SEED_DB_FILE = path.join(__dirname, 'data', 'db.json');
+const DATA_DIR = IS_VERCEL ? '/tmp/hellojobs-data' : path.join(__dirname, 'data');
 const DB_FILE = path.join(DATA_DIR, 'db.json');
 
 interface OtpLockoutRecord {
@@ -77,8 +79,13 @@ function loadDatabase(): DatabaseSchema {
     if (!fs.existsSync(DATA_DIR)) {
       fs.mkdirSync(DATA_DIR, { recursive: true });
     }
-    if (fs.existsSync(DB_FILE)) {
-      const raw = fs.readFileSync(DB_FILE, 'utf-8');
+    const sourceFile = fs.existsSync(DB_FILE)
+      ? DB_FILE
+      : fs.existsSync(SEED_DB_FILE)
+      ? SEED_DB_FILE
+      : null;
+    if (sourceFile) {
+      const raw = fs.readFileSync(sourceFile, 'utf-8');
       const parsed = JSON.parse(raw) as Partial<DatabaseSchema>;
       return {
         jobs: parsed.jobs && parsed.jobs.length > 0 ? parsed.jobs : INITIAL_JOBS,
@@ -237,20 +244,19 @@ function saveDatabase(db: DatabaseSchema): void {
   }
 }
 
-async function startServer() {
-  const app = express();
-  const PORT = Number(process.env.PORT) || 3000;
+export const app = express();
+const PORT = Number(process.env.PORT) || 3000;
 
-  // M17: Security Headers
-  app.use((_req, res, next) => {
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-    next();
-  });
+// M17: Security Headers
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
 
-  app.use(express.json({ limit: '5mb' }));
+app.use(express.json({ limit: '5mb' }));
 
-  const db = loadDatabase();
+const db = loadDatabase();
 
   // 1. Bootstrap endpoint: returns complete live state across all 17 modules
   app.get('/api/bootstrap', (_req, res) => {
@@ -1248,6 +1254,7 @@ async function startServer() {
     });
   });
 
+async function startServer() {
   // Vite middleware for development or static serving for production
   if (process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
@@ -1283,4 +1290,9 @@ async function startServer() {
   return httpServer;
 }
 
-startServer();
+if (!IS_VERCEL) {
+  startServer();
+}
+
+export default app;
+

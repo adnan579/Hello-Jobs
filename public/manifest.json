@@ -1,0 +1,11 @@
+{
+  "name": "Hello Jobs — Direct Hands for Indian Industry",
+  "short_name": "Hello Jobs",
+  "description": "Zero-middleman industrial jobs for ITI technicians and factory helpers. Verified factories, honest in-hand pay, zero fees.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#f59e0b",
+  "orientation": "portrait-primary",
+  "lang": "hi-IN"
+}

@@ -247,13 +247,24 @@ export const EmployerProfileView: React.FC<Props> = ({
               <h1 className="text-2xl font-extrabold tracking-tight text-white">
                 {employer.companyName}
               </h1>
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-semibold tabular-nums">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span
+                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded border text-xs font-semibold tabular-nums ${
+                  employer.kybVerificationStatus === 'VERIFIED'
+                    ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-300'
+                    : 'bg-amber-500/20 border-amber-400/40 text-amber-200'
+                }`}
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                {employer.kybVerificationStatus === 'VERIFIED'
+                  ? 'Verified · '
+                  : employer.kybVerificationStatus === 'CANCELLED_GSTIN'
+                  ? 'Not approved · '
+                  : 'Verification pending · '}
                 GSTIN: {employer.gstin}
               </span>
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded bg-amber-400 text-slate-950 text-xs font-extrabold tabular-nums">
                 <Coins className="w-3.5 h-3.5" />
-                {employer.huntCredits ?? 24} Hunt Credits
+                {employer.huntCredits ?? 0} Hunt Credits
               </span>
             </div>
 
@@ -268,7 +279,9 @@ export const EmployerProfileView: React.FC<Props> = ({
               </span>
               <span aria-hidden="true">·</span>
               <span className="tabular-nums text-emerald-300 font-semibold">
-                Avg Response Time: {employer.avgResponseTimeHours ?? 4.2} hrs · Promise Kept: {employer.promiseKeptScorePct ?? 96}%
+                {employer.promiseKeptScorePct != null
+                  ? `Promise Kept: ${employer.promiseKeptScorePct}%`
+                  : 'Promise-kept score appears after 3 worker check-ins'}
               </span>
             </div>
           </div>
@@ -402,7 +415,7 @@ export const EmployerProfileView: React.FC<Props> = ({
                 Contact Credit Balance
               </span>
               <span className="text-2xl font-extrabold text-blue-700 tabular-nums mt-1 block">
-                {employer.huntCredits ?? 24} Credits
+                {employer.huntCredits ?? 0} Credits
               </span>
               <span className="text-[11px] text-slate-500">
                 {(employer.unlockedCandidateIds || []).length} candidate contacts unlocked
@@ -414,10 +427,10 @@ export const EmployerProfileView: React.FC<Props> = ({
                 Worker Retention & Offer Accuracy
               </span>
               <span className="text-2xl font-extrabold text-emerald-700 tabular-nums mt-1 block">
-                {employer.promiseKeptScorePct ?? 96}%
+                {employer.promiseKeptScorePct != null ? `${employer.promiseKeptScorePct}%` : '—'}
               </span>
               <span className="text-[11px] text-emerald-700 font-semibold">
-                Verified via post-joining check-ins
+                {employer.promiseKeptScorePct != null ? 'Verified via post-joining check-ins' : 'Needs 3 worker check-ins'}
               </span>
             </div>
           </div>

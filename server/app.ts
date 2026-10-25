@@ -52,7 +52,8 @@ export function createApp(ctx: AppContext): express.Express {
 
   app.use(
     helmet({
-      contentSecurityPolicy: {
+      // The dev server (Vite) needs inline scripts and websockets; production keeps the strict policy.
+      contentSecurityPolicy: !ctx.config.isProd ? false : {
         useDefaults: false,
         directives: {
           'default-src': ["'self'"],

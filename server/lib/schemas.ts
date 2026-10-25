@@ -336,6 +336,7 @@ export const reportPatch = z.object({
   status: z.enum(['New', 'Investigating', 'Under Investigation', 'Confirmed — Factory Paused', 'Resolved', 'Dismissed']),
   outcomeNote: str(500).optional(),
   pauseFactoryPostings: z.boolean().optional(),
+  resumeFactoryPostings: z.boolean().optional(),
 });
 
 // ---------- Drives / check-ins ----------

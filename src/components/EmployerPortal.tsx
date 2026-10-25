@@ -140,7 +140,7 @@ export const EmployerPortal: React.FC<Props> = ({
             </span>
             <span className="px-2.5 py-0.5 rounded-md bg-amber-400 text-slate-950 font-extrabold tabular-nums flex items-center gap-1">
               <Coins className="w-3.5 h-3.5" />
-              {employerProfile.huntCredits ?? 24} Contact Credits Available
+              {employerProfile.huntCredits ?? 0} Contact Credits Available
             </span>
           </div>
           <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">

@@ -276,6 +276,22 @@ export const Navbar: React.FC<Props> = ({
                 </button>
               )}
             </div>
+          ) : authSession?.role === 'admin' ? (
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-2 text-xs font-bold text-amber-800 bg-amber-100 rounded-lg whitespace-nowrap">
+                Staff · {authSession.adminRole ?? 'Admin'}
+              </span>
+              {onLogout && (
+                <button
+                  onClick={onLogout}
+                  className="inline-flex items-center gap-1 px-2.5 py-2 text-xs font-semibold text-slate-600 hover:text-red-700 bg-slate-100 hover:bg-red-50 rounded-lg transition-colors whitespace-nowrap shrink-0"
+                  title="Log Out"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Log Out</span>
+                </button>
+              )}
+            </div>
           ) : (
             <div className="flex items-center gap-2">
               <button

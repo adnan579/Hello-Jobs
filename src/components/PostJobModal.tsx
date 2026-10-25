@@ -1,11 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, CheckCircle2, Factory, ShieldCheck, Plus } from 'lucide-react';
-import { JobListing, TradeType, WorkerSkillCategory } from '../types';
+import {
+  JobListing,
+  TradeType,
+  WorkerSkillCategory,
+  EmployerFactoryProfile,
+} from '../types';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   onJobCreated: (job: JobListing) => void;
+  employer?: EmployerFactoryProfile;
 }
 
 const TRADES: TradeType[] = [
@@ -25,7 +31,7 @@ const TRADES: TradeType[] = [
   'Quality Inspector',
 ];
 
-export const PostJobModal: React.FC<Props> = ({ isOpen, onClose, onJobCreated }) => {
+export const PostJobModal: React.FC<Props> = ({ isOpen, onClose, onJobCreated, employer }) => {
   const [title, setTitle] = useState('');
   const [trade, setTrade] = useState<TradeType>(
     'Packing & Box Loading (No Certificate)'
@@ -34,12 +40,13 @@ export const PostJobModal: React.FC<Props> = ({ isOpen, onClose, onJobCreated })
   const [companyName, setCompanyName] = useState('');
   const [gstin, setGstin] = useState('');
   const [plantLocation, setPlantLocation] = useState('');
-  const [industrialHub, setIndustrialHub] = useState('Chakan MIDC, Pune');
-  const [state, setState] = useState('Maharashtra');
-  const [takeHomeSalary, setTakeHomeSalary] = useState(18500);
+  const [industrialHub, setIndustrialHub] = useState('');
+  const [state, setState] = useState('');
+  const [takeHomeSalary, setTakeHomeSalary] = useState(0);
+  const [grossInput, setGrossInput] = useState(0);
   const [overtimeHourlyRate, setOvertimeHourlyRate] = useState(100);
   const [shiftPattern, setShiftPattern] = useState('8 Hours + Overtime Available');
-  const [openingsCount, setOpeningsCount] = useState(30);
+  const [openingsCount, setOpeningsCount] = useState(1);
   const [hrContactName, setHrContactName] = useState('');
   const [hrContactPhone, setHrContactPhone] = useState('');
   const [hasHostel, setHasHostel] = useState(true);
@@ -47,12 +54,28 @@ export const PostJobModal: React.FC<Props> = ({ isOpen, onClose, onJobCreated })
   const [hasBusPickup, setHasBusPickup] = useState(true);
   const [isSuccess, setIsSuccess] = useState(false);
 
+  useEffect(() => {
+    if (isOpen && employer) {
+      setCompanyName(employer.companyName);
+      setGstin(employer.gstin);
+      setIndustrialHub((v) => v || employer.industrialHub);
+      setState((v) => v || employer.state);
+      setHrContactName((v) => v || employer.hrManagerName);
+      setHrContactPhone((v) => v || employer.hrPhone);
+      setPlantLocation((v) => v || employer.plantAddress || employer.industrialHub);
+    }
+  }, [isOpen, employer]);
+
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const grossSalary = Math.round(takeHomeSalary * 1.18);
+    const grossSalary = Number(grossInput);
+    if (grossSalary < Number(takeHomeSalary)) {
+      window.alert('Gross monthly salary cannot be lower than the in-hand salary.');
+      return;
+    }
     const noCertNeeded = category !== 'skilled';
 
     const newJob: JobListing = {
@@ -66,8 +89,8 @@ export const PostJobModal: React.FC<Props> = ({ isOpen, onClose, onJobCreated })
       category,
       noCertificateRequired: noCertNeeded,
       companyName,
-      gstin: gstin || '27AABCC8819Q1ZT',
-      gstinVerified: true,
+      gstin,
+      gstinVerified: false, // set by the server from the factory's verification status
       plantLocation,
       industrialHub,
       state,
@@ -79,14 +102,14 @@ export const PostJobModal: React.FC<Props> = ({ isOpen, onClose, onJobCreated })
         hasHostel,
         hasSubsidizedMess,
         hasBusPickup,
-        esiPfCovered: true,
-        safetyGearProvided: true,
+        esiPfCovered: employer?.facilities?.esiPfCovered ?? false,
+        safetyGearProvided: employer?.facilities?.safetyGearProvided ?? false,
       },
       openingsCount: Number(openingsCount),
       vacanciesLeft: Number(openingsCount),
-      hrContactName: hrContactName || 'Plant HR Team',
-      hrContactPhone: hrContactPhone || '+91 98220 12345',
-      whatsappApplyNumber: (hrContactPhone || '919822012345').replace(/\D/g, ''),
+      hrContactName: hrContactName || employer?.hrManagerName || '',
+      hrContactPhone: hrContactPhone || employer?.hrPhone || '',
+      whatsappApplyNumber: (hrContactPhone || employer?.hrPhone || '').replace(/\D/g, ''),
       experienceRequired:
         category === 'unskilled'
           ? 'Freshers Welcome (No Experience Needed)'
@@ -278,7 +301,7 @@ export const PostJobModal: React.FC<Props> = ({ isOpen, onClose, onJobCreated })
               <span className="text-xs font-bold text-slate-800 block">
                 Transparent Compensation
               </span>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-medium text-slate-600 mb-0.5">
                     Net Monthly In-Hand (₹) *
@@ -286,11 +309,25 @@ export const PostJobModal: React.FC<Props> = ({ isOpen, onClose, onJobCreated })
                   <input
                     type="number"
                     required
-                    min={15000}
+                    min={1000}
                     step={500}
-                    value={takeHomeSalary}
+                    value={takeHomeSalary || ''}
                     onChange={(e) => setTakeHomeSalary(Number(e.target.value))}
                     className="w-full px-2.5 py-1 text-xs font-bold font-mono text-emerald-700 border border-slate-300 rounded focus:outline-hidden focus:ring-2 focus:ring-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-600 mb-0.5">
+                    Gross Monthly Salary (₹) *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min={1000}
+                    step={500}
+                    value={grossInput || ''}
+                    onChange={(e) => setGrossInput(Number(e.target.value))}
+                    className="w-full px-2.5 py-1 text-xs font-bold font-mono text-slate-800 border border-slate-300 rounded focus:outline-hidden focus:ring-2 focus:ring-slate-900"
                   />
                 </div>
                 <div>

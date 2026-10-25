@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   UserRole,
   Language,
@@ -19,20 +19,10 @@ import {
   HiringDrive,
   RetentionCheckIn,
   FeeReport,
+  DpdpGrievanceTicket,
+  DpdpAuditLog,
 } from './types';
-import {
-  INITIAL_JOBS,
-  INITIAL_CANDIDATES,
-  INITIAL_EMPLOYER_PROFILE,
-  INITIAL_APPLICATIONS,
-  INITIAL_OFFERS,
-  INITIAL_NOTIFICATIONS,
-  INITIAL_VERIFICATION_RECORDS,
-  INITIAL_CREDIT_LEDGER,
-  INITIAL_HIRING_DRIVES,
-  INITIAL_RETENTION_CHECKINS,
-  INITIAL_FEE_REPORTS,
-} from './data/initialData';
+import { EMPTY_EMPLOYER } from './data/emptyState';
 import { Navbar } from './components/Navbar';
 import { DualLanding } from './components/DualLanding';
 import { WorkerPortal } from './components/WorkerPortal';
@@ -51,11 +41,11 @@ import { PostJobModal } from './components/PostJobModal';
 import { NcvtSearchModal } from './components/NcvtSearchModal';
 import { AuthModal } from './components/AuthModal';
 import { LegalModal } from './components/LegalModal';
+import { DpdpComplianceModal } from './components/DpdpComplianceModal';
 import { stopJobAudio } from './utils/audioNarrator';
 import {
   fetchBootstrap,
-  loginWorkerApi,
-  loginEmployerApi,
+  logoutApi,
   createCandidateApi,
   updateCandidateApi,
   createJobApi,
@@ -70,9 +60,16 @@ import {
   unlockCandidateContactApi,
   purchaseCreditPackApi,
   verifyRecordApi,
-  updateFeeReportStatusApi,
+  adminUpdateReportStatusApi,
   registerHiringDriveApi,
   submitRetentionCheckInApi,
+  updateDpdpConsentApi,
+  updateDpdpNomineeApi,
+  submitDpdpGrievanceApi,
+  downloadMyDataApi,
+  UNAUTHORIZED_EVENT,
+  ERROR_EVENT,
+  type BootstrapPayload,
 } from './utils/api';
 import {
   Briefcase,
@@ -84,58 +81,42 @@ import {
   Clock,
   Building2,
   Users,
+  AlertTriangle,
 } from 'lucide-react';
 
 export default function App() {
   const [currentRole, setCurrentRole] = useState<UserRole>('landing');
   const [currentLang, setCurrentLang] = useState<Language>('en');
+  const [booting, setBooting] = useState(true);
+  const [toast, setToast] = useState('');
 
-  // Persistent Auth Session
-  const [authSession, setAuthSession] = useState<AuthSession | null>(() => {
-    try {
-      const saved = localStorage.getItem('hello_jobs_auth_v3');
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
-
-  // Shared Backend-Synced State
-  const [jobs, setJobs] = useState<JobListing[]>(INITIAL_JOBS);
-  const [candidates, setCandidates] =
-    useState<CandidateProfile[]>(INITIAL_CANDIDATES);
-  const [offers, setOffers] = useState<OfferLetter[]>(INITIAL_OFFERS);
-  const [applications, setApplications] =
-    useState<JobApplication[]>(INITIAL_APPLICATIONS);
+  // Everything below is exactly what the server says this person may see.
+  const [authSession, setAuthSession] = useState<AuthSession | null>(null);
+  const [jobs, setJobs] = useState<JobListing[]>([]);
+  const [candidates, setCandidates] = useState<CandidateProfile[]>([]);
+  const [offers, setOffers] = useState<OfferLetter[]>([]);
+  const [applications, setApplications] = useState<JobApplication[]>([]);
   const [employerProfile, setEmployerProfile] =
-    useState<EmployerFactoryProfile>(INITIAL_EMPLOYER_PROFILE);
-  const [shortlistedIds, setShortlistedIds] = useState<string[]>([
-    'cand-unskilled-1',
-    'cand-1',
-    'cand-2',
-    'cand-4',
-  ]);
-  const [feeReports, setFeeReports] = useState<FeeReport[]>(INITIAL_FEE_REPORTS);
-  const [notifications, setNotifications] = useState<NotificationEvent[]>(
-    INITIAL_NOTIFICATIONS
-  );
+    useState<EmployerFactoryProfile>(EMPTY_EMPLOYER);
+  const [shortlistedIds, setShortlistedIds] = useState<string[]>([]);
+  const [feeReports, setFeeReports] = useState<FeeReport[]>([]);
+  const [notifications, setNotifications] = useState<NotificationEvent[]>([]);
   const [verificationRecords, setVerificationRecords] = useState<
     VerificationRecord[]
-  >(INITIAL_VERIFICATION_RECORDS);
-  const [creditLedger, setCreditLedger] = useState<CreditLedgerEntry[]>(
-    INITIAL_CREDIT_LEDGER
-  );
-  const [hiringDrives, setHiringDrives] = useState<HiringDrive[]>(
-    INITIAL_HIRING_DRIVES
-  );
+  >([]);
+  const [creditLedger, setCreditLedger] = useState<CreditLedgerEntry[]>([]);
+  const [hiringDrives, setHiringDrives] = useState<HiringDrive[]>([]);
   const [retentionCheckIns, setRetentionCheckIns] = useState<RetentionCheckIn[]>(
-    INITIAL_RETENTION_CHECKINS
+    []
   );
+  const [grievances, setGrievances] = useState<DpdpGrievanceTicket[]>([]);
+  const [auditLogs, setAuditLogs] = useState<DpdpAuditLog[]>([]);
+  const [stats, setStats] = useState({ workers: 0, factories: 0, jobs: 0 });
 
   // Modals & Drawers
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalInitialTab, setAuthModalInitialTab] = useState<
-    'worker' | 'employer'
+    'worker' | 'employer' | 'admin'
   >('worker');
   const [authModalInitialMode, setAuthModalInitialMode] = useState<
     'login' | 'register'
@@ -145,6 +126,7 @@ export default function App() {
   const [legalModalTab, setLegalModalTab] = useState<'privacy' | 'terms'>(
     'privacy'
   );
+  const [isDpdpOpen, setIsDpdpOpen] = useState(false);
 
   const [selectedNcvtCandidate, setSelectedNcvtCandidate] =
     useState<CandidateProfile | null>(null);
@@ -169,48 +151,92 @@ export default function App() {
   const [isNotificationsDrawerOpen, setIsNotificationsDrawerOpen] =
     useState(false);
 
-  // Sync live data from the Express Backend
-  const syncFromBackend = useCallback(async () => {
-    const data = await fetchBootstrap();
-    if (data) {
-      setJobs(data.jobs);
-      setCandidates(data.candidates);
-      setOffers(data.offers);
-      setApplications(data.applications);
-      setEmployerProfile(data.employerProfile);
-      setShortlistedIds(data.shortlistedIds);
-      if (data.feeReports) setFeeReports(data.feeReports);
-      if (data.notifications) setNotifications(data.notifications);
-      if (data.verificationRecords)
-        setVerificationRecords(data.verificationRecords);
-      if (data.creditLedger) setCreditLedger(data.creditLedger);
-      if (data.hiringDrives) setHiringDrives(data.hiringDrives);
-      if (data.retentionCheckIns) setRetentionCheckIns(data.retentionCheckIns);
-    }
+  const applySnapshot = useCallback((data: BootstrapPayload) => {
+    setAuthSession(data.session ?? null);
+    setJobs(data.jobs);
+    setCandidates(data.candidates);
+    setOffers(data.offers);
+    setApplications(data.applications);
+    setEmployerProfile(data.employerProfile ?? EMPTY_EMPLOYER);
+    setShortlistedIds(data.shortlistedIds);
+    setFeeReports(data.feeReports ?? data.reports ?? []);
+    setNotifications(data.notifications ?? []);
+    setVerificationRecords(data.verificationRecords ?? []);
+    setCreditLedger(data.creditLedger ?? []);
+    setHiringDrives(data.hiringDrives ?? []);
+    setRetentionCheckIns(data.retentionCheckIns ?? []);
+    setGrievances(data.dpdpGrievances ?? []);
+    setAuditLogs(data.dpdpAuditLogs ?? []);
+    if (data.stats) setStats(data.stats);
   }, []);
 
+  const syncFromBackend = useCallback(async () => {
+    const data = await fetchBootstrap();
+    if (data) applySnapshot(data);
+    return data;
+  }, [applySnapshot]);
+
+  // First load: ask the server who we are (the session lives in an httpOnly cookie).
   useEffect(() => {
-    syncFromBackend();
-    const interval = setInterval(syncFromBackend, 15000);
+    syncFromBackend().finally(() => setBooting(false));
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') syncFromBackend();
+    }, 30000);
     return () => clearInterval(interval);
   }, [syncFromBackend]);
 
+  // "#staff" opens the staff login (the admin console is not linked from the public site).
   useEffect(() => {
-    try {
-      if (authSession) {
-        localStorage.setItem('hello_jobs_auth_v3', JSON.stringify(authSession));
-      } else {
-        localStorage.removeItem('hello_jobs_auth_v3');
+    const check = () => {
+      if (window.location.hash === '#staff') {
+        setAuthModalInitialTab('admin');
+        setAuthModalInitialMode('login');
+        setIsAuthModalOpen(true);
+        history.replaceState(null, '', window.location.pathname);
       }
-    } catch (e) {
-      console.warn(e);
-    }
-  }, [authSession]);
+    };
+    check();
+    window.addEventListener('hashchange', check);
+    return () => window.removeEventListener('hashchange', check);
+  }, []);
+
+  // Server says our session is gone (expired, revoked elsewhere): drop to the public site.
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => {
+    const onUnauthorized = () => {
+      setAuthSession(null);
+      setCurrentRole('landing');
+      syncFromBackend();
+    };
+    const onError = (e: Event) => {
+      setToast(String((e as CustomEvent).detail || 'Something went wrong.'));
+      clearTimeout(toastTimer.current);
+      toastTimer.current = setTimeout(() => setToast(''), 6000);
+    };
+    window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
+    window.addEventListener(ERROR_EVENT, onError);
+    return () => {
+      window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
+      window.removeEventListener(ERROR_EVENT, onError);
+    };
+  }, [syncFromBackend]);
 
   const activeWorker =
     authSession?.role === 'worker'
-      ? candidates.find((c) => c.id === authSession.workerId) || candidates[0]
+      ? candidates.find((c) => c.id === authSession.workerId)
       : undefined;
+
+  // Never show a private page to someone who is not signed in as that kind of user.
+  useEffect(() => {
+    if (booting) return;
+    const needs: Partial<Record<UserRole, AuthSession['role']>> = {
+      'worker-profile': 'worker',
+      'employer-profile': 'employer',
+      admin: 'admin',
+    };
+    const need = needs[currentRole];
+    if (need && authSession?.role !== need) setCurrentRole('landing');
+  }, [booting, currentRole, authSession]);
 
   const handleRoleChange = (role: UserRole) => {
     stopJobAudio();
@@ -233,40 +259,21 @@ export default function App() {
     setIsLegalModalOpen(true);
   };
 
-  // Post-Login Routing: Workers -> Job Feed ('worker'), Employers -> Employer Dashboard ('employer-profile')
-  const handleLoginSuccess = async (
-    session: AuthSession,
-    newCandidate?: CandidateProfile,
-    updatedEmployer?: EmployerFactoryProfile
-  ) => {
-    if (session.role === 'worker') {
-      if (newCandidate) {
-        setCandidates((prev) => [newCandidate, ...prev]);
-      }
-      setAuthSession(session);
-      handleRoleChange('worker');
-
-      const res = await loginWorkerApi(newCandidate?.phone, newCandidate);
-      if (res?.candidates) {
-        setCandidates(res.candidates);
-      }
-    } else {
-      if (updatedEmployer) {
-        setEmployerProfile(updatedEmployer);
-      }
-      setAuthSession(session);
-      handleRoleChange('employer-profile');
-
-      const res = await loginEmployerApi(updatedEmployer);
-      if (res?.employerProfile) {
-        setEmployerProfile(res.employerProfile);
-      }
-    }
+  // The server has set the session cookie; ask who we are and route by role.
+  const handleLoginSuccess = async () => {
+    const data = await syncFromBackend();
+    const role = data?.session?.role;
+    if (role === 'worker') handleRoleChange('worker');
+    else if (role === 'employer') handleRoleChange('employer-profile');
+    else if (role === 'admin') handleRoleChange('admin');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logoutApi();
     setAuthSession(null);
-    handleRoleChange('landing');
+    setCurrentRole('landing');
+    stopJobAudio();
+    await syncFromBackend();
   };
 
   const handleInspectCertificate = (candidate: CandidateProfile) => {
@@ -284,13 +291,28 @@ export default function App() {
     setIsOfferModalOpen(true);
   };
 
+  const run = async (call: Promise<BootstrapPayload | null>) => {
+    const res = await call;
+    if (res) applySnapshot(res);
+    return res;
+  };
+
   const handleIssueOffer = async (newOffer: OfferLetter) => {
-    setOffers((prev) => [newOffer, ...prev]);
-    const res = await createOfferApi(newOffer);
-    if (res) {
-      setOffers(res.offers);
-      setApplications(res.applications);
+    // An offer attaches to the worker's application to one of this factory's jobs.
+    const app =
+      applications.find(
+        (a) =>
+          a.candidateId === newOffer.candidateId &&
+          (!newOffer.jobId || a.jobId === newOffer.jobId) &&
+          ['Applied', 'Shortlisted', 'Interview', 'Declined'].includes(a.status)
+      ) || null;
+    if (!app) {
+      setToast(
+        'This worker has not applied to one of your jobs yet. Invite them first, then send the offer once they apply.'
+      );
+      return;
     }
+    await run(createOfferApi({ ...newOffer, applicationId: app.id }));
   };
 
   const handleUpdateOfferStatus = async (
@@ -299,88 +321,26 @@ export default function App() {
     declineReason?: string,
     workerConfirmedJoining?: boolean
   ) => {
-    setOffers((prev) =>
-      prev.map((o) =>
-        o.id === offerId
-          ? { ...o, status, declineReason, workerConfirmedJoining }
-          : o
-      )
+    await run(
+      updateOfferStatusApi(offerId, status, declineReason, workerConfirmedJoining)
     );
-    const res = await updateOfferStatusApi(
-      offerId,
-      status,
-      declineReason,
-      workerConfirmedJoining
-    );
-    if (res) {
-      setOffers(res.offers);
-      setApplications(res.applications);
-    }
   };
 
   const handleApplyJob = async (job: JobListing) => {
-    const workerToUse = activeWorker || candidates[0];
-    if (!authSession) {
-      setAuthSession({ role: 'worker', workerId: workerToUse.id });
+    if (!activeWorker) {
+      handleOpenAuthModal('worker', 'login');
+      return;
     }
-
-    const alreadyApplied = applications.some(
-      (a) => a.jobId === job.id && a.candidateId === workerToUse.id
-    );
-    if (alreadyApplied) return;
-
-    const newApp: JobApplication = {
-      id: `app-${Date.now()}`,
-      jobId: job.id,
-      jobTitle: job.title,
-      companyName: job.companyName,
-      industrialHub: job.industrialHub,
-      takeHomeSalary: job.takeHomeSalary,
-      candidateId: workerToUse.id,
-      candidateName: workerToUse.name,
-      candidateTrade: workerToUse.trade,
-      candidatePhone: workerToUse.phone,
-      ncvtVerified: workerToUse.ncvtCertificate.isVerified,
-      appliedAt: 'Just now',
-      status: 'Applied',
-      history: [
-        {
-          id: `ev-${Date.now()}`,
-          toStage: 'Applied',
-          actor: 'worker',
-          actorName: workerToUse.name,
-          note: 'Applied via 1-Tap Pay-First Job Card',
-          timestamp: new Date().toLocaleString('en-IN'),
-        },
-      ],
-    };
-
-    setApplications((prev) => [newApp, ...prev]);
-    const res = await createApplicationApi(newApp);
-    if (res) {
-      setApplications(res.applications);
-      setJobs(res.jobs);
-    }
+    if (applications.some((a) => a.jobId === job.id)) return;
+    await run(createApplicationApi(job.id));
   };
 
   const handleUpdateWorker = async (updated: CandidateProfile) => {
-    setCandidates((prev) =>
-      prev.map((c) => (c.id === updated.id ? updated : c))
-    );
-    const updatedList = await updateCandidateApi(updated);
-    if (updatedList) {
-      setCandidates(updatedList);
-    }
+    await run(updateCandidateApi(updated));
   };
 
   const handleUpdateJob = async (updatedJob: JobListing) => {
-    setJobs((prev) =>
-      prev.map((j) => (j.id === updatedJob.id ? updatedJob : j))
-    );
-    const updatedList = await updateJobApi(updatedJob);
-    if (updatedList) {
-      setJobs(updatedList);
-    }
+    await run(updateJobApi(updatedJob));
   };
 
   const handleUpdateApplicationStatus = async (
@@ -388,114 +348,64 @@ export default function App() {
     status: JobApplication['status'],
     employerPrivateNotes?: string
   ) => {
-    setApplications((prev) =>
-      prev.map((a) =>
-        a.id === appId ? { ...a, status, employerPrivateNotes } : a
-      )
+    await run(
+      updateApplicationStatusApi(appId, status, { employerPrivateNotes })
     );
-    const updatedList = await updateApplicationStatusApi(appId, status, {
-      employerPrivateNotes,
-    });
-    if (updatedList) {
-      setApplications(updatedList);
-    }
   };
 
   const handleToggleShortlist = async (candidateId: string) => {
-    setShortlistedIds((prev) =>
-      prev.includes(candidateId)
-        ? prev.filter((id) => id !== candidateId)
-        : [...prev, candidateId]
-    );
-    const updatedShortlist = await toggleShortlistApi(candidateId);
-    if (updatedShortlist) {
-      setShortlistedIds(updatedShortlist);
-    }
+    await run(toggleShortlistApi(candidateId));
   };
 
   const handleUnlockCandidateContact = async (candidateId: string) => {
-    const res = await unlockCandidateContactApi(candidateId);
-    if (res) {
-      setEmployerProfile(res.employerProfile);
-      setCreditLedger(res.creditLedger);
-    }
+    await run(unlockCandidateContactApi(candidateId));
   };
 
   const handlePurchaseCredits = async (
     packId: 'PACK_10' | 'PACK_25' | 'PACK_100'
   ) => {
-    const res = await purchaseCreditPackApi(packId);
-    if (res) {
-      setEmployerProfile(res.employerProfile);
-      setCreditLedger(res.creditLedger);
-    }
+    await run(purchaseCreditPackApi(packId, employerProfile));
   };
 
   const handleVerifyRecord = async (
     id: string,
-    status: 'Verified' | 'Rejected',
+    status: 'VERIFIED' | 'REJECTED',
     reasonCode?: string,
     reviewerNotes?: string
   ) => {
-    const res = await verifyRecordApi(id, status, reasonCode, reviewerNotes);
-    if (res) {
-      setVerificationRecords(res.verificationRecords);
-      setCandidates(res.candidates);
-    }
+    await run(verifyRecordApi(id, status, reasonCode, reviewerNotes));
   };
 
   const handleUpdateFeeReportStatus = async (
     id: string,
-    status: FeeReport['status']
+    status: NonNullable<FeeReport['status']>,
+    opts?: { pauseFactory?: boolean; resumeFactory?: boolean }
   ) => {
-    const updated = await updateFeeReportStatusApi(id, status);
-    if (updated) {
-      setFeeReports(updated);
-    }
+    await run(adminUpdateReportStatusApi(id, status, undefined, opts?.pauseFactory, opts?.resumeFactory));
   };
 
   const handleRegisterDrive = async (driveId: string) => {
-    const workerId = (activeWorker || candidates[0]).id;
-    const updated = await registerHiringDriveApi(driveId, workerId);
-    if (updated) {
-      setHiringDrives(updated);
-    }
+    await run(registerHiringDriveApi(driveId));
   };
 
   const handleSubmitCheckIn = async (checkIn: RetentionCheckIn) => {
-    const res = await submitRetentionCheckInApi(checkIn);
-    if (res) {
-      setRetentionCheckIns(res.retentionCheckIns);
-      setEmployerProfile(res.employerProfile);
-    }
+    await run(submitRetentionCheckInApi(checkIn));
   };
 
   const handleJobCreated = async (newJob: JobListing) => {
-    setJobs((prev) => [newJob, ...prev]);
-    const updatedList = await createJobApi(newJob);
-    if (updatedList) {
-      setJobs(updatedList);
-    }
+    await run(createJobApi(newJob));
   };
 
   const handleProfileCreated = async (newCandidate: CandidateProfile) => {
-    setCandidates((prev) => [newCandidate, ...prev]);
-    setAuthSession({ role: 'worker', workerId: newCandidate.id });
+    if (!activeWorker) return;
+    await run(createCandidateApi({ ...newCandidate, id: activeWorker.id }));
     handleRoleChange('worker');
-    const updatedList = await createCandidateApi(newCandidate);
-    if (updatedList) {
-      setCandidates(updatedList);
-    }
   };
 
   const handleUpdateEmployerProfile = async (
     updatedEmp: EmployerFactoryProfile
   ) => {
-    setEmployerProfile(updatedEmp);
-    const saved = await updateEmployerApi(updatedEmp);
-    if (saved) {
-      setEmployerProfile(saved);
-    }
+    await run(updateEmployerApi(updatedEmp));
   };
 
   const handleOpenReport = (companyName?: string) => {
@@ -504,21 +414,29 @@ export default function App() {
   };
 
   const handleEraseWorkerData = async (workerId: string) => {
-    const res = await eraseDpdpDataApi(workerId);
-    if (res) {
-      setCandidates(res.candidates);
-      setApplications(res.applications);
-      setOffers(res.offers);
-      setShortlistedIds(res.shortlistedIds);
-    }
-    if (authSession?.role === 'worker' && authSession.workerId === workerId) {
+    const ok = await eraseDpdpDataApi(workerId);
+    if (ok) {
+      setIsDpdpOpen(false);
       setAuthSession(null);
       setCurrentRole('landing');
+      await syncFromBackend();
     }
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
+      {toast && (
+        <div
+          role="alert"
+          className="fixed top-3 inset-x-3 sm:left-auto sm:right-4 sm:max-w-md z-[60] flex items-start gap-2 p-3 bg-red-600 text-white text-sm font-semibold rounded-xl shadow-xl"
+        >
+          <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+          <span className="flex-1">{toast}</span>
+          <button onClick={() => setToast('')} aria-label="Dismiss">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
       {/* Top Bar Navigation */}
       <Navbar
         currentRole={currentRole}
@@ -548,6 +466,7 @@ export default function App() {
             employerProfile={employerProfile}
             jobs={jobs}
             candidates={candidates}
+            stats={stats}
             onSelectRole={handleRoleChange}
             onOpenCalculator={() => setIsCalculatorOpen(true)}
             onOpenReport={() => handleOpenReport()}
@@ -593,11 +512,7 @@ export default function App() {
               if (authSession?.role === 'employer') {
                 handleRoleChange('employer-profile');
               } else {
-                setAuthSession({
-                  role: 'employer',
-                  employerId: employerProfile.id,
-                });
-                handleRoleChange('employer-profile');
+                handleOpenAuthModal('employer', 'login');
               }
             }}
             onOpenAuthModal={() => handleOpenAuthModal('employer', 'login')}
@@ -608,9 +523,9 @@ export default function App() {
           />
         )}
 
-        {currentRole === 'worker-profile' && (
+        {currentRole === 'worker-profile' && activeWorker && (
           <WorkerProfileView
-            worker={activeWorker || candidates[0]}
+            worker={activeWorker}
             applications={applications}
             offers={offers}
             currentLang={currentLang}
@@ -622,7 +537,7 @@ export default function App() {
             onOpenVideoDemo={handleOpenVideoDemo}
             onBrowseJobs={() => handleRoleChange('worker')}
             onLogout={handleLogout}
-            onOpenDpdpModal={() => handleOpenLegalModal('privacy')}
+            onOpenDpdpModal={() => setIsDpdpOpen(true)}
           />
         )}
 
@@ -655,9 +570,9 @@ export default function App() {
             jobs={jobs}
             notifications={notifications}
             candidates={candidates}
-            employerProfile={employerProfile}
             applications={applications}
             offers={offers}
+            adminRole={authSession?.adminRole}
             onVerifyRecord={handleVerifyRecord}
             onUpdateReportStatus={handleUpdateFeeReportStatus}
             onViewAsUser={(role) =>
@@ -842,11 +757,35 @@ export default function App() {
         initialTab={authModalInitialTab}
         initialMode={authModalInitialMode}
         onClose={() => setIsAuthModalOpen(false)}
-        candidates={candidates}
-        employerProfile={employerProfile}
         onLoginSuccess={handleLoginSuccess}
         onOpenLegalModal={handleOpenLegalModal}
       />
+
+      {activeWorker && (
+        <DpdpComplianceModal
+          isOpen={isDpdpOpen}
+          onClose={() => setIsDpdpOpen(false)}
+          lang={currentLang}
+          activeWorker={activeWorker}
+          applications={applications}
+          offers={offers}
+          grievances={grievances}
+          auditLogs={auditLogs}
+          onUpdateConsent={async (workerId, consent) => {
+            await run(updateDpdpConsentApi(workerId, consent));
+          }}
+          onUpdateNominee={async (workerId, nominee) => {
+            await run(updateDpdpNomineeApi(workerId, nominee));
+          }}
+          onEraseWorkerData={handleEraseWorkerData}
+          onSubmitGrievance={async (ticket) => {
+            const t = await submitDpdpGrievanceApi(ticket);
+            await syncFromBackend();
+            return t?.id;
+          }}
+          onDownloadData={downloadMyDataApi}
+        />
+      )}
 
       <LegalModal
         isOpen={isLegalModalOpen}
@@ -921,6 +860,7 @@ export default function App() {
         isOpen={isPostJobOpen}
         onClose={() => setIsPostJobOpen(false)}
         onJobCreated={handleJobCreated}
+        employer={employerProfile}
       />
 
       <NcvtSearchModal

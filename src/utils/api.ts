@@ -1,4 +1,4 @@
-import {
+import type {
   JobListing,
   CandidateProfile,
   EmployerFactoryProfile,
@@ -17,13 +17,13 @@ import {
   HiringDrive,
   RetentionCheckIn,
   InterviewSlot,
-  OtpChannelType,
 } from '../types';
 
+/** What the server sends for the signed-in person (or an anonymous visitor). Everything is already scoped to them. */
 export interface BootstrapPayload {
   jobs: JobListing[];
   candidates: CandidateProfile[];
-  employerProfile: EmployerFactoryProfile;
+  employerProfile: EmployerFactoryProfile | null;
   applications: JobApplication[];
   offers: OfferLetter[];
   shortlistedIds: string[];
@@ -31,272 +31,114 @@ export interface BootstrapPayload {
   feeReports?: WhistleblowerReport[];
   dpdpGrievances?: DpdpGrievanceTicket[];
   dpdpAuditLogs?: DpdpAuditLog[];
-  sessions?: ServerSession[];
   notifications?: NotificationEvent[];
   verificationRecords?: VerificationRecord[];
   creditLedger?: CreditLedgerEntry[];
   hiringDrives?: HiringDrive[];
   retentionCheckIns?: RetentionCheckIn[];
+  session: AuthSession | null;
+  stats: { workers: number; factories: number; jobs: number };
+  paymentsMode?: 'razorpay' | 'demo' | 'off';
 }
 
-export async function fetchBootstrap(): Promise<BootstrapPayload | null> {
+export type ApiResult<T> = { ok: true; data: T } | { ok: false; error: string; status: number };
+
+export const UNAUTHORIZED_EVENT = 'hj:unauthorized';
+export const ERROR_EVENT = 'hj:error';
+
+function announceError(message: string) {
+  window.dispatchEvent(new CustomEvent(ERROR_EVENT, { detail: message }));
+}
+
+async function request<T = BootstrapPayload>(
+  method: string,
+  url: string,
+  body?: unknown,
+  opts: { quiet?: boolean } = {}
+): Promise<ApiResult<T>> {
   try {
-    const res = await fetch('/api/bootstrap');
-    if (!res.ok) return null;
-    const data = (await res.json()) as BootstrapPayload;
-    if (!data.feeReports && data.reports) {
-      data.feeReports = data.reports;
+    const res = await fetch(url, {
+      method,
+      credentials: 'same-origin',
+      headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    let data: any = null;
+    try {
+      data = await res.json();
+    } catch {
+      /* empty body */
     }
-    return data;
-  } catch (err) {
-    console.warn('Backend bootstrap fetch error:', err);
-    return null;
+    if (!res.ok) {
+      const error = data?.error || 'Something went wrong. Please try again.';
+      if (res.status === 401) window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+      else if (!opts.quiet) announceError(error);
+      return { ok: false, error, status: res.status };
+    }
+    return { ok: true, data: data as T };
+  } catch {
+    const error = 'No internet connection. Please check your network and try again.';
+    if (!opts.quiet) announceError(error);
+    return { ok: false, error, status: 0 };
   }
 }
 
-// M1: 6-Digit OTP Delivery & Verification
-export async function sendOtpChallengeApi(
+const snap = async (method: string, url: string, body?: unknown): Promise<BootstrapPayload | null> => {
+  const r = await request<BootstrapPayload>(method, url, body);
+  return r.ok ? normalise(r.data) : null;
+};
+
+function normalise(data: BootstrapPayload): BootstrapPayload {
+  if (!data.feeReports && data.reports) data.feeReports = data.reports;
+  return data;
+}
+
+// ---------- session & data ----------
+export async function fetchBootstrap(): Promise<BootstrapPayload | null> {
+  const r = await request<BootstrapPayload>('GET', '/api/bootstrap', undefined, { quiet: true });
+  return r.ok ? normalise(r.data) : null;
+}
+
+export async function sendOtpApi(
   phone: string,
-  roleOrChannel: OtpChannelType | 'worker' | 'employer' = 'whatsapp',
-  channelOptional?: OtpChannelType
-): Promise<{
-  sent?: boolean;
-  channel?: OtpChannelType;
-  providerMessageId?: string;
-  otpCodeForTestMode?: string;
-  demoOtpCode: string;
-  webOtpSmsPreview?: string;
-  smsFormatPreview: string;
-  error?: string;
-}> {
-  const channel: OtpChannelType =
-    channelOptional ||
-    (roleOrChannel === 'worker' || roleOrChannel === 'employer'
-      ? 'whatsapp'
-      : roleOrChannel);
-  try {
-    const res = await fetch('/api/otp/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, channel }),
-    });
-    const data = await res.json();
-    const code = data.otpCodeForTestMode || data.demoOtpCode || '482910';
-    const preview =
-      data.webOtpSmsPreview ||
-      data.smsFormatPreview ||
-      `Your Hello Jobs verification code is ${code}.\n\n@hellojobs.in #${code}`;
-    return {
-      ...data,
-      demoOtpCode: code,
-      smsFormatPreview: preview,
-    };
-  } catch {
-    return {
-      demoOtpCode: '482910',
-      smsFormatPreview:
-        'Your Hello Jobs verification code is 482910.\n\n@hellojobs.in #482910',
-      error: 'Network error while sending OTP',
-    };
-  }
+  role: 'worker' | 'employer' | 'admin'
+): Promise<{ ok: true; demoCode?: string } | { ok: false; error: string }> {
+  const r = await request<{ demoCode?: string }>('POST', '/api/otp/send', { phone, role }, { quiet: true });
+  return r.ok ? { ok: true, demoCode: r.data.demoCode } : { ok: false, error: r.error };
 }
 
-export async function verifyOtpChallengeApi(
-  phone: string,
-  code: string,
-  _role?: string
-): Promise<{
-  verified?: boolean;
-  session: { sessionId: string };
-  error?: string;
-  failedAttempts?: number;
-}> {
-  try {
-    const res = await fetch('/api/otp/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, code }),
-    });
-    const data = await res.json();
-    return {
-      ...data,
-      session: data.session || { sessionId: `sess-${Date.now()}` },
-    };
-  } catch {
-    return {
-      session: { sessionId: `sess-${Date.now()}` },
-      error: 'Network error while verifying OTP',
-    };
-  }
+export async function signInApi(body: Record<string, unknown>): Promise<{ ok: true } | { ok: false; error: string }> {
+  const r = await request('POST', '/api/auth/verify', body, { quiet: true });
+  return r.ok ? { ok: true } : { ok: false, error: r.error };
 }
 
-export async function revokeServerSessionApi(
-  sessionId?: string,
-  revokeAllForUserId?: string
-): Promise<ServerSession[] | null> {
-  try {
-    const res = await fetch('/api/sessions/revoke', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId, revokeAllForUserId }),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.sessions as ServerSession[];
-  } catch {
-    return null;
-  }
+export async function logoutApi(): Promise<void> {
+  await request('POST', '/api/auth/logout', {}, { quiet: true });
 }
 
-export async function revokeSessionsApi(
-  userIdOrSessionId: string
-): Promise<ServerSession[] | null> {
-  return revokeServerSessionApi(undefined, userIdOrSessionId);
+export async function listSessionsApi(): Promise<ServerSession[] | null> {
+  const r = await request<{ sessions: ServerSession[] }>('GET', '/api/sessions', undefined, { quiet: true });
+  return r.ok ? r.data.sessions : null;
 }
 
-export async function loginWorkerApi(
-  phone?: string,
-  newCandidate?: CandidateProfile,
-  deviceLabel?: string
-): Promise<{
-  session: AuthSession;
-  candidate: CandidateProfile;
-  candidates: CandidateProfile[];
-  sessions?: ServerSession[];
-  dpdpAuditLogs?: DpdpAuditLog[];
-} | null> {
-  try {
-    const res = await fetch('/api/auth/worker', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, newCandidate, deviceLabel }),
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (err) {
-    console.warn('Worker auth API error:', err);
-    return null;
-  }
+export async function revokeSessionsApi(opts: { sessionId?: string; all?: boolean }): Promise<ServerSession[] | null> {
+  const r = await request<{ sessions: ServerSession[] }>('POST', '/api/sessions/revoke', opts);
+  return r.ok ? r.data.sessions : null;
 }
 
-export async function loginEmployerApi(
-  updatedEmployer?: EmployerFactoryProfile,
-  deviceLabel?: string
-): Promise<{
-  session: AuthSession;
-  employerProfile: EmployerFactoryProfile;
-  sessions?: ServerSession[];
-} | null> {
-  try {
-    const res = await fetch('/api/auth/employer', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ updatedEmployer, deviceLabel }),
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (err) {
-    console.warn('Employer auth API error:', err);
-    return null;
-  }
-}
+// ---------- worker ----------
+export const updateCandidateApi = (c: CandidateProfile) => snap('PUT', `/api/candidates/${c.id}`, c);
+export const createCandidateApi = (c: CandidateProfile) => snap('POST', '/api/candidates', c);
 
-export async function createCandidateApi(
-  candidate: CandidateProfile
-): Promise<CandidateProfile[] | null> {
-  try {
-    const res = await fetch('/api/candidates', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(candidate),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.candidates as CandidateProfile[];
-  } catch (err) {
-    console.warn('Create candidate API error:', err);
-    return null;
-  }
-}
+// ---------- jobs, applications, offers ----------
+export const createJobApi = (job: JobListing) => snap('POST', '/api/jobs', job);
+export const updateJobApi = (job: JobListing) => snap('PUT', `/api/jobs/${job.id}`, job);
+export const createApplicationApi = (jobId: string) => snap('POST', '/api/applications', { jobId });
 
-export async function updateCandidateApi(
-  candidate: CandidateProfile
-): Promise<CandidateProfile[] | null> {
-  try {
-    const res = await fetch(`/api/candidates/${candidate.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(candidate),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.candidates as CandidateProfile[];
-  } catch (err) {
-    console.warn('Update candidate API error:', err);
-    return null;
-  }
-}
-
-export async function createJobApi(job: JobListing): Promise<JobListing[] | null> {
-  try {
-    const res = await fetch('/api/jobs', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(job),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.jobs as JobListing[];
-  } catch (err) {
-    console.warn('Create job API error:', err);
-    return null;
-  }
-}
-
-export async function updateJobApi(job: JobListing): Promise<JobListing[] | null> {
-  try {
-    const res = await fetch(`/api/jobs/${job.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(job),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.jobs as JobListing[];
-  } catch (err) {
-    console.warn('Update job API error:', err);
-    return null;
-  }
-}
-
-export async function createApplicationApi(
-  application: JobApplication
-): Promise<{
-  applications: JobApplication[];
-  jobs: JobListing[];
-  employerProfile?: EmployerFactoryProfile;
-  notifications?: NotificationEvent[];
-} | null> {
-  try {
-    const res = await fetch('/api/applications', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(application),
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (err) {
-    console.warn('Create application API error:', err);
-    return null;
-  }
-}
-
-export async function updateApplicationStatusApi(
+export const updateApplicationStatusApi = (
   appId: string,
-  status: JobApplication['status'],
+  status: JobApplication['status'] | undefined,
   options?: {
-    actorRole?: 'worker' | 'employer' | 'system';
-    actorName?: string;
     note?: string;
     interviewSlot?: InterviewSlot;
     recruiterPrivateNote?: string;
@@ -304,407 +146,166 @@ export async function updateApplicationStatusApi(
     declineOrRejectReason?: string;
     workerConfirmedJoining?: boolean;
   }
-): Promise<JobApplication[] | null> {
-  try {
-    const res = await fetch(`/api/applications/${appId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        status,
-        recruiterPrivateNote:
-          options?.recruiterPrivateNote ?? options?.employerPrivateNotes,
-        ...(options || {}),
-      }),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.applications as JobApplication[];
-  } catch (err) {
-    console.warn('Update application status API error:', err);
-    return null;
-  }
-}
+) => snap('PATCH', `/api/applications/${appId}`, { status, ...(options ?? {}) });
 
-export async function createOfferApi(
-  offer: OfferLetter
-): Promise<{
-  offers: OfferLetter[];
-  applications: JobApplication[];
-  notifications?: NotificationEvent[];
-} | null> {
-  try {
-    const res = await fetch('/api/offers', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(offer),
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (err) {
-    console.warn('Create offer API error:', err);
-    return null;
-  }
-}
+export const createOfferApi = (offer: Partial<OfferLetter> & { applicationId?: string; candidateId?: string; jobId?: string }) =>
+  snap('POST', '/api/offers', {
+    applicationId: offer.applicationId,
+    candidateId: offer.candidateId,
+    jobId: offer.jobId,
+    monthlyInHand: offer.monthlyInHand,
+    monthlyGross: offer.monthlyGross,
+    overtimeHourlyRate: offer.overtimeHourlyRate,
+    joiningDate: offer.joiningDate,
+    shiftPattern: offer.shiftPattern,
+    accommodationProvided: offer.accommodationProvided,
+    esiPfIncluded: offer.esiPfIncluded,
+    plantLocation: offer.plantLocation,
+  });
 
-export async function updateOfferStatusApi(
+export const updateOfferStatusApi = (
   offerId: string,
   status: OfferLetter['status'],
   declineReason?: string,
   workerConfirmedJoining?: boolean
-): Promise<{
-  offers: OfferLetter[];
-  applications: JobApplication[];
-  notifications?: NotificationEvent[];
-} | null> {
-  try {
-    const res = await fetch(`/api/offers/${offerId}/status`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status, declineReason, workerConfirmedJoining }),
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (err) {
-    console.warn('Update offer status API error:', err);
-    return null;
+) => snap('PATCH', `/api/offers/${offerId}/status`, { status, declineReason, workerConfirmedJoining });
+
+// ---------- employer ----------
+export const updateEmployerApi = (e: Partial<EmployerFactoryProfile>) => snap('PUT', '/api/employer', e);
+export const toggleShortlistApi = (candidateId: string) => snap('POST', '/api/employer/shortlist/toggle', { candidateId });
+export const unlockCandidateContactApi = (candidateId: string) => snap('POST', '/api/credits/unlock-candidate', { candidateId });
+
+// ---------- payments ----------
+declare global {
+  interface Window {
+    Razorpay?: new (options: Record<string, unknown>) => { open: () => void };
   }
 }
 
-export async function updateEmployerApi(
-  employer: EmployerFactoryProfile
-): Promise<EmployerFactoryProfile | null> {
-  try {
-    const res = await fetch('/api/employer', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(employer),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.employerProfile as EmployerFactoryProfile;
-  } catch (err) {
-    console.warn('Update employer API error:', err);
-    return null;
-  }
-}
-
-export async function toggleShortlistApi(
-  candidateId: string
-): Promise<string[] | null> {
-  try {
-    const res = await fetch('/api/employer/shortlist/toggle', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ candidateId }),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.shortlistedIds as string[];
-  } catch (err) {
-    console.warn('Toggle shortlist API error:', err);
-    return null;
-  }
-}
-
-// M7 & M12: Unlock Candidate Phone & Purchase Credits
-export async function unlockCandidateContactApi(candidateId: string): Promise<{
-  employerProfile: EmployerFactoryProfile;
-  creditLedger: CreditLedgerEntry[];
-  notifications?: NotificationEvent[];
-  error?: string;
-} | null> {
-  try {
-    const res = await fetch('/api/credits/unlock-candidate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ candidateId }),
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
+function loadRazorpay(): Promise<boolean> {
+  if (window.Razorpay) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const s = document.createElement('script');
+    s.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    s.onload = () => resolve(true);
+    s.onerror = () => resolve(false);
+    document.head.appendChild(s);
+  });
 }
 
 export async function purchaseCreditPackApi(
-  packOrCredits: 'PACK_10' | 'PACK_25' | 'PACK_100' | number,
-  amountInr?: number,
-  packName?: string
-): Promise<{
-  employerProfile: EmployerFactoryProfile;
-  creditLedger: CreditLedgerEntry[];
-  invoiceNo?: string;
-} | null> {
-  try {
-    let creditsToAdd = 10;
-    let totalInr = 1179;
-    let label = 'Starter Shift Pack (10 Credits)';
+  packId: 'PACK_10' | 'PACK_25' | 'PACK_100',
+  employer?: { companyName?: string; hrPhone?: string; hrEmail?: string }
+): Promise<BootstrapPayload | null> {
+  const order = await request<{
+    mode: 'razorpay' | 'demo';
+    orderId: string;
+    razorpayOrderId?: string;
+    keyId?: string;
+    amountPaise: number;
+    packLabel: string;
+  }>('POST', '/api/credits/purchase', { packId });
+  if (!order.ok) return null;
+  const o = order.data;
 
-    if (typeof packOrCredits === 'string') {
-      if (packOrCredits === 'PACK_25') {
-        creditsToAdd = 25;
-        totalInr = 2359;
-        label = 'Plant Growth Pack (25 Credits)';
-      } else if (packOrCredits === 'PACK_100') {
-        creditsToAdd = 100;
-        totalInr = 7079;
-        label = 'Multi-Plant Enterprise (100 Credits)';
-      }
-    } else {
-      creditsToAdd = packOrCredits;
-      totalInr = amountInr || 1179;
-      label = packName || `${creditsToAdd} Hunt Credits Pack`;
-    }
+  if (o.mode === 'demo') return snap('POST', '/api/credits/confirm', { orderId: o.orderId });
 
-    const res = await fetch('/api/credits/purchase', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        creditsToAdd,
-        amountInr: totalInr,
-        packName: label,
-      }),
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
+  if (!(await loadRazorpay()) || !window.Razorpay) {
+    announceError('Could not open the payment window. Please check your connection.');
     return null;
   }
+  return new Promise((resolve) => {
+    const rzp = new window.Razorpay!({
+      key: o.keyId,
+      amount: o.amountPaise,
+      currency: 'INR',
+      order_id: o.razorpayOrderId,
+      name: 'Hello Jobs',
+      description: o.packLabel,
+      prefill: { name: employer?.companyName, contact: employer?.hrPhone, email: employer?.hrEmail },
+      theme: { color: '#0f172a' },
+      handler: async (resp: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
+        resolve(await snap('POST', '/api/credits/confirm', { orderId: o.orderId, ...resp }));
+      },
+      modal: { ondismiss: () => resolve(null) },
+    });
+    rzp.open();
+  });
 }
 
-// M9 & M10: Admin Verification & Fee Report Moderation
-export async function adminVerifyRecordApi(
+// ---------- admin ----------
+export const adminVerifyRecordApi = (
   recordId: string,
   status: 'VERIFIED' | 'REJECTED' | 'Verified' | 'Rejected',
-  reviewerOrReason?: string,
+  reasonCode?: string,
   reviewerNotes?: string
-): Promise<{
-  verificationRecords: VerificationRecord[];
-  candidates: CandidateProfile[];
-  employerProfile: EmployerFactoryProfile;
-} | null> {
-  try {
-    const normalizedStatus =
-      status.toUpperCase() === 'VERIFIED' ? 'VERIFIED' : 'REJECTED';
-    const res = await fetch('/api/admin/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        recordId,
-        status: normalizedStatus,
-        reviewer: reviewerNotes || reviewerOrReason || 'Admin Verifier',
-      }),
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
-}
-
+) => snap('POST', '/api/admin/verify', { recordId, status, reasonCode, reviewerNotes });
 export const verifyRecordApi = adminVerifyRecordApi;
 
-export async function submitReportApi(
-  report: WhistleblowerReport
-): Promise<WhistleblowerReport[] | null> {
-  try {
-    const res = await fetch('/api/reports', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(report),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.reports as WhistleblowerReport[];
-  } catch (err) {
-    console.warn('Submit report API error:', err);
-    return null;
-  }
-}
-
-export async function adminUpdateReportStatusApi(
+export const adminUpdateReportStatusApi = (
   reportId: string,
   status: WhistleblowerReport['status'],
   outcomeNote?: string,
-  pauseFactoryPostings?: boolean
-): Promise<{
-  reports: WhistleblowerReport[];
-  jobs: JobListing[];
-  dpdpAuditLogs: DpdpAuditLog[];
-} | null> {
-  try {
-    const res = await fetch(`/api/admin/reports/${reportId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status, outcomeNote, pauseFactoryPostings }),
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
+  pauseFactoryPostings?: boolean,
+  resumeFactoryPostings?: boolean
+) => snap('PATCH', `/api/admin/reports/${reportId}`, { status, outcomeNote, pauseFactoryPostings, resumeFactoryPostings });
+
+export async function updateFeeReportStatusApi(reportId: string, status: WhistleblowerReport['status']): Promise<WhistleblowerReport[] | null> {
+  const r = await adminUpdateReportStatusApi(reportId, status);
+  return r ? r.reports : null;
 }
 
-export async function updateFeeReportStatusApi(
-  reportId: string,
-  status: WhistleblowerReport['status']
-): Promise<WhistleblowerReport[] | null> {
-  const res = await adminUpdateReportStatusApi(reportId, status);
-  return res ? res.reports : null;
+export async function adminUpdateGrievanceApi(id: string, status: DpdpGrievanceTicket['status']) {
+  return snap('PATCH', `/api/admin/grievances/${id}`, { status });
 }
 
-// M13 & M15: Hiring Drives & Retention Check-Ins
-export async function createHiringDriveApi(
-  drive: HiringDrive
-): Promise<HiringDrive[] | null> {
-  try {
-    const res = await fetch('/api/drives', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(drive),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.hiringDrives as HiringDrive[];
-  } catch {
-    return null;
-  }
+// ---------- community ----------
+export async function submitReportApi(report: Partial<WhistleblowerReport>): Promise<boolean> {
+  const r = await request('POST', '/api/reports', {
+    reportedCompany: report.reportedCompany,
+    thekedarName: report.thekedarName,
+    issueType: report.issueType,
+    details: report.details,
+    reporterPhone: report.reporterPhone,
+    amountDemanded: report.amountDemanded,
+  });
+  return r.ok;
 }
 
-export async function registerForDriveApi(
-  driveId: string,
-  candidateId: string,
-  checkInQr?: boolean
-): Promise<HiringDrive[] | null> {
-  try {
-    const res = await fetch(`/api/drives/${driveId}/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ candidateId, checkInQr }),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.hiringDrives as HiringDrive[];
-  } catch {
-    return null;
-  }
+export const createHiringDriveApi = (drive: Partial<HiringDrive>) => snap('POST', '/api/drives', drive);
+export const registerHiringDriveApi = (driveId: string) => snap('POST', `/api/drives/${driveId}/register`, {});
+export const checkInToDriveApi = (driveId: string, body: { candidateId?: string; checkInCode?: string }) => snap('POST', `/api/drives/${driveId}/checkin`, body);
+export const submitRetentionCheckInApi = (c: Partial<RetentionCheckIn>) => snap('POST', '/api/checkins', c);
+
+// ---------- DPDP ----------
+export const updateDpdpConsentApi = (workerId: string, consent: DpdpConsentSettings) => snap('PUT', `/api/dpdp/consent/${workerId}`, consent);
+export const updateDpdpNomineeApi = (workerId: string, nominee: DpdpNominee) => snap('PUT', `/api/dpdp/nominee/${workerId}`, nominee);
+
+export async function eraseDpdpDataApi(workerId: string): Promise<boolean> {
+  return (await request('DELETE', `/api/dpdp/erase/${workerId}`)).ok;
+}
+export async function eraseEmployerDataApi(): Promise<boolean> {
+  return (await request('DELETE', '/api/dpdp/erase-employer')).ok;
 }
 
-export const registerHiringDriveApi = registerForDriveApi;
-
-export async function submitRetentionCheckInApi(
-  checkIn: RetentionCheckIn
-): Promise<{
-  retentionCheckIns: RetentionCheckIn[];
-  employerProfile: EmployerFactoryProfile;
-} | null> {
-  try {
-    const res = await fetch('/api/checkins', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(checkIn),
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
+export async function submitDpdpGrievanceApi(ticket: Partial<DpdpGrievanceTicket>): Promise<{ id: string } | null> {
+  const r = await request<{ ticket: { id: string } }>('POST', '/api/dpdp/grievance', {
+    dataPrincipalName: ticket.dataPrincipalName,
+    dataPrincipalPhone: ticket.dataPrincipalPhone,
+    role: ticket.role,
+    category: ticket.category,
+    description: ticket.description,
+  });
+  return r.ok ? r.data.ticket : null;
 }
 
-// DPDP ACT 2023 & M2 CLIENT FUNCTIONS
-export async function updateDpdpConsentApi(
-  workerId: string,
-  consent: DpdpConsentSettings
-): Promise<{
-  candidates: CandidateProfile[];
-  dpdpAuditLogs: DpdpAuditLog[];
-} | null> {
-  try {
-    const res = await fetch(`/api/dpdp/consent/${workerId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(consent),
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (err) {
-    console.warn('Update DPDP consent API error:', err);
-    return null;
-  }
-}
-
-export async function updateDpdpNomineeApi(
-  workerId: string,
-  nominee: DpdpNominee
-): Promise<{
-  candidates: CandidateProfile[];
-  dpdpAuditLogs: DpdpAuditLog[];
-} | null> {
-  try {
-    const res = await fetch(`/api/dpdp/nominee/${workerId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(nominee),
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (err) {
-    console.warn('Update DPDP nominee API error:', err);
-    return null;
-  }
-}
-
-export async function eraseDpdpDataApi(workerId: string): Promise<{
-  candidates: CandidateProfile[];
-  applications: JobApplication[];
-  offers: OfferLetter[];
-  shortlistedIds: string[];
-  dpdpAuditLogs: DpdpAuditLog[];
-} | null> {
-  try {
-    const res = await fetch(`/api/dpdp/erase/${workerId}`, {
-      method: 'DELETE',
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (err) {
-    console.warn('Erase DPDP data API error:', err);
-    return null;
-  }
-}
-
-export async function eraseEmployerDataApi(): Promise<{
-  jobs: JobListing[];
-  dpdpAuditLogs: DpdpAuditLog[];
-} | null> {
-  try {
-    const res = await fetch('/api/dpdp/erase-employer', {
-      method: 'DELETE',
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
-}
-
-export async function submitDpdpGrievanceApi(
-  ticket: DpdpGrievanceTicket
-): Promise<{
-  ticket: DpdpGrievanceTicket;
-  dpdpGrievances: DpdpGrievanceTicket[];
-  dpdpAuditLogs: DpdpAuditLog[];
-} | null> {
-  try {
-    const res = await fetch('/api/dpdp/grievance', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(ticket),
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (err) {
-    console.warn('Submit DPDP grievance API error:', err);
-    return null;
-  }
+export async function downloadMyDataApi(): Promise<void> {
+  const res = await fetch('/api/dpdp/export', { credentials: 'same-origin' });
+  if (!res.ok) return announceError('Could not prepare your data export.');
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'hello-jobs-my-data.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
 }

@@ -40,7 +40,8 @@ interface Props {
   onUpdateConsent: (workerId: string, consent: DpdpConsentSettings) => void;
   onUpdateNominee: (workerId: string, nominee: DpdpNominee) => void;
   onEraseWorkerData: (workerId: string) => void;
-  onSubmitGrievance: (ticket: DpdpGrievanceTicket) => void;
+  onSubmitGrievance: (ticket: DpdpGrievanceTicket) => Promise<string | undefined> | void;
+  onDownloadData: () => void | Promise<void>;
 }
 
 export const DpdpComplianceModal: React.FC<Props> = ({
@@ -56,6 +57,7 @@ export const DpdpComplianceModal: React.FC<Props> = ({
   onUpdateNominee,
   onEraseWorkerData,
   onSubmitGrievance,
+  onDownloadData,
 }) => {
   const [activeTab, setActiveTab] = useState<
     'consent' | 'access-erasure' | 'nominee' | 'grievance'
@@ -195,43 +197,7 @@ export const DpdpComplianceModal: React.FC<Props> = ({
   };
 
   const handleDownloadDataSummary = () => {
-    if (!activeWorker) return;
-    const summaryPayload = {
-      actCompliance: 'Digital Personal Data Protection Act, 2023 (India) — Section 11 Data Summary',
-      generatedAt: new Date().toISOString(),
-      dataFiduciary: {
-        name: 'Hello Jobs Direct Workforce Marketplace',
-        dpoEmail: 'dpo@hellojobs-india.in',
-        purposeLimitation: 'Direct Factory Employment & Zero-Middleman Payroll Only',
-      },
-      dataPrincipal: {
-        id: activeWorker.id,
-        name: activeWorker.name,
-        phone: activeWorker.phone,
-        category: activeWorker.category,
-        trade: activeWorker.trade,
-        city: activeWorker.currentCity,
-        state: activeWorker.homeState,
-        readinessBadges: activeWorker.readinessBadges || [],
-        ncvtRollNumber: activeWorker.ncvtCertificate.rollNumber || 'None (Zero-Doc Profile)',
-      },
-      consentArtifact: defaultConsent,
-      nominatedRepresentative: activeWorker.dpdpNominee || null,
-      fiduciariesSharedWith: sharedFactories,
-    };
-
-    const blob = new Blob([JSON.stringify(summaryPayload, null, 2)], {
-      type: 'application/json',
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `DPDP_Section11_Data_Summary_${activeWorker.name.replace(
-      /\s+/g,
-      '_'
-    )}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    void onDownloadData();
   };
 
   const handleConfirmErase = () => {
@@ -240,26 +206,20 @@ export const DpdpComplianceModal: React.FC<Props> = ({
     setErasedSuccess(true);
   };
 
-  const handleSubmitGrievanceForm = (e: React.FormEvent) => {
+  const handleSubmitGrievanceForm = async (e: React.FormEvent) => {
     e.preventDefault();
-    const ticketId = `DPDP-GRV-${Math.floor(10000 + Math.random() * 90000)}`;
-    const due = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(
-      'en-IN'
-    );
-    const newTicket: DpdpGrievanceTicket = {
-      id: ticketId,
-      dataPrincipalName: grievanceName || activeWorker?.name || 'Worker Principal',
-      dataPrincipalPhone: grievancePhone || activeWorker?.phone || '+91 9876543210',
+    const newTicket = {
+      dataPrincipalName: grievanceName || activeWorker?.name || '',
+      dataPrincipalPhone: grievancePhone || activeWorker?.phone || '',
       role: 'worker',
       category: grievanceCategory,
       description: grievanceDesc,
-      status: 'Registered with DPO',
-      createdAt: new Date().toLocaleDateString('en-IN'),
-      slaDueBy: `${due} (Statutory 7-Day SLA)`,
-    };
-    onSubmitGrievance(newTicket);
-    setGrievanceSubmittedId(ticketId);
-    setGrievanceDesc('');
+    } as DpdpGrievanceTicket;
+    const id = await onSubmitGrievance(newTicket);
+    if (id) {
+      setGrievanceSubmittedId(id);
+      setGrievanceDesc('');
+    }
   };
 
   return (

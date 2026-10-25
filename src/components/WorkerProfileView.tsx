@@ -390,7 +390,7 @@ export const WorkerProfileView: React.FC<Props> = ({
   };
 
   const handleLogOutEverywhere = async () => {
-    await revokeSessionsApi(worker.id);
+    await revokeSessionsApi({ all: true });
     setSessionRevokedToast(true);
     setTimeout(() => {
       setSessionRevokedToast(false);

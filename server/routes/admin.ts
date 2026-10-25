@@ -58,7 +58,10 @@ adminRouter.patch(
       if (body.pauseFactoryPostings) {
         paused = (await q.query(`UPDATE employers SET paused = true WHERE lower(company_name) = lower($1)`, [r.data.reportedCompany])).rowCount ?? 0;
       }
-      await audit(q, { actorAccountId: req.auth!.accountId, principalId: 'trust-safety', principalName: 'Trust & Safety', action: 'MODERATION_ACTION', details: `Report ${r.id} against "${r.data.reportedCompany}" marked "${body.status}"${body.pauseFactoryPostings ? ` (factory paused: ${paused} account(s))` : ''}` });
+      if (body.resumeFactoryPostings) {
+        await q.query(`UPDATE employers SET paused = false WHERE lower(company_name) = lower($1)`, [r.data.reportedCompany]);
+      }
+      await audit(q, { actorAccountId: req.auth!.accountId, principalId: 'trust-safety', principalName: 'Trust & Safety', action: 'MODERATION_ACTION', details: `Report ${r.id} against "${r.data.reportedCompany}" marked "${body.status}"${body.pauseFactoryPostings ? ` (factory paused: ${paused} account(s))` : ''}${body.resumeFactoryPostings ? ' (factory resumed)' : ''}` });
     });
     await respond(req, res);
   })

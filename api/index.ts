@@ -1,3 +1,4 @@
-import app from '../server.ts';
+import { createServerApp } from '../server/index.ts';
 
-export default app;
+// Vercel serves the built front end statically and routes /api/* here.
+export default createServerApp();

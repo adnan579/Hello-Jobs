@@ -23,11 +23,9 @@ import {
   JobPosting,
   NotificationEvent,
   Candidate,
-  EmployerProfile,
   JobApplication,
   OfferLetter
 } from '../types';
-import { INDUSTRIAL_CLUSTERS } from '../modules/domain';
 
 interface AdminTrustConsoleProps {
   verificationRecords: VerificationRecord[];
@@ -35,11 +33,11 @@ interface AdminTrustConsoleProps {
   jobs: JobPosting[];
   notifications: NotificationEvent[];
   candidates: Candidate[];
-  employerProfile: EmployerProfile;
   applications: JobApplication[];
   offers: OfferLetter[];
-  onVerifyRecord: (id: string, status: 'Verified' | 'Rejected', reasonCode?: string, reviewerNotes?: string) => Promise<void>;
-  onUpdateReportStatus: (id: string, status: FeeReport['status']) => Promise<void>;
+  onVerifyRecord: (id: string, status: 'VERIFIED' | 'REJECTED', reasonCode?: string, reviewerNotes?: string) => Promise<void>;
+  onUpdateReportStatus: (id: string, status: NonNullable<FeeReport['status']>, opts?: { pauseFactory?: boolean; resumeFactory?: boolean }) => Promise<void>;
+  adminRole?: 'Verifier' | 'Support' | 'Trust & Safety';
   onViewAsUser: (role: 'worker' | 'employer') => void;
   initialTab?: 'verification' | 'safety' | 'outbox' | 'analytics' | 'legal';
 }
@@ -50,62 +48,32 @@ export const AdminTrustConsole: React.FC<AdminTrustConsoleProps> = ({
   jobs,
   notifications,
   candidates,
-  employerProfile,
   applications,
   offers,
   onVerifyRecord,
   onUpdateReportStatus,
   onViewAsUser,
+  adminRole = 'Trust & Safety',
   initialTab = 'verification',
 }) => {
   const [activeTab, setActiveTab] = useState<'verification' | 'safety' | 'outbox' | 'analytics' | 'legal'>(initialTab);
-  const [adminRole, setAdminRole] = useState<'Verifier' | 'Trust & Safety' | 'Support'>('Trust & Safety');
   const [legalLang, setLegalLang] = useState<'en' | 'hi'>('en');
   const [rejectReason, setRejectReason] = useState<Record<string, string>>({});
   const [reviewerNote, setReviewerNote] = useState<Record<string, string>>({});
-  const [pausedCompanies, setPausedCompanies] = useState<string[]>([]);
-  const [gstLookupQuery, setGstLookupQuery] = useState('27AAACH7409R1ZM');
-  const [gstLookupResult, setGstLookupResult] = useState<{
-    gstin: string;
-    legalName: string;
-    tradeName: string;
-    state: string;
-    status: 'Active';
-    principalPlace: string;
-  } | null>({
-    gstin: '27AAACH7409R1ZM',
-    legalName: 'BHARAT FORGE & PRECISION ENGINEERING LTD',
-    tradeName: 'Bharat Forge & Engineering Ltd.',
-    state: 'Maharashtra (27)',
-    status: 'Active',
-    principalPlace: 'Plot E-14, Chakan MIDC Phase II, Pune 410501',
-  });
+  const kyb = verificationRecords.filter(r => r.kind === 'FACTORY_GSTIN_KYB');
+  const registered = candidates.length;
+  const pct = (n: number) => (registered > 0 ? Math.round((n / registered) * 100) : null);
+  const appliedWorkers = new Set(applications.map(a => a.candidateId)).size;
+  const offered = new Set(offers.map(o => o.candidateId)).size;
+  const joined = new Set(applications.filter(a => a.status === 'Joined').map(a => a.candidateId)).size;
+  const funnel = [
+    { stage: '1. Registered (OTP verified)', count: registered, pct: registered > 0 ? 100 : null },
+    { stage: '2. Applied to a job', count: appliedWorkers, pct: pct(appliedWorkers) },
+    { stage: '3. Received an offer', count: offered, pct: pct(offered) },
+    { stage: '4. Joined', count: joined, pct: pct(joined) },
+  ];
 
   const flaggedJobs = jobs.filter(j => j.moderationStatus === 'AutoScreenedFlagged' || (j.flaggedKeywords && j.flaggedKeywords.length > 0));
-
-  const handleGstLookup = (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleaned = gstLookupQuery.trim().toUpperCase();
-    if (!cleaned) return;
-    setGstLookupResult({
-      gstin: cleaned,
-      legalName: cleaned.startsWith('27')
-        ? 'BHARAT FORGE & PRECISION ENGINEERING LTD'
-        : cleaned.startsWith('06')
-        ? 'MANESAR AUTO COMPONENTS PRIVATE LIMITED'
-        : 'REGISTERED INDUSTRIAL ESTABLISHMENT PVT LTD',
-      tradeName: employerProfile.companyName,
-      state: cleaned.startsWith('27') ? 'Maharashtra (27)' : cleaned.startsWith('06') ? 'Haryana (06)' : 'Tamil Nadu (33)',
-      status: 'Active',
-      principalPlace: 'Verified Industrial Cluster Plot via GSTN Public API',
-    });
-  };
-
-  const togglePauseCompany = (companyName: string) => {
-    setPausedCompanies(prev =>
-      prev.includes(companyName) ? prev.filter(c => c !== companyName) : [...prev, companyName]
-    );
-  };
 
   return (
     <div className="min-h-screen bg-[#090D16] text-slate-100 pb-24">
@@ -115,36 +83,24 @@ export const AdminTrustConsole: React.FC<AdminTrustConsoleProps> = ({
           <div>
             <div className="flex items-center gap-2.5 mb-2">
               <span className="px-2.5 py-1 rounded-md bg-amber-400/15 border border-amber-400/40 text-amber-300 text-xs font-bold uppercase tracking-wider">
-                M9 · M10 · M16 Operations
+                Staff console
               </span>
               <span className="px-2.5 py-1 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-semibold">
-                Zero Aadhaar Architecture
+                No Aadhaar stored
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
               Verification, Trust & Safety & Legal Center
             </h1>
             <p className="text-sm text-slate-400 mt-1">
-              GSTIN registry KYB, NCVT / Skill India DigiLocker verification, anti-fee enforcement, IST quiet-hours outbox & DPDP legal notices.
+              Factory GSTIN checks, worker certificate and video review, fee-complaint handling and legal notices.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <div className="bg-slate-950 border border-slate-800 rounded-xl p-1.5 flex items-center gap-1">
-              {(['Verifier', 'Trust & Safety', 'Support'] as const).map(role => (
-                <button
-                  key={role}
-                  onClick={() => setAdminRole(role)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                    adminRole === role
-                      ? 'bg-amber-400 text-slate-950 font-bold'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {role}
-                </button>
-              ))}
-            </div>
+            <span className="px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold text-amber-300">
+              Signed in as {adminRole}
+            </span>
 
             <div className="flex items-center gap-2">
               <button
@@ -170,11 +126,11 @@ export const AdminTrustConsole: React.FC<AdminTrustConsoleProps> = ({
         {/* Navigation Tabs */}
         <div className="flex flex-wrap gap-2 mb-6 border-b border-slate-800 pb-3">
           {[
-            { id: 'verification', label: 'M9 Verification Queue (KYB & NCVT)', icon: FileCheck2, count: verificationRecords.filter(r => r.status === 'UnderReview').length },
-            { id: 'safety', label: 'M10 Trust & Anti-Fee Enforcement', icon: ShieldCheck, count: feeReports.filter(f => f.status !== 'Resolved').length + flaggedJobs.length },
-            { id: 'outbox', label: 'M8 Multi-Channel Outbox & Quiet Hours', icon: Bell, count: notifications.length },
-            { id: 'analytics', label: 'M14 & M16 Cluster Benchmarks & Funnels', icon: BarChart3 },
-            { id: 'legal', label: 'M2 Public Legal, Privacy & Grievance (EN/हिन्दी)', icon: Scale },
+            { id: 'verification', label: 'Verification queue', icon: FileCheck2, count: verificationRecords.filter(r => r.status === 'PENDING' || r.status === 'UnderReview').length },
+            { id: 'safety', label: 'Trust & safety', icon: ShieldCheck, count: feeReports.filter(f => f.status !== 'Resolved').length + flaggedJobs.length },
+            { id: 'outbox', label: 'Notifications', icon: Bell, count: notifications.length },
+            { id: 'analytics', label: 'Funnels', icon: BarChart3 },
+            { id: 'legal', label: 'Legal notices', icon: Scale },
           ].map(tab => {
             const Icon = tab.icon;
             const active = activeTab === tab.id;
@@ -207,59 +163,26 @@ export const AdminTrustConsole: React.FC<AdminTrustConsoleProps> = ({
         {/* TAB 1: M9 Verification Queue */}
         {activeTab === 'verification' && (
           <div className="space-y-6">
-            {/* GSTIN Registry Lookup Box */}
+            {/* GSTIN KYB: honest manual-check instructions (no registry API is integrated) */}
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-                <div>
-                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                    <Building2 className="w-5 h-5 text-amber-400" />
-                    GSTIN Public Registry Lookup (M9 Factory KYB)
-                  </h2>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Validates 15-character GSTIN format, state code & legal trade name before unlocking job publishing.
-                  </p>
-                </div>
-                <form onSubmit={handleGstLookup} className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={gstLookupQuery}
-                    onChange={e => setGstLookupQuery(e.target.value)}
-                    placeholder="Enter 15-digit GSTIN"
-                    maxLength={15}
-                    className="px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white uppercase tabular-nums focus:outline-none focus:border-amber-400"
-                  />
-                  <button
-                    type="submit"
-                    className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs flex items-center gap-1.5"
-                  >
-                    <Search className="w-4 h-4" />
-                    Verify GSTN
-                  </button>
-                </form>
-              </div>
-
-              {gstLookupResult && (
-                <div className="bg-slate-950/90 border border-emerald-500/30 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
-                  <div>
-                    <span className="text-slate-400 block">GSTIN & Status</span>
-                    <span className="font-bold text-emerald-400 tabular-nums mt-0.5 block">
-                      {gstLookupResult.gstin} · {gstLookupResult.status}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block">Legal Entity Name</span>
-                    <span className="font-semibold text-white mt-0.5 block">{gstLookupResult.legalName}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block">State Jurisdiction</span>
-                    <span className="font-semibold text-slate-200 mt-0.5 block">{gstLookupResult.state}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block">Principal Factory Address</span>
-                    <span className="font-semibold text-slate-200 mt-0.5 block">{gstLookupResult.principalPlace}</span>
-                  </div>
-                </div>
-              )}
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-amber-400" />
+                How to verify a factory (manual KYB)
+              </h2>
+              <ol className="list-decimal list-inside text-xs text-slate-300 mt-2 space-y-1">
+                <li>
+                  Open the official{' '}
+                  <a className="text-amber-300 underline" href="https://services.gst.gov.in/services/searchtp" target="_blank" rel="noopener noreferrer">
+                    GST portal "Search Taxpayer"
+                  </a>{' '}
+                  page and search the GSTIN shown on the record below.
+                </li>
+                <li>Confirm the legal / trade name matches the company name and that the GSTIN status is Active.</li>
+                <li>Only then press Approve. If it does not match, or is cancelled, press Reject and write the reason.</li>
+              </ol>
+              <p className="text-xs text-slate-500 mt-2">
+                The server has already checked the GSTIN format and checksum. It does not call any government API.
+              </p>
             </div>
 
             {/* Unified VerificationRecord Table */}
@@ -267,7 +190,7 @@ export const AdminTrustConsole: React.FC<AdminTrustConsoleProps> = ({
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="text-lg font-bold text-white">
-                    Unified VerificationRecord Queue ({verificationRecords.length})
+                    Verification queue ({verificationRecords.length})
                   </h3>
                   <p className="text-xs text-slate-400">
                     Reviews GSTIN KYB, NCVT/Skill India certificates (DigiLocker or manual upload), and 30-second shop-floor skill videos.
@@ -293,9 +216,9 @@ export const AdminTrustConsole: React.FC<AdminTrustConsoleProps> = ({
                         <span className="text-xs text-slate-400 tabular-nums">({rec.subjectType} · {rec.subjectId})</span>
                         <span
                           className={`px-2.5 py-0.5 rounded-md text-xs font-bold ${
-                            rec.status === 'Verified'
+                            (rec.status === 'VERIFIED' || rec.status === 'Verified')
                               ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                              : rec.status === 'Rejected'
+                              : (rec.status === 'REJECTED' || rec.status === 'Rejected')
                               ? 'bg-red-500/20 text-red-300 border border-red-500/30'
                               : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                           }`}
@@ -326,7 +249,7 @@ export const AdminTrustConsole: React.FC<AdminTrustConsoleProps> = ({
                         className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-amber-400"
                       />
                       <button
-                        onClick={() => onVerifyRecord(rec.id, 'Verified', undefined, reviewerNote[rec.id] || 'Verified via Registry/NCVT check')}
+                        onClick={() => onVerifyRecord(rec.id, 'VERIFIED', undefined, reviewerNote[rec.id] || 'Verified via Registry/NCVT check')}
                         className="px-3.5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-1"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5" />
@@ -336,7 +259,7 @@ export const AdminTrustConsole: React.FC<AdminTrustConsoleProps> = ({
                         onClick={() =>
                           onVerifyRecord(
                             rec.id,
-                            'Rejected',
+                            'REJECTED',
                             rejectReason[rec.id] || 'DOC_UNREADABLE_OR_MISMATCH',
                             reviewerNote[rec.id] || 'Please re-upload clear certificate'
                           )
@@ -354,7 +277,7 @@ export const AdminTrustConsole: React.FC<AdminTrustConsoleProps> = ({
           </div>
         )}
 
-        {/* TAB 2: M10 Trust & Anti-Fee Enforcement */}
+        {/* TAB 2: Trust & safety */}
         {activeTab === 'safety' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Whistleblower Fee Reports */}
@@ -374,7 +297,7 @@ export const AdminTrustConsole: React.FC<AdminTrustConsoleProps> = ({
               <div className="space-y-3">
                 {feeReports.map(rep => {
                   const compName = rep.companyName || rep.reportedCompany;
-                  const isPaused = pausedCompanies.includes(compName);
+                  const isPaused = rep.status === 'Confirmed — Factory Paused';
                   return (
                     <div key={rep.id} className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-2.5">
                       <div className="flex items-center justify-between">
@@ -391,7 +314,7 @@ export const AdminTrustConsole: React.FC<AdminTrustConsoleProps> = ({
                       </div>
                       <p className="text-xs text-slate-300">{rep.description || rep.details}</p>
                       <div className="flex items-center justify-between text-xs text-slate-400 tabular-nums">
-                        <span>Demanded: ₹{(rep.amountDemanded ?? 1500).toLocaleString('en-IN')}</span>
+                        <span>{typeof rep.amountDemanded === 'number' ? `Demanded: ₹${rep.amountDemanded.toLocaleString('en-IN')}` : 'Amount not stated'}</span>
                         <span>Reported: {rep.timestamp}</span>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-800/80">
@@ -408,14 +331,18 @@ export const AdminTrustConsole: React.FC<AdminTrustConsoleProps> = ({
                           Resolve Case
                         </button>
                         <button
-                          onClick={() => togglePauseCompany(compName)}
+                          onClick={() =>
+                            isPaused
+                              ? onUpdateReportStatus(rep.id, 'Resolved', { resumeFactory: true })
+                              : onUpdateReportStatus(rep.id, 'Confirmed — Factory Paused', { pauseFactory: true })
+                          }
                           className={`px-3 py-1.5 rounded-lg text-xs font-bold ml-auto ${
                             isPaused
                               ? 'bg-emerald-400 text-slate-950'
                               : 'bg-red-500 text-white hover:bg-red-400'
                           }`}
                         >
-                          {isPaused ? 'Unpause Factory' : 'Pause Factory Account'}
+                          {isPaused ? 'Resume Factory' : 'Confirm & Pause Factory'}
                         </button>
                       </div>
                     </div>
@@ -495,15 +422,15 @@ export const AdminTrustConsole: React.FC<AdminTrustConsoleProps> = ({
               <div>
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
                   <Bell className="w-5 h-5 text-amber-400" />
-                  M8 Multi-Channel Notification Outbox & Delivery Receipts
+                  Notifications sent
                 </h2>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Routes stage changes, interview invites, and digital offers across In-App Inbox, Web Push, WhatsApp Template & DLT SMS.
+                  Stage changes, interview invites and digital offers delivered to workers and factories inside the app.
                 </p>
               </div>
-              <div className="px-3.5 py-2 rounded-xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 text-xs font-semibold flex items-center gap-2">
+              <div className="px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-2">
                 <Clock className="w-4 h-4" />
-                IST Quiet Hours Enforced: 9:00 PM – 8:00 AM IST (Non-urgent queued to 08:00 IST)
+                Showing in-app notifications. WhatsApp delivery is sent only for login codes.
               </div>
             </div>
 
@@ -548,89 +475,43 @@ export const AdminTrustConsole: React.FC<AdminTrustConsoleProps> = ({
           </div>
         )}
 
-        {/* TAB 4: M14 & M16 Cluster Benchmarks & Funnels */}
+        {/* TAB 4: Real platform counts (no benchmarks or projections are shown) */}
         {activeTab === 'analytics' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Worker Funnel */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-                <h3 className="text-base font-bold text-white mb-1">Worker Conversion Funnel (M16)</h3>
-                <p className="text-xs text-slate-400 mb-4">
-                  Consent-gated product analytics across India's industrial corridors.
-                </p>
-                <div className="space-y-3">
-                  {[
-                    { stage: '1. OTP Verified Sign-Up', count: candidates.length + 140, pct: 100 },
-                    { stage: '2. Trade Card Completed (≥ 75%)', count: candidates.length + 112, pct: 82 },
-                    { stage: '3. Applied to Pay-First Job', count: applications.length + 68, pct: 54 },
-                    { stage: '4. Digital Offer Issued', count: offers.length + 29, pct: 28 },
-                    { stage: '5. Dual Joining Confirmed & Day-30 Retained', count: offers.filter(o => o.status === 'Accepted' || o.status === 'Joined Confirmed').length + 19, pct: 19 },
-                  ].map(item => (
-                    <div key={item.stage} className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span className="font-semibold text-slate-200">{item.stage}</span>
-                        <span className="text-amber-300 font-bold tabular-nums">{item.count} workers ({item.pct}%)</span>
-                      </div>
-                      <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden">
-                        <div className="h-full bg-amber-400 rounded-full" style={{ width: `${item.pct}%` }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Factory Funnel */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-                <h3 className="text-base font-bold text-white mb-1">Factory Hiring Funnel (M16)</h3>
-                <p className="text-xs text-slate-400 mb-4">
-                  Tracks GSTIN KYB verification through Day-90 shop-floor retention.
-                </p>
-                <div className="space-y-3">
-                  {[
-                    { stage: '1. HR Mobile OTP Registered', count: 48, pct: 100 },
-                    { stage: '2. GSTIN KYB Approved', count: 44, pct: 91 },
-                    { stage: '3. Published Pay-First Shift Job', count: 39, pct: 81 },
-                    { stage: '4. Locked-Pay Digital Offer Sent', count: 31, pct: 64 },
-                    { stage: '5. Worker Confirmed Joined', count: 26, pct: 54 },
-                  ].map(item => (
-                    <div key={item.stage} className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span className="font-semibold text-slate-200">{item.stage}</span>
-                        <span className="text-emerald-300 font-bold tabular-nums">{item.count} factories ({item.pct}%)</span>
-                      </div>
-                      <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden">
-                        <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${item.pct}%` }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* M14 Industrial Cluster Pay Benchmarks */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-              <h3 className="text-base font-bold text-white mb-1">
-                M14 Live Cluster In-Hand Pay Benchmarks (All-India Industrial Hubs)
-              </h3>
-              <p className="text-xs text-slate-400 mb-4">
-                Helps migrating workers compare real take-home pay and accommodation support across MIDC, GIDC, IMT & SIPCOT hubs.
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {INDUSTRIAL_CLUSTERS.map(cluster => (
-                  <div key={cluster.id} className="bg-slate-950 border border-slate-800 rounded-xl p-4">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-bold text-white">{cluster.name}</span>
-                      <span className="text-xs text-slate-400">{cluster.state}</span>
+              <h3 className="text-base font-bold text-white mb-1">Worker hiring funnel</h3>
+              <p className="text-xs text-slate-400 mb-4">Live counts from the database. Percentages are relative to registered workers.</p>
+              <div className="space-y-3">
+                {funnel.map(item => (
+                  <div key={item.stage} className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="font-semibold text-slate-200">{item.stage}</span>
+                      <span className="text-amber-300 font-bold tabular-nums">{item.count}{item.pct !== null ? ` (${item.pct}%)` : ''}</span>
                     </div>
-                    <p className="text-lg font-extrabold text-amber-300 tabular-nums mt-1">
-                      ₹{cluster.medianInHandPay.toLocaleString('en-IN')} <span className="text-xs font-normal text-slate-400">median in-hand/mo</span>
-                    </p>
-                    <p className="text-xs text-slate-400 mt-1">
-                      Coordinates: {cluster.lat.toFixed(2)}°N, {cluster.lng.toFixed(2)}°E
-                    </p>
+                    <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden">
+                      <div className="h-full bg-amber-400 rounded-full" style={{ width: `${item.pct ?? 0}%` }} />
+                    </div>
                   </div>
                 ))}
               </div>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+              <h3 className="text-base font-bold text-white mb-1">Factory verification</h3>
+              <p className="text-xs text-slate-400 mb-4">GSTIN checks submitted by factories.</p>
+              <div className="grid grid-cols-3 gap-3 text-center">
+                {[
+                  { label: 'Pending', value: kyb.filter(r => r.status === 'PENDING' || r.status === 'UnderReview').length },
+                  { label: 'Verified', value: kyb.filter(r => r.status === 'VERIFIED' || r.status === 'Verified').length },
+                  { label: 'Rejected', value: kyb.filter(r => r.status === 'REJECTED' || r.status === 'Rejected').length },
+                ].map(c => (
+                  <div key={c.label} className="bg-slate-950 border border-slate-800 rounded-xl p-4">
+                    <p className="text-2xl font-extrabold text-white tabular-nums">{c.value}</p>
+                    <p className="text-xs text-slate-400 mt-1">{c.label}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-slate-400 mt-4">Live job posts visible to workers: <strong className="text-white tabular-nums">{jobs.length}</strong></p>
             </div>
           </div>
         )}

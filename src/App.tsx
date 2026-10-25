@@ -51,6 +51,7 @@ import { PostJobModal } from './components/PostJobModal';
 import { NcvtSearchModal } from './components/NcvtSearchModal';
 import { AuthModal } from './components/AuthModal';
 import { LegalModal } from './components/LegalModal';
+import { Analytics } from '@vercel/analytics/react';
 import { stopJobAudio } from './utils/audioNarrator';
 import {
   fetchBootstrap,
@@ -932,6 +933,7 @@ export default function App() {
           handleInspectCertificate(c);
         }}
       />
+      <Analytics />
     </div>
   );
 }

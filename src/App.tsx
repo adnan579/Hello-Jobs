@@ -52,6 +52,7 @@ import { NcvtSearchModal } from './components/NcvtSearchModal';
 import { AuthModal } from './components/AuthModal';
 import { LegalModal } from './components/LegalModal';
 import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { stopJobAudio } from './utils/audioNarrator';
 import {
   fetchBootstrap,
@@ -934,6 +935,7 @@ export default function App() {
         }}
       />
       <Analytics />
+      <SpeedInsights />
     </div>
   );
 }

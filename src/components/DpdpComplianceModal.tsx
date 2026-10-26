@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { CONTACT } from '../config/contact';
 import {
   X,
   ShieldCheck,
@@ -719,10 +720,10 @@ export const DpdpComplianceModal: React.FC<Props> = ({
                     Data Protection Officer (DPO)
                   </span>
                   <div className="font-bold text-sm mt-0.5">
-                    Adv. Meenakshi Deshpande (CIPP/A)
+                    {CONTACT.officerName || 'Details will be published before launch'}
                   </div>
                   <div className="text-slate-300 font-mono mt-0.5">
-                    dpo@hellojobs-india.in · 1800-120-3737
+                    {[CONTACT.email, CONTACT.helpline].filter(Boolean).join(' · ') || 'Use the form below to raise a grievance'}
                   </div>
                 </div>
                 <div>

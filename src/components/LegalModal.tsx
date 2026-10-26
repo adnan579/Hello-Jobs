@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { CONTACT } from '../config/contact';
 import {
   X,
   ShieldCheck,
@@ -178,21 +179,24 @@ export const LegalModal: React.FC<Props> = ({
                 </h3>
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
                   <div className="font-bold text-slate-900">
-                    Smt. Kavita Deshmukh — Grievance & Data Protection Officer
+                    {CONTACT.officerName || 'Grievance & Data Protection Officer: details will be published before launch'}
                   </div>
-                  <div className="text-slate-600">
-                    Hello Jobs India Pvt. Ltd., Chakan Industrial Area Phase II, Pune, Maharashtra – 410501
-                  </div>
+                  {CONTACT.companyAddress && <div className="text-slate-600">{CONTACT.companyAddress}</div>}
                   <div className="flex flex-wrap items-center gap-4 pt-1 text-slate-700 font-medium">
-                    <span className="flex items-center gap-1.5">
-                      <Mail className="w-3.5 h-3.5 text-slate-500" />
-                      grievance@hellojobs.in
-                    </span>
-                    <span className="flex items-center gap-1.5 tabular-nums">
-                      <Phone className="w-3.5 h-3.5 text-slate-500" />
-                      1800-120-4355 (Mon–Sat, 8:00 AM – 8:00 PM IST)
-                    </span>
+                    {CONTACT.email && (
+                      <span className="flex items-center gap-1.5">
+                        <Mail className="w-3.5 h-3.5 text-slate-500" />
+                        {CONTACT.email}
+                      </span>
+                    )}
+                    {CONTACT.helpline && (
+                      <span className="flex items-center gap-1.5 tabular-nums">
+                        <Phone className="w-3.5 h-3.5 text-slate-500" />
+                        {CONTACT.helpline}
+                      </span>
+                    )}
                   </div>
+                  <p className="text-xs text-slate-500">You can always raise a grievance inside the app under Privacy & Account Settings.</p>
                 </div>
               </section>
 

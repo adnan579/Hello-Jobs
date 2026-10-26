@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { CONTACT } from '../config/contact';
 import {
   ShieldCheck,
   AlertTriangle,
@@ -591,14 +592,9 @@ export const AdminTrustConsole: React.FC<AdminTrustConsoleProps> = ({
                     3. Grievance Officer (/grievance)
                   </h3>
                   <p>
-                    <strong>Statutory Data Protection & Grievance Officer:</strong> Smt. Kavita Deshmukh (DPDP Compliance & Labour Welfare Lead)
+                    <strong>Grievance Officer:</strong> {CONTACT.officerName || 'not yet published'} · {CONTACT.email || 'no email set'} · {CONTACT.helpline || 'no helpline set'}
                   </p>
-                  <p>
-                    <strong>Email:</strong> grievance@hellojobs.in
-                  </p>
-                  <p>
-                    <strong>Toll-Free Worker Helpline:</strong> <span className="tabular-nums">1800-120-4355</span> (Mon–Sat, 8:00 AM – 8:00 PM IST)
-                  </p>
+                  <p className="text-slate-500">Set VITE_GRIEVANCE_OFFICER_NAME, VITE_GRIEVANCE_EMAIL and VITE_HELPLINE in Vercel to publish these.</p>
                   <p>
                     <strong>SLA:</strong> Acknowledgement within 24 hours; resolution or account erasure within 72 hours under Section 12 of the DPDP Act 2023.
                   </p>
@@ -631,12 +627,6 @@ export const AdminTrustConsole: React.FC<AdminTrustConsoleProps> = ({
 
                 <div className="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-2">
                   <h3 className="text-sm font-bold text-white">3. शिकायत निवारण अधिकारी (/grievance)</h3>
-                  <p>
-                    <strong>शिकायत अधिकारी:</strong> श्रीमती कविता देशमुख (DPDP एवं श्रमिक कल्याण प्रमुख)
-                  </p>
-                  <p>
-                    <strong>ईमेल:</strong> grievance@hellojobs.in · <strong>हेल्पलाइन:</strong> 1800-120-4355
-                  </p>
                   <p>
                     आप किसी भी समय अपने प्रोफाइल या फैक्ट्री खाते से अपना पूरा डेटा डाउनलोड (JSON) या हमेशा के लिए डिलीट कर सकते हैं।
                   </p>

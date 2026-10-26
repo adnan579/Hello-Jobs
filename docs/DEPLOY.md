@@ -47,5 +47,5 @@ Open `https://your-site/#staff`. Enter your number. Until WhatsApp is connected 
 - Have a lawyer review the privacy notice, terms and the DPDP flows.
 - Get the Hindi, Marathi and Tamil text reviewed by native speakers.
 - Register the company, confirm GST invoicing with an accountant.
-- Add the grievance officer's real name and email in the legal pages.
+- Set `VITE_GRIEVANCE_OFFICER_NAME`, `VITE_GRIEVANCE_EMAIL`, `VITE_HELPLINE` and `VITE_COMPANY_ADDRESS` in Vercel and redeploy. Until you do, the site says the details are not published yet.
 - Revoke any GitHub token that was ever pasted in a chat.

@@ -1,6 +1,5 @@
 {
   "name": "Hello Jobs",
   "description": "Direct Hands for Indian Industry. Zero Middlemen. 100% Fair Pay. Two-way blue and grey-collar workforce marketplace connecting manufacturing units with verified ITI technicians.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "requestFramePermissions": []
 }

@@ -7,5 +7,13 @@
   "background_color": "#0f172a",
   "theme_color": "#f59e0b",
   "orientation": "portrait-primary",
-  "lang": "hi-IN"
+  "lang": "hi-IN",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
 }

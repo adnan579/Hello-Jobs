@@ -186,7 +186,7 @@ export const WorkerProfileView: React.FC<Props> = ({
     worker.ncvtCertificate.stateDirectorate
   );
   const [passingYear, setPassingYear] = useState(worker.ncvtCertificate.passingYear);
-  const [grade, setGrade] = useState<'A+' | 'A' | 'B'>(worker.ncvtCertificate.grade);
+  const [grade, setGrade] = useState<'A+' | 'A' | 'B' | ''>(worker.ncvtCertificate.grade);
   const [practicalScore, setPracticalScore] = useState(
     worker.ncvtCertificate.practicalScore
   );
@@ -390,7 +390,7 @@ export const WorkerProfileView: React.FC<Props> = ({
   };
 
   const handleLogOutEverywhere = async () => {
-    await revokeSessionsApi(worker.id);
+    await revokeSessionsApi({ all: true });
     setSessionRevokedToast(true);
     setTimeout(() => {
       setSessionRevokedToast(false);
@@ -1214,7 +1214,11 @@ export const WorkerProfileView: React.FC<Props> = ({
                         {offer.workerConfirmedJoining && (
                           <div className="text-xs font-bold text-emerald-700 flex items-center gap-1.5">
                             <CheckCircle2 className="w-4 h-4" />
-                            <span>Dual Joining Confirmed (Factory + Worker Verified)</span>
+                            <span>
+                              {offer.status === 'Joined Confirmed'
+                                ? 'Joining confirmed by you and the factory'
+                                : 'You confirmed joining. Waiting for the factory to confirm.'}
+                            </span>
                           </div>
                         )}
                       </div>

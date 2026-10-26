@@ -1,4 +1,5 @@
 import React from 'react';
+import { CONTACT } from '../config/contact';
 import { UserRole, Language } from '../types';
 import { ShieldCheck } from 'lucide-react';
 
@@ -129,14 +130,14 @@ export const Footer: React.FC<Props> = ({
               </li>
               <li>
                 <span className="text-slate-400">
-                  Grievance Officer: grievance@hellojobs.in
+                  {CONTACT.email ? `Grievance: ${CONTACT.email}` : 'Grievances: use Privacy & Account Settings in the app'}
                 </span>
               </li>
-              <li>
-                <span className="text-slate-400 tabular-nums">
-                  Helpline: 1800-120-4355 (8 AM–8 PM IST)
-                </span>
-              </li>
+              {CONTACT.helpline && (
+                <li>
+                  <span className="text-slate-400 tabular-nums">Helpline: {CONTACT.helpline}</span>
+                </li>
+              )}
             </ul>
           </div>
         </div>

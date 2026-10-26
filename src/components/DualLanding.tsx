@@ -34,6 +34,7 @@ interface Props {
   employerProfile: EmployerFactoryProfile;
   jobs?: JobListing[];
   candidates?: CandidateProfile[];
+  stats?: { workers: number; factories: number; jobs: number };
   onSelectRole: (role: UserRole) => void;
   onOpenCalculator: () => void;
   onOpenReport: () => void;
@@ -51,12 +52,14 @@ export const DualLanding: React.FC<Props> = ({
   employerProfile,
   jobs = [],
   candidates = [],
+  stats,
   onSelectRole,
   onOpenCalculator,
   onOpenAuthModal,
 }) => {
   const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
 
+  const workerCount = stats?.workers ?? candidates.length;
   const liveActiveJobs = jobs.filter((j) => j.isActive !== false);
   const liveActiveJobsCount = liveActiveJobs.length;
   const totalOpenSeats = liveActiveJobs.reduce(
@@ -97,7 +100,7 @@ export const DualLanding: React.FC<Props> = ({
                     className="inline-flex items-center gap-2 px-5 py-3.5 rounded-xl font-extrabold text-sm bg-amber-400 hover:bg-amber-300 text-slate-950 transition-colors shadow-lg cursor-pointer"
                   >
                     <Briefcase className="w-4 h-4" />
-                    <span>Go to Jobs Feed ({liveActiveJobsCount} Live Jobs)</span>
+                    <span>Go to Jobs Feed ({liveActiveJobsCount})</span>
                   </button>
                   <button
                     onClick={() => onSelectRole('worker-profile')}
@@ -121,7 +124,7 @@ export const DualLanding: React.FC<Props> = ({
                     className="inline-flex items-center gap-2 px-5 py-3.5 rounded-xl font-bold text-sm bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 transition-colors cursor-pointer"
                   >
                     <Users className="w-4 h-4 text-blue-400" />
-                    <span>Browse Candidate Directory ({candidates.length})</span>
+                    <span>Browse Candidate Directory ({workerCount})</span>
                   </button>
                 </>
               ) : (
@@ -160,7 +163,7 @@ export const DualLanding: React.FC<Props> = ({
               <span aria-hidden="true">·</span>
               <span className="flex items-center gap-1.5 font-semibold text-amber-300 tabular-nums">
                 <CheckCircle2 className="w-4 h-4 text-amber-400" />
-                {candidates.length} Verified Workers Ready to Join
+                {workerCount} Workers Registered
               </span>
               <span aria-hidden="true">·</span>
               <span className="flex items-center gap-1.5">
@@ -423,7 +426,7 @@ export const DualLanding: React.FC<Props> = ({
 
           <div className="space-y-1 p-2 border-l border-slate-100">
             <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 block tabular-nums">
-              {candidates.length} Active
+              {workerCount}
             </span>
             <div className="text-xs font-bold text-slate-900">{t.statWorkers}</div>
             <p className="text-xs text-slate-500">{t.statWorkersDesc}</p>
@@ -431,7 +434,7 @@ export const DualLanding: React.FC<Props> = ({
 
           <div className="space-y-1 p-2 border-l border-slate-100">
             <span className="text-2xl sm:text-3xl font-extrabold text-blue-700 block tabular-nums">
-              {liveActiveJobsCount} Live Jobs
+              {liveActiveJobsCount}
             </span>
             <div className="text-xs font-bold text-slate-900">{t.statFactories}</div>
             <p className="text-xs text-slate-500">{t.statFactoriesDesc}</p>
@@ -439,7 +442,7 @@ export const DualLanding: React.FC<Props> = ({
 
           <div className="space-y-1 p-2 border-l border-slate-100">
             <span className="text-2xl sm:text-3xl font-extrabold text-amber-600 block tabular-nums">
-              {employerProfile.promiseKeptScorePct ?? 96}%
+              {employerProfile.promiseKeptScorePct != null ? `${employerProfile.promiseKeptScorePct}%` : '—'}
             </span>
             <div className="text-xs font-bold text-slate-900">Verified Offer Accuracy</div>
             <p className="text-xs text-slate-500">Direct payroll & promised take-home pay</p>

@@ -3,40 +3,24 @@ import {
   X,
   Users,
   Factory,
-  Smartphone,
   KeyRound,
   CheckCircle2,
-  ArrowRight,
-  Building2,
-  Sparkles,
   Copy,
   MessageSquare,
   AlertTriangle,
   UserPlus,
   LogIn,
 } from 'lucide-react';
-import {
-  CandidateProfile,
-  EmployerFactoryProfile,
-  TradeType,
-  AuthSession,
-  WorkerSkillCategory,
-  OtpChannelType,
-} from '../types';
-import { sendOtpChallengeApi, verifyOtpChallengeApi } from '../utils/api';
+import { TradeType, WorkerSkillCategory } from '../types';
+import { sendOtpApi, signInApi } from '../utils/api';
 
 interface Props {
   isOpen: boolean;
-  initialTab?: 'worker' | 'employer';
+  initialTab?: 'worker' | 'employer' | 'admin';
   initialMode?: 'login' | 'register';
   onClose: () => void;
-  candidates: CandidateProfile[];
-  employerProfile: EmployerFactoryProfile;
-  onLoginSuccess: (
-    session: AuthSession,
-    newCandidate?: CandidateProfile,
-    updatedEmployer?: EmployerFactoryProfile
-  ) => void;
+  /** Called after the server has signed the person in (cookie set). */
+  onLoginSuccess: () => void;
   onOpenLegalModal?: (tab: 'privacy' | 'terms') => void;
 }
 
@@ -87,44 +71,41 @@ export const AuthModal: React.FC<Props> = ({
   initialTab = 'worker',
   initialMode = 'login',
   onClose,
-  candidates,
-  employerProfile,
   onLoginSuccess,
   onOpenLegalModal,
 }) => {
-  const [roleTab, setRoleTab] = useState<'worker' | 'employer'>(initialTab);
+  const [roleTab, setRoleTab] = useState<'worker' | 'employer' | 'admin'>(initialTab);
   const [authMode, setAuthMode] = useState<'login' | 'register'>(initialMode);
 
   // OTP Verification State
-  const [phoneInput, setPhoneInput] = useState('9546011234');
-  const [otpChannel, setOtpChannel] = useState<OtpChannelType>('WHATSAPP_CLOUD');
+  const [phoneInput, setPhoneInput] = useState('');
   const [otpSent, setOtpSent] = useState(false);
-  const [generatedOtp, setGeneratedOtp] = useState('482910');
+  const [demoCode, setDemoCode] = useState('');
   const [enteredOtp, setEnteredOtp] = useState('');
   const [authError, setAuthError] = useState('');
   const [copiedCode, setCopiedCode] = useState(false);
+  const [busy, setBusy] = useState(false);
 
-  // Registration Terms & Privacy Consent
-  const [confirmAdult18Plus, setConfirmAdult18Plus] = useState(true);
-  const [acceptTermsAndPrivacy, setAcceptTermsAndPrivacy] = useState(true);
-  const [consentDirectoryDiscovery, setConsentDirectoryDiscovery] = useState(true);
+  // Registration Terms & Privacy Consent (nothing is pre-ticked: consent must be a choice)
+  const [confirmAdult18Plus, setConfirmAdult18Plus] = useState(false);
+  const [acceptTermsAndPrivacy, setAcceptTermsAndPrivacy] = useState(false);
+  const [consentDirectoryDiscovery, setConsentDirectoryDiscovery] = useState(false);
 
   // Worker Registration Fields
   const [newWorkerName, setNewWorkerName] = useState('');
   const [newWorkerTrade, setNewWorkerTrade] = useState<TradeType>(
     'Packing & Box Loading (No Certificate)'
   );
-  const [newWorkerCity, setNewWorkerCity] = useState('Pune');
-  const [newWorkerState, setNewWorkerState] = useState('Maharashtra');
-  const [newWorkerExpectedPay, setNewWorkerExpectedPay] = useState(19500);
+  const [newWorkerCity, setNewWorkerCity] = useState('');
+  const [newWorkerState, setNewWorkerState] = useState('');
+  const [newWorkerExpectedPay, setNewWorkerExpectedPay] = useState<number | ''>('');
 
   // Employer Registration Fields
-  const [empHrPhone, setEmpHrPhone] = useState('9823011490');
   const [newCompanyName, setNewCompanyName] = useState('');
-  const [newGstin, setNewGstin] = useState('27AABCE8821K1Z5');
-  const [newUdyam, setNewUdyam] = useState('UDYAM-MH-26-0091204');
+  const [newGstin, setNewGstin] = useState('');
+  const [newUdyam, setNewUdyam] = useState('');
   const [newHrName, setNewHrName] = useState('');
-  const [newHub, setNewHub] = useState('Chakan MIDC, Pune');
+  const [newHub, setNewHub] = useState('');
 
   useEffect(() => {
     if (isOpen) {
@@ -132,17 +113,17 @@ export const AuthModal: React.FC<Props> = ({
       setAuthMode(initialMode);
       setOtpSent(false);
       setAuthError('');
+      setDemoCode('');
+      setEnteredOtp('');
     }
   }, [isOpen, initialTab, initialMode]);
 
   if (!isOpen) return null;
 
-  const activePhone = roleTab === 'worker' ? phoneInput : empHrPhone;
+  const activePhone = phoneInput;
+  const isAdmin = roleTab === 'admin';
 
-  const handleRequestOtp = async (
-    channel: OtpChannelType,
-    e?: React.FormEvent
-  ) => {
+  const handleRequestOtp = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setAuthError('');
 
@@ -152,13 +133,13 @@ export const AuthModal: React.FC<Props> = ({
       return;
     }
 
-    if (authMode === 'register') {
-      if (roleTab === 'worker' && !newWorkerName.trim()) {
-        setAuthError('Please enter your full name to register.');
+    if (authMode === 'register' && !isAdmin) {
+      if (roleTab === 'worker' && (!newWorkerName.trim() || !newWorkerCity.trim() || !newWorkerState.trim())) {
+        setAuthError('Please enter your full name, city and home state to register.');
         return;
       }
-      if (roleTab === 'employer' && !newCompanyName.trim()) {
-        setAuthError('Please enter your company name to register.');
+      if (roleTab === 'employer' && (!newCompanyName.trim() || !newHrName.trim() || !newGstin.trim() || !newHub.trim())) {
+        setAuthError('Please enter the company name, GSTIN, HR manager name and industrial hub.');
         return;
       }
       if (!confirmAdult18Plus) {
@@ -173,191 +154,85 @@ export const AuthModal: React.FC<Props> = ({
       }
     }
 
-    try {
-      setOtpChannel(channel);
-      const res = await sendOtpChallengeApi(digits, roleTab, channel);
-      setGeneratedOtp(res.demoOtpCode);
-      setEnteredOtp(res.demoOtpCode);
-      setOtpSent(true);
-    } catch (err: any) {
-      setAuthError(err?.message || 'Unable to send OTP verification code.');
+    setBusy(true);
+    const res = await sendOtpApi(digits, roleTab);
+    setBusy(false);
+    if (!res.ok) {
+      setAuthError(res.error);
+      return;
     }
+    setDemoCode(res.demoCode ?? '');
+    setEnteredOtp('');
+    setOtpSent(true);
   };
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
     const digits = activePhone.replace(/\D/g, '').slice(-10);
-
-    try {
-      const verified = await verifyOtpChallengeApi(
-        digits,
-        enteredOtp.trim(),
-        roleTab
-      );
-      const nowIso = new Date().toLocaleString('en-IN');
-
-      if (roleTab === 'worker') {
-        const existing = candidates.find(
-          (c) => c.phone.replace(/\D/g, '').slice(-10) === digits
-        );
-
-        if (existing && authMode === 'login') {
-          onLoginSuccess({
+    setBusy(true);
+    const res = await signInApi(
+      roleTab === 'worker'
+        ? {
             role: 'worker',
-            workerId: existing.id,
-            sessionId: verified.session.sessionId,
-          });
-          onClose();
-          return;
-        }
-
-        const matchedType =
-          QUICK_WORK_TYPES.find((q) => q.trade === newWorkerTrade) ||
-          QUICK_WORK_TYPES[0];
-        const nameToUse = newWorkerName.trim() || existing?.name || 'Manoj Paswan';
-        const initials =
-          nameToUse
-            .split(' ')
-            .map((w) => w[0])
-            .join('')
-            .toUpperCase()
-            .slice(0, 2) || 'WK';
-
-        const basePay =
-          Number(newWorkerExpectedPay) ||
-          (matchedType.category === 'unskilled' ? 18000 : 22500);
-
-        const createdCandidate: CandidateProfile = {
-          id: `cand-${Date.now()}`,
-          shareToken: `hj-card-${Date.now().toString(36)}`,
-          isPubliclyShareable: true,
-          name: nameToUse,
-          phone: `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`,
-          avatarSeed: initials,
-          trade: newWorkerTrade,
-          category: matchedType.category,
-          readinessBadges: [
-            'Mobile OTP Verified',
-            '12-Hr Shift Stamina',
-            'Immediate Joiner',
-            'Hostel / Outstation Ready',
-          ],
-          currentCity: newWorkerCity || 'Pune',
-          homeState: newWorkerState || 'Maharashtra',
-          experienceYears: matchedType.category === 'unskilled' ? 1 : 2,
-          machinesOperated:
-            matchedType.category === 'unskilled'
-              ? ['Carton Packing & Taping', 'Pallet Jack / Hand Trolley']
-              : [newWorkerTrade, 'Vernier & Micrometer QC'],
-          languagesSpoken: ['Hindi', 'English'],
-          expectedSalary: basePay,
-          expectedPayMin: Math.max(12000, basePay - 1500),
-          expectedPayMax: basePay + 2500,
-          willingToRelocate: true,
-          immediateJoiner: true,
-          preferredHubs: [
-            'Chakan MIDC, Pune',
-            'Sanand GIDC, Ahmedabad',
-            'Sector 63, Noida',
-          ],
-          pastEmployments: [],
-          ncvtCertificate: {
-            isVerified: false,
-            certificateNumber: '',
-            rollNumber: '',
-            tradeName: 'Work-Readiness Verified',
-            itiCollege: 'Direct Shop-Floor Hand',
-            stateDirectorate: 'Direct Entry',
-            passingYear: 2025,
-            grade: 'A',
-            practicalScore: 0,
-            maxPracticalScore: 0,
-            theoryScore: 0,
-            maxTheoryScore: 0,
-            verifiedDate: 'Verified Today',
-            verificationMethod: 'NONE',
-          },
-          hasVideoDemo: false,
-          videoDemoTitle: '',
-          about: `Reliable ${newWorkerTrade} professional ready for immediate factory joining.`,
-          adultConfirmedAt: nowIso,
-          isFirstTimeEpfoMember: true,
-          savedJobIds: [],
-          dpdpConsent: {
-            consentArtifactId: `CONSENT-${Date.now()}`,
-            policyVersion: 'v2026.11',
-            directoryDiscovery: consentDirectoryDiscovery,
-            whatsappJobAlerts: true,
-            credentialVerification: true,
-            consentGrantedAt: nowIso,
-            adultConfirmedAt: nowIso,
-            noticeLanguage: 'en',
-            isWithdrawn: false,
-          },
-        };
-
-        onLoginSuccess(
-          {
-            role: 'worker',
-            workerId: createdCandidate.id,
-            sessionId: verified.session.sessionId,
-          },
-          createdCandidate
-        );
-        onClose();
-      } else {
-        if (authMode === 'register' && newCompanyName.trim()) {
-          const updatedEmp: EmployerFactoryProfile = {
-            ...employerProfile,
-            companyName: newCompanyName.trim(),
-            gstin: newGstin.trim().toUpperCase() || employerProfile.gstin,
-            udyamNumber:
-              newUdyam.trim().toUpperCase() || employerProfile.udyamNumber,
-            hrManagerName: newHrName.trim() || employerProfile.hrManagerName,
-            hrPhone: `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`,
-            industrialHub: newHub.trim() || employerProfile.industrialHub,
-          };
-          onLoginSuccess(
-            {
-              role: 'employer',
-              employerId: updatedEmp.id,
-              sessionId: verified.session.sessionId,
+            phone: digits,
+            code: enteredOtp.trim(),
+            mode: authMode,
+            adultConfirmed: confirmAdult18Plus,
+            termsAccepted: acceptTermsAndPrivacy,
+            consent: {
+              directoryDiscovery: consentDirectoryDiscovery,
+              whatsappJobAlerts: false,
+              credentialVerification: true,
+              marketingCommunications: false,
+              noticeLanguage: 'en',
             },
-            undefined,
-            updatedEmp
-          );
-          onClose();
-          return;
-        }
-
-        onLoginSuccess({
-          role: 'employer',
-          employerId: employerProfile.id,
-          sessionId: verified.session.sessionId,
-        });
-        onClose();
-      }
-    } catch (err: any) {
-      setAuthError(err?.message || 'Invalid verification code.');
+            registration:
+              authMode === 'register'
+                ? {
+                    name: newWorkerName.trim(),
+                    trade: newWorkerTrade,
+                    currentCity: newWorkerCity.trim(),
+                    homeState: newWorkerState.trim(),
+                    expectedSalary: newWorkerExpectedPay === '' ? undefined : Number(newWorkerExpectedPay),
+                  }
+                : undefined,
+          }
+        : roleTab === 'employer'
+        ? {
+            role: 'employer',
+            phone: digits,
+            code: enteredOtp.trim(),
+            mode: authMode,
+            adultConfirmed: confirmAdult18Plus,
+            termsAccepted: acceptTermsAndPrivacy,
+            registration:
+              authMode === 'register'
+                ? {
+                    companyName: newCompanyName.trim(),
+                    gstin: newGstin.trim().toUpperCase(),
+                    udyamNumber: newUdyam.trim().toUpperCase() || undefined,
+                    hrManagerName: newHrName.trim(),
+                    industrialHub: newHub.trim(),
+                  }
+                : undefined,
+          }
+        : { role: 'admin', phone: digits, code: enteredOtp.trim(), mode: 'login' }
+    );
+    setBusy(false);
+    if (!res.ok) {
+      setAuthError(res.error);
+      return;
     }
-  };
-
-  const handleInstantWorkerLogin = (candidate: CandidateProfile) => {
-    onLoginSuccess({ role: 'worker', workerId: candidate.id });
+    onLoginSuccess();
     onClose();
   };
 
   const handleCopyOtp = () => {
-    navigator.clipboard?.writeText(generatedOtp);
+    navigator.clipboard?.writeText(demoCode);
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);
   };
-
-  const unskilledDemo =
-    candidates.find((c) => c.category === 'unskilled') || candidates[0];
-  const skilledDemo =
-    candidates.find((c) => c.ncvtCertificate.isVerified) || candidates[1];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-xs">
@@ -370,7 +245,9 @@ export const AuthModal: React.FC<Props> = ({
             </div>
             <div>
               <h2 className="text-base font-bold text-white">
-                {authMode === 'register'
+                {isAdmin
+                  ? 'Staff Login'
+                  : authMode === 'register'
                   ? roleTab === 'worker'
                     ? 'Register as a Worker'
                     : 'Register as an Employer'
@@ -379,7 +256,9 @@ export const AuthModal: React.FC<Props> = ({
                   : 'Employer Login'}
               </h2>
               <p className="text-xs text-slate-400">
-                {roleTab === 'worker'
+                {isAdmin
+                  ? 'For Hello Jobs verification and trust & safety staff'
+                  : roleTab === 'worker'
                   ? 'Access the Jobs Feed, apply in 1 click, and manage your profile'
                   : 'Access your Employer Dashboard to post jobs and shortlist candidates'}
               </p>
@@ -395,6 +274,7 @@ export const AuthModal: React.FC<Props> = ({
         </div>
 
         {/* Role Selector Tabs */}
+        {!isAdmin && (
         <div className="grid grid-cols-2 bg-slate-100 p-1.5 border-b border-slate-200 shrink-0">
           <button
             type="button"
@@ -430,10 +310,12 @@ export const AuthModal: React.FC<Props> = ({
             <span>I am an Employer</span>
           </button>
         </div>
+        )}
 
         {/* Body Content */}
         <div className="p-6 overflow-y-auto space-y-5">
           {/* Login vs Register Mode Switcher */}
+          {!isAdmin && (
           <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl text-xs">
             <button
               type="button"
@@ -472,84 +354,6 @@ export const AuthModal: React.FC<Props> = ({
               </span>
             </button>
           </div>
-
-          {/* Quick Demo Account Access for Easy Testing */}
-          {authMode === 'login' && roleTab === 'worker' && (
-            <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-2">
-              <span className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                Instant Worker Login (Try Existing Accounts)
-              </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {unskilledDemo && (
-                  <button
-                    type="button"
-                    onClick={() => handleInstantWorkerLogin(unskilledDemo)}
-                    className="p-2.5 bg-white hover:bg-emerald-100/50 border border-emerald-300 rounded-xl text-left transition-colors flex items-center justify-between"
-                  >
-                    <div>
-                      <span className="text-[10px] font-bold text-emerald-700 uppercase block">
-                        Helper / Packing
-                      </span>
-                      <div className="text-xs font-extrabold text-slate-900">
-                        {unskilledDemo.name}
-                      </div>
-                    </div>
-                    <ArrowRight className="w-4 h-4 text-emerald-600 shrink-0" />
-                  </button>
-                )}
-                {skilledDemo && (
-                  <button
-                    type="button"
-                    onClick={() => handleInstantWorkerLogin(skilledDemo)}
-                    className="p-2.5 bg-white hover:bg-amber-100/50 border border-amber-300 rounded-xl text-left transition-colors flex items-center justify-between"
-                  >
-                    <div>
-                      <span className="text-[10px] font-bold text-amber-800 uppercase block">
-                        ITI Operator
-                      </span>
-                      <div className="text-xs font-extrabold text-slate-900">
-                        {skilledDemo.name}
-                      </div>
-                    </div>
-                    <ArrowRight className="w-4 h-4 text-amber-600 shrink-0" />
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
-          {authMode === 'login' && roleTab === 'employer' && (
-            <div className="p-3.5 bg-blue-50/80 border border-blue-200 rounded-xl space-y-2">
-              <span className="text-xs font-bold text-blue-950 flex items-center gap-1.5">
-                <Building2 className="w-3.5 h-3.5 text-blue-600" />
-                Instant Employer Login (Verified Factory Account)
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  onLoginSuccess({
-                    role: 'employer',
-                    employerId: employerProfile.id,
-                  });
-                  onClose();
-                }}
-                className="w-full p-2.5 bg-white hover:bg-blue-100/40 border border-blue-300 rounded-lg text-left transition-colors flex items-center justify-between"
-              >
-                <div>
-                  <div className="text-xs font-bold text-slate-900">
-                    {employerProfile.companyName}
-                  </div>
-                  <div className="text-[11px] text-slate-600">
-                    {employerProfile.hrManagerName} · {employerProfile.industrialHub}
-                  </div>
-                </div>
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-900 text-white text-xs font-semibold rounded-md">
-                  <span>Go to Dashboard</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </span>
-              </button>
-            </div>
           )}
 
           {authError && (
@@ -561,7 +365,7 @@ export const AuthModal: React.FC<Props> = ({
 
           {!otpSent ? (
             <form
-              onSubmit={(e) => handleRequestOtp('WHATSAPP_CLOUD', e)}
+              onSubmit={handleRequestOtp}
               className="space-y-4"
             >
               {roleTab === 'worker' && authMode === 'register' && (
@@ -574,7 +378,7 @@ export const AuthModal: React.FC<Props> = ({
                       <input
                         type="text"
                         required
-                        placeholder="e.g. Manoj Paswan"
+                        placeholder="Your name as on your ID"
                         value={newWorkerName}
                         onChange={(e) => setNewWorkerName(e.target.value)}
                         className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white"
@@ -587,10 +391,13 @@ export const AuthModal: React.FC<Props> = ({
                       <input
                         type="number"
                         step={500}
-                        min={12000}
+                        min={0}
+                        placeholder="Optional"
                         value={newWorkerExpectedPay}
                         onChange={(e) =>
-                          setNewWorkerExpectedPay(Number(e.target.value))
+                          setNewWorkerExpectedPay(
+                            e.target.value === '' ? '' : Number(e.target.value)
+                          )
                         }
                         className="w-full px-3 py-2 text-xs font-bold text-emerald-700 tabular-nums border border-slate-300 rounded-lg bg-white"
                       />
@@ -604,6 +411,7 @@ export const AuthModal: React.FC<Props> = ({
                       </label>
                       <input
                         type="text"
+                        required
                         value={newWorkerCity}
                         onChange={(e) => setNewWorkerCity(e.target.value)}
                         className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white"
@@ -615,6 +423,7 @@ export const AuthModal: React.FC<Props> = ({
                       </label>
                       <input
                         type="text"
+                        required
                         value={newWorkerState}
                         onChange={(e) => setNewWorkerState(e.target.value)}
                         className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white"
@@ -653,7 +462,7 @@ export const AuthModal: React.FC<Props> = ({
                       <input
                         type="text"
                         required
-                        placeholder="e.g. Kalyani Precision Forge Ltd"
+                        placeholder="Registered company name"
                         value={newCompanyName}
                         onChange={(e) => setNewCompanyName(e.target.value)}
                         className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white"
@@ -667,6 +476,7 @@ export const AuthModal: React.FC<Props> = ({
                         type="text"
                         required
                         maxLength={15}
+                        placeholder="e.g. 27AAPFU0939F1ZV"
                         value={newGstin}
                         onChange={(e) => setNewGstin(e.target.value)}
                         className="w-full px-3 py-2 text-xs uppercase tabular-nums border border-slate-300 rounded-lg bg-white"
@@ -681,7 +491,7 @@ export const AuthModal: React.FC<Props> = ({
                       <input
                         type="text"
                         required
-                        placeholder="e.g. Vikram Kulkarni"
+                        placeholder="HR manager full name"
                         value={newHrName}
                         onChange={(e) => setNewHrName(e.target.value)}
                         className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white"
@@ -693,6 +503,8 @@ export const AuthModal: React.FC<Props> = ({
                       </label>
                       <input
                         type="text"
+                        required
+                        placeholder="e.g. Chakan MIDC, Pune"
                         value={newHub}
                         onChange={(e) => setNewHub(e.target.value)}
                         className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white"
@@ -707,6 +519,8 @@ export const AuthModal: React.FC<Props> = ({
                 <label className="block text-xs font-bold text-slate-800 mb-1.5">
                   {roleTab === 'worker'
                     ? '10-Digit Mobile Number'
+                    : roleTab === 'admin'
+                    ? 'Staff Mobile Number'
                     : 'HR Manager 10-Digit Mobile Number'}
                 </label>
                 <div className="flex items-center gap-2">
@@ -717,18 +531,15 @@ export const AuthModal: React.FC<Props> = ({
                     type="tel"
                     required
                     value={activePhone}
-                    onChange={(e) =>
-                      roleTab === 'worker'
-                        ? setPhoneInput(e.target.value)
-                        : setEmpHrPhone(e.target.value)
-                    }
+                    placeholder="10-digit mobile"
+                    onChange={(e) => setPhoneInput(e.target.value)}
                     className="flex-1 px-3.5 py-2 text-sm font-bold tabular-nums border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
               </div>
 
               {/* Clean Legal & Privacy Consent during Registration */}
-              {authMode === 'register' && (
+              {authMode === 'register' && !isAdmin && (
                 <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs text-slate-700">
                   <label className="flex items-start gap-2 cursor-pointer">
                     <input
@@ -794,27 +605,20 @@ export const AuthModal: React.FC<Props> = ({
                 </div>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <button
-                  type="submit"
-                  className="py-2.5 px-4 bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs rounded-xl transition-colors flex items-center justify-center gap-2 shadow-xs"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  <span>
-                    {authMode === 'register'
-                      ? 'Send OTP to Register'
-                      : 'Send WhatsApp OTP'}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleRequestOtp('DLT_SMS')}
-                  className="py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-2"
-                >
-                  <Smartphone className="w-4 h-4 text-amber-400" />
-                  <span>Send OTP via SMS</span>
-                </button>
-              </div>
+              <button
+                type="submit"
+                disabled={busy}
+                className="w-full py-2.5 px-4 bg-amber-400 hover:bg-amber-300 disabled:opacity-60 text-slate-950 font-extrabold text-xs rounded-xl transition-colors flex items-center justify-center gap-2 shadow-xs"
+              >
+                <MessageSquare className="w-4 h-4" />
+                <span>
+                  {busy
+                    ? 'Sending...'
+                    : authMode === 'register' && !isAdmin
+                    ? 'Send WhatsApp OTP to Register'
+                    : 'Send WhatsApp OTP'}
+                </span>
+              </button>
             </form>
           ) : (
             <form onSubmit={handleVerifyOtp} className="space-y-4">
@@ -823,17 +627,21 @@ export const AuthModal: React.FC<Props> = ({
                   <div className="flex items-center gap-2 text-emerald-950 font-bold">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                     <span>
-                      Verification code sent to +91 {activePhone}
+                      {demoCode
+                        ? `Test site: your code is shown here instead of WhatsApp`
+                        : `Verification code sent on WhatsApp to +91 ${activePhone}`}
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleCopyOtp}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-emerald-300 text-emerald-900 font-bold text-[11px] hover:bg-emerald-100"
-                  >
-                    <Copy className="w-3 h-3" />
-                    <span>{copiedCode ? 'Copied!' : `Code: ${generatedOtp}`}</span>
-                  </button>
+                  {demoCode && (
+                    <button
+                      type="button"
+                      onClick={handleCopyOtp}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-emerald-300 text-emerald-900 font-bold text-[11px] hover:bg-emerald-100"
+                    >
+                      <Copy className="w-3 h-3" />
+                      <span>{copiedCode ? 'Copied!' : `Code: ${demoCode}`}</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -856,13 +664,7 @@ export const AuthModal: React.FC<Props> = ({
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                 <button
                   type="button"
-                  onClick={() =>
-                    handleRequestOtp(
-                      otpChannel === 'WHATSAPP_CLOUD'
-                        ? 'DLT_SMS'
-                        : 'WHATSAPP_CLOUD'
-                    )
-                  }
+                  onClick={() => handleRequestOtp()}
                   className="text-blue-700 hover:underline font-semibold"
                 >
                   Resend Verification Code
@@ -878,11 +680,14 @@ export const AuthModal: React.FC<Props> = ({
 
               <button
                 type="submit"
-                className="w-full py-3 px-4 bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs rounded-xl transition-colors flex items-center justify-center gap-2 shadow-xs"
+                disabled={busy}
+                className="w-full py-3 px-4 disabled:opacity-60 bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs rounded-xl transition-colors flex items-center justify-center gap-2 shadow-xs"
               >
                 <KeyRound className="w-4 h-4" />
                 <span>
-                  {authMode === 'register'
+                  {isAdmin
+                    ? 'Verify & Open Admin Console'
+                    : authMode === 'register'
                     ? roleTab === 'worker'
                       ? 'Complete Registration & Open Jobs Feed'
                       : 'Complete Registration & Open Employer Dashboard'

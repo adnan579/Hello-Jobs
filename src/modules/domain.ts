@@ -561,7 +561,7 @@ const ALLOWED_TRANSITIONS: Record<
     { next: 'Withdrawn', allowedRoles: ['worker'] },
   ],
   Accepted: [
-    { next: 'Joined', allowedRoles: ['employer', 'worker', 'admin'] },
+    { next: 'Joined', allowedRoles: ['employer', 'admin'] },
     { next: 'No-show', allowedRoles: ['employer', 'admin'] },
   ],
   Joined: [],

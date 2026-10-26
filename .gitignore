@@ -9,3 +9,6 @@ coverage/
 .aistudio/
 public/assets/aistudio/
 bun.lock
+.local-pg/
+test-results/
+playwright-report/

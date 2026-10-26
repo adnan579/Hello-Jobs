@@ -201,7 +201,7 @@ export interface NcvtCertificate {
   itiCollege: string;
   stateDirectorate: string;
   passingYear: number;
-  grade: 'A+' | 'A' | 'B';
+  grade: 'A+' | 'A' | 'B' | '';
   practicalScore: number;
   maxPracticalScore: number;
   theoryScore: number;

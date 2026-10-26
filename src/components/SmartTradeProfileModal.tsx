@@ -108,9 +108,9 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [currentCity, setCurrentCity] = useState('Patna');
-  const [homeState, setHomeState] = useState('Bihar');
-  const [expectedSalary, setExpectedSalary] = useState(18000);
+  const [currentCity, setCurrentCity] = useState('');
+  const [homeState, setHomeState] = useState('');
+  const [expectedSalary, setExpectedSalary] = useState<number | ''>('');
 
   // Optional ITI fields only if user explicitly expands
   const [showOptionalIti, setShowOptionalIti] = useState(false);
@@ -188,49 +188,45 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
     const newCandidate: CandidateProfile = {
       id: `cand-${Date.now()}`,
       name: finalName,
-      phone: phone.trim() || '+91 98765 43210',
+      phone: phone.trim(),
       avatarSeed: initials,
       trade,
       category,
       readinessBadges: Array.from(
         new Set(['Mobile OTP Verified', ...selectedBadges])
       ),
-      currentCity: currentCity || 'Pune',
-      homeState: homeState || 'Bihar',
-      experienceYears: category === 'unskilled' ? 0 : 1.5,
+      currentCity: currentCity.trim(),
+      homeState: homeState.trim(),
+      experienceYears: 0,
       machinesOperated: defaultSkills,
       ncvtCertificate: {
-        isVerified: hasItiCert,
-        certificateNumber: hasItiCert
-          ? `DGT/NCVT/2024/${Math.floor(100000 + Math.random() * 900000)}`
-          : '',
+        isVerified: false, // only our staff can verify a certificate
+        certificateNumber: '',
         rollNumber: rollNumber.trim(),
-        tradeName: hasItiCert
-          ? `${trade} (NCVT Verified)`
-          : 'No Certificate Required (Work-Readiness Verified)',
-        itiCollege: itiCollege.trim() || 'Direct Shop-Floor Hand (Mobile Verified)',
-        stateDirectorate: homeState || 'State Directorate',
-        passingYear: 2024,
-        grade: 'A',
-        practicalScore: hasItiCert ? 235 : 0,
-        maxPracticalScore: hasItiCert ? 250 : 0,
-        theoryScore: hasItiCert ? 88 : 0,
-        maxTheoryScore: hasItiCert ? 100 : 0,
-        verifiedDate: hasItiCert ? 'NCVT Verified' : 'Mobile OTP Verified',
+        tradeName: hasItiCert ? trade : '',
+        itiCollege: itiCollege.trim(),
+        stateDirectorate: '',
+        passingYear: 0,
+        grade: '',
+        practicalScore: 0,
+        maxPracticalScore: 0,
+        theoryScore: 0,
+        maxTheoryScore: 0,
+        verifiedDate: '',
       },
       hasVideoDemo: false,
       videoDemoTitle: '',
-      expectedSalary: Number(expectedSalary),
+      expectedSalary: Number(expectedSalary) || 0,
       willingToRelocate: selectedBadges.includes('Hostel / Outstation Ready'),
       immediateJoiner: selectedBadges.includes('Immediate Joiner'),
-      preferredHubs: ['Chakan MIDC, Pune', 'Sanand GIDC, Ahmedabad', 'Sector 63, Noida'],
+      preferredHubs: [],
       about: `Reliable ${trade} (${category}). Verified work readiness: ${selectedBadges.join(
         ', '
-      )}. Ready for direct factory payroll with zero middleman cuts.`,
+      )}. Looking for direct factory payroll.`,
       shareToken: `hj-card-${Date.now().toString(36)}`,
       isPubliclyShareable: true,
-      expectedPayMin: Math.max(12000, Number(expectedSalary) - 1500),
-      expectedPayMax: Number(expectedSalary) + 2500,
+      expectedPayMin: Number(expectedSalary) > 0 ? Math.max(0, Number(expectedSalary) - 1500) : 0,
+      expectedPayMax: Number(expectedSalary) > 0 ? Number(expectedSalary) + 2500 : 0,
       adultConfirmedAt: new Date().toLocaleString('en-IN'),
       isFirstTimeEpfoMember: true,
       dpdpConsent: {
@@ -319,7 +315,7 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
               Your Worker Gate-Pass Profile is Ready!
             </h3>
             <p className="text-xs text-slate-600 max-w-sm mx-auto">
-              No certificates or paperwork needed! Your Work-Readiness Badges are now active and visible to 520+ factories.
+              No certificates or paperwork needed! Your Work-Readiness Badges are now active and visible to verified factories.
             </p>
             <div className="pt-2">
               <button
@@ -624,7 +620,7 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
                         type="number"
                         step={500}
                         value={expectedSalary}
-                        onChange={(e) => setExpectedSalary(Number(e.target.value))}
+                        onChange={(e) => setExpectedSalary(e.target.value === '' ? '' : Number(e.target.value))}
                         className="w-full px-3 py-2 text-xs font-mono font-bold text-emerald-700 border border-slate-300 rounded-xl"
                       />
                     </div>

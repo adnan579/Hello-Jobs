@@ -186,7 +186,7 @@ export const WorkerProfileView: React.FC<Props> = ({
     worker.ncvtCertificate.stateDirectorate
   );
   const [passingYear, setPassingYear] = useState(worker.ncvtCertificate.passingYear);
-  const [grade, setGrade] = useState<'A+' | 'A' | 'B'>(worker.ncvtCertificate.grade);
+  const [grade, setGrade] = useState<'A+' | 'A' | 'B' | ''>(worker.ncvtCertificate.grade);
   const [practicalScore, setPracticalScore] = useState(
     worker.ncvtCertificate.practicalScore
   );

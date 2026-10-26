@@ -100,7 +100,7 @@ export const DualLanding: React.FC<Props> = ({
                     className="inline-flex items-center gap-2 px-5 py-3.5 rounded-xl font-extrabold text-sm bg-amber-400 hover:bg-amber-300 text-slate-950 transition-colors shadow-lg cursor-pointer"
                   >
                     <Briefcase className="w-4 h-4" />
-                    <span>Go to Jobs Feed ({liveActiveJobsCount} Live Jobs)</span>
+                    <span>Go to Jobs Feed ({liveActiveJobsCount})</span>
                   </button>
                   <button
                     onClick={() => onSelectRole('worker-profile')}
@@ -426,7 +426,7 @@ export const DualLanding: React.FC<Props> = ({
 
           <div className="space-y-1 p-2 border-l border-slate-100">
             <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 block tabular-nums">
-              {workerCount} Registered
+              {workerCount}
             </span>
             <div className="text-xs font-bold text-slate-900">{t.statWorkers}</div>
             <p className="text-xs text-slate-500">{t.statWorkersDesc}</p>
@@ -434,7 +434,7 @@ export const DualLanding: React.FC<Props> = ({
 
           <div className="space-y-1 p-2 border-l border-slate-100">
             <span className="text-2xl sm:text-3xl font-extrabold text-blue-700 block tabular-nums">
-              {liveActiveJobsCount} Live Jobs
+              {liveActiveJobsCount}
             </span>
             <div className="text-xs font-bold text-slate-900">{t.statFactories}</div>
             <p className="text-xs text-slate-500">{t.statFactoriesDesc}</p>

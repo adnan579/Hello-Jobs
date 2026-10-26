@@ -26,7 +26,8 @@ export default defineConfig({
       PORT: String(PORT),
       DATABASE_URL,
       SESSION_SECRET: 'e2e-secret-e2e-secret-e2e-secret-e2e-secret',
-      ADMIN_BOOTSTRAP_PHONES: '9000000001',
+      ADMIN_BOOTSTRAP_EMAIL: 'owner@hellojobs.test',
+      ADMIN_BOOTSTRAP_PASSWORD: 'E2e-Owner-Password-9',
     },
   },
 });

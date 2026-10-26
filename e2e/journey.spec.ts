@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { totpAt } from '../server/lib/totp.ts';
 
 const GSTIN = '27AAPFU0939F1ZV'; // valid format + checksum
 
@@ -45,12 +46,27 @@ test('factory -> admin approval -> job -> worker applies -> offer -> accept -> b
   await otpLogin(emp, '9823011491');
   await emp.waitForSelector('text=Verification pending');
 
-  // 2. Staff sign in through the hidden #staff link and approve.
-  await adm.goto('/#staff');
-  await adm.waitForSelector('text=Staff Login');
-  await otpLogin(adm, '9000000001');
+  // 2. Staff sign in at /admin (password + authenticator), choose a new password, and approve.
+  await adm.goto('/admin');
+  await adm.getByLabel('Work email').fill('owner@hellojobs.test');
+  await adm.getByLabel('Password').fill('E2e-Owner-Password-9');
+  await adm.getByRole('button', { name: 'Continue' }).click();
+  await adm.waitForSelector('text=Set up your authenticator');
+  const secret = (await adm.locator('code').innerText()).trim();
+  await adm.getByLabel(/6-digit code/).fill(totpAt(secret, Math.floor(Date.now() / 30_000)));
+  await adm.getByRole('button', { name: 'Sign in' }).click();
+  await adm.waitForSelector('text=Set your own password');
+  await adm.getByLabel('Current password').fill('E2e-Owner-Password-9');
+  await adm.locator('input[autocomplete=new-password]').nth(0).fill('E2e-Brand-New-Password-77');
+  await adm.locator('input[autocomplete=new-password]').nth(1).fill('E2e-Brand-New-Password-77');
+  await adm.getByRole('button', { name: 'Change password' }).click();
+  await adm.getByRole('button', { name: 'Verification', exact: true }).click();
+  await adm.getByRole('button', { name: 'Review' }).first().click();
   await adm.getByRole('button', { name: 'Approve' }).click();
-  await expect(adm.getByText('VERIFIED').first()).toBeVisible();
+  await expect(adm.locator('span:text-is("VERIFIED")').first()).toBeVisible();
+  // The public site has no way into the console.
+  const publicHtml = await (await adm.request.get('/')).text();
+  expect(publicHtml).not.toContain('Staff Console');
 
   // 3. Factory posts a job (3 welcome credits were granted on verification).
   await emp.reload();

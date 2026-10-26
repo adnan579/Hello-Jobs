@@ -118,7 +118,7 @@ export async function buildBootstrap(ctx: AppContext, auth: AuthContext | undefi
       db.query(`${JOB_SELECT} WHERE j.employer_id = $1 ORDER BY j.created_at DESC`, [eid]),
       verified
         ? db.query(
-            `${WORKER_SELECT} WHERE w.directory_visible ORDER BY w.updated_at DESC LIMIT 500`
+            `${WORKER_SELECT} WHERE w.directory_visible AND EXISTS (SELECT 1 FROM accounts ac WHERE ac.id = w.account_id AND ac.status = 'active') ORDER BY w.updated_at DESC LIMIT 500`
           )
         : Promise.resolve({ rows: [] as any[] }),
       db.query(`${APPLICATION_SELECT} WHERE a.employer_id = $1 ORDER BY a.created_at DESC LIMIT 1000`, [eid]),
@@ -151,30 +151,6 @@ export async function buildBootstrap(ctx: AppContext, auth: AuthContext | undefi
       retentionCheckIns: checkins.rows.map(checkInView),
       verificationRecords: vr.rows.map(verificationView),
       dpdpAuditLogs: audits.rows.map(auditView),
-    };
-  }
-
-  if (auth.role === 'admin') {
-    const [jobs, workers, vr, reports, grievances, audits, drives] = await Promise.all([
-      db.query(`${JOB_SELECT} ORDER BY j.created_at DESC LIMIT 500`),
-      db.query(`${WORKER_SELECT} ORDER BY w.created_at DESC LIMIT 1000`),
-      db.query(`SELECT * FROM verification_records ORDER BY (status = 'PENDING') DESC, created_at DESC LIMIT 500`),
-      db.query('SELECT * FROM reports ORDER BY created_at DESC LIMIT 500'),
-      db.query('SELECT * FROM grievances ORDER BY created_at DESC LIMIT 500'),
-      db.query('SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 200'),
-      drivesFor('', [], {}),
-    ]);
-    const reportList = reports.rows.map(reportView);
-    return {
-      ...empty,
-      jobs: jobs.rows.map((r) => jobView(r, { owner: true })),
-      candidates: workers.rows.map((r) => workerView(r, 'admin')),
-      verificationRecords: vr.rows.map(verificationView),
-      reports: reportList,
-      feeReports: reportList,
-      dpdpGrievances: grievances.rows.map(grievanceView),
-      dpdpAuditLogs: audits.rows.map(auditView),
-      hiringDrives: drives,
     };
   }
 

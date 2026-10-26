@@ -16,7 +16,7 @@ import { sendOtpApi, signInApi } from '../utils/api';
 
 interface Props {
   isOpen: boolean;
-  initialTab?: 'worker' | 'employer' | 'admin';
+  initialTab?: 'worker' | 'employer';
   initialMode?: 'login' | 'register';
   onClose: () => void;
   /** Called after the server has signed the person in (cookie set). */
@@ -74,7 +74,7 @@ export const AuthModal: React.FC<Props> = ({
   onLoginSuccess,
   onOpenLegalModal,
 }) => {
-  const [roleTab, setRoleTab] = useState<'worker' | 'employer' | 'admin'>(initialTab);
+  const [roleTab, setRoleTab] = useState<'worker' | 'employer'>(initialTab);
   const [authMode, setAuthMode] = useState<'login' | 'register'>(initialMode);
 
   // OTP Verification State
@@ -121,7 +121,6 @@ export const AuthModal: React.FC<Props> = ({
   if (!isOpen) return null;
 
   const activePhone = phoneInput;
-  const isAdmin = roleTab === 'admin';
 
   const handleRequestOtp = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -133,7 +132,7 @@ export const AuthModal: React.FC<Props> = ({
       return;
     }
 
-    if (authMode === 'register' && !isAdmin) {
+    if (authMode === 'register') {
       if (roleTab === 'worker' && (!newWorkerName.trim() || !newWorkerCity.trim() || !newWorkerState.trim())) {
         setAuthError('Please enter your full name, city and home state to register.');
         return;
@@ -198,8 +197,7 @@ export const AuthModal: React.FC<Props> = ({
                   }
                 : undefined,
           }
-        : roleTab === 'employer'
-        ? {
+        : {
             role: 'employer',
             phone: digits,
             code: enteredOtp.trim(),
@@ -217,7 +215,6 @@ export const AuthModal: React.FC<Props> = ({
                   }
                 : undefined,
           }
-        : { role: 'admin', phone: digits, code: enteredOtp.trim(), mode: 'login' }
     );
     setBusy(false);
     if (!res.ok) {
@@ -245,9 +242,7 @@ export const AuthModal: React.FC<Props> = ({
             </div>
             <div>
               <h2 className="text-base font-bold text-white">
-                {isAdmin
-                  ? 'Staff Login'
-                  : authMode === 'register'
+                {authMode === 'register'
                   ? roleTab === 'worker'
                     ? 'Register as a Worker'
                     : 'Register as an Employer'
@@ -256,9 +251,7 @@ export const AuthModal: React.FC<Props> = ({
                   : 'Employer Login'}
               </h2>
               <p className="text-xs text-slate-400">
-                {isAdmin
-                  ? 'For Hello Jobs verification and trust & safety staff'
-                  : roleTab === 'worker'
+                {roleTab === 'worker'
                   ? 'Access the Jobs Feed, apply in 1 click, and manage your profile'
                   : 'Access your Employer Dashboard to post jobs and shortlist candidates'}
               </p>
@@ -274,7 +267,7 @@ export const AuthModal: React.FC<Props> = ({
         </div>
 
         {/* Role Selector Tabs */}
-        {!isAdmin && (
+        {(
         <div className="grid grid-cols-2 bg-slate-100 p-1.5 border-b border-slate-200 shrink-0">
           <button
             type="button"
@@ -315,7 +308,7 @@ export const AuthModal: React.FC<Props> = ({
         {/* Body Content */}
         <div className="p-6 overflow-y-auto space-y-5">
           {/* Login vs Register Mode Switcher */}
-          {!isAdmin && (
+          {(
           <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl text-xs">
             <button
               type="button"
@@ -519,8 +512,6 @@ export const AuthModal: React.FC<Props> = ({
                 <label className="block text-xs font-bold text-slate-800 mb-1.5">
                   {roleTab === 'worker'
                     ? '10-Digit Mobile Number'
-                    : roleTab === 'admin'
-                    ? 'Staff Mobile Number'
                     : 'HR Manager 10-Digit Mobile Number'}
                 </label>
                 <div className="flex items-center gap-2">
@@ -539,7 +530,7 @@ export const AuthModal: React.FC<Props> = ({
               </div>
 
               {/* Clean Legal & Privacy Consent during Registration */}
-              {authMode === 'register' && !isAdmin && (
+              {authMode === 'register' && (
                 <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs text-slate-700">
                   <label className="flex items-start gap-2 cursor-pointer">
                     <input
@@ -614,7 +605,7 @@ export const AuthModal: React.FC<Props> = ({
                 <span>
                   {busy
                     ? 'Sending...'
-                    : authMode === 'register' && !isAdmin
+                    : authMode === 'register'
                     ? 'Send WhatsApp OTP to Register'
                     : 'Send WhatsApp OTP'}
                 </span>
@@ -685,9 +676,7 @@ export const AuthModal: React.FC<Props> = ({
               >
                 <KeyRound className="w-4 h-4" />
                 <span>
-                  {isAdmin
-                    ? 'Verify & Open Admin Console'
-                    : authMode === 'register'
+                  {authMode === 'register'
                     ? roleTab === 'worker'
                       ? 'Complete Registration & Open Jobs Feed'
                       : 'Complete Registration & Open Employer Dashboard'

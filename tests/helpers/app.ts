@@ -3,6 +3,9 @@ import { createApp } from '../../server/app.ts';
 import { loadConfig } from '../../server/config.ts';
 import { createDb, type Db } from '../../server/db.ts';
 import type { AppContext } from '../../server/types.ts';
+import { createAdminAccount } from '../../server/services/adminAccounts.ts';
+import { totpAt } from '../../server/lib/totp.ts';
+import type { AdminRole } from '../../server/lib/permissions.ts';
 
 export interface TestEnv {
   ctx: AppContext;
@@ -79,12 +82,29 @@ export async function registerEmployer(agent: Agent, overrides: Record<string, u
   return { res, phone };
 }
 
-/** Makes an admin account directly in the DB, then signs in through the real OTP flow. */
-export async function loginAdmin(env: TestEnv, agent: Agent, adminRole: 'Verifier' | 'Support' | 'Trust & Safety' = 'Trust & Safety') {
-  const phone = nextPhone();
-  await env.db.query(`INSERT INTO accounts (phone, role, admin_role) VALUES ($1, 'admin', $2)`, [`+91${phone}`, adminRole]);
-  const code = await otpFor(agent, phone, 'admin');
-  const res = await agent.post('/api/auth/verify').send({ role: 'admin', phone, code });
-  if (res.status !== 200) throw new Error(`admin login failed ${res.status} ${JSON.stringify(res.body)}`);
-  return phone;
+export const ADMIN_TEST_PASSWORD = 'Correct-Horse-Battery-42';
+let adminSeq = 0;
+
+/** Creates a staff account in the DB, then signs in through the real password + authenticator flow. */
+export async function loginAdmin(env: TestEnv, agent: Agent, adminRole: AdminRole = 'Trust & Safety', opts: { email?: string } = {}) {
+  const email = opts.email ?? `staff${Date.now()}${++adminSeq}@hellojobs.test`;
+  await env.db.tx((q) => createAdminAccount(q, { email, name: 'Test Staff', role: adminRole, password: ADMIN_TEST_PASSWORD }));
+  await env.db.query('UPDATE admin_credentials SET must_change_password = false WHERE lower(email) = $1', [email]);
+  const first = await agent.post('/api/admin-auth/login').send({ email, password: ADMIN_TEST_PASSWORD });
+  if (first.status !== 200) throw new Error(`admin login failed ${first.status} ${JSON.stringify(first.body)}`);
+  let challenge = first.body.challenge as string;
+  let secret = first.body.secret as string | undefined;
+  if (first.body.next === 'enroll') {
+    const v = await agent.post('/api/admin-auth/verify').send({ challenge, code: totpAt(secret!, Math.floor(Date.now() / 30_000)) });
+    if (v.status !== 200) throw new Error(`admin enroll failed ${v.status} ${JSON.stringify(v.body)}`);
+    return { email, secret: secret! };
+  }
+  throw new Error('unexpected admin login step');
+}
+
+/** A later sign-in for an already enrolled staff account (waits for a fresh 30s step if needed). */
+export async function reloginAdmin(agent: Agent, email: string, secret: string, password = ADMIN_TEST_PASSWORD, step = 1) {
+  const first = await agent.post('/api/admin-auth/login').send({ email, password });
+  if (first.status !== 200) return first;
+  return agent.post('/api/admin-auth/verify').send({ challenge: first.body.challenge, code: totpAt(secret, Math.floor(Date.now() / 30_000) + step) });
 }

@@ -92,7 +92,7 @@ describe('authorisation', () => {
     const w = await worker(env);
     expect((await w.agent.post('/api/jobs').send(JOB)).status).toBe(403);
     expect((await w.agent.post('/api/credits/purchase').send({ packId: 'PACK_10' })).status).toBe(403);
-    expect((await w.agent.post('/api/admin/verify').send({ recordId: 'x', status: 'VERIFIED' })).status).toBe(403);
+    expect((await w.agent.post('/api/admin/verify').send({ recordId: 'x', status: 'VERIFIED' })).status).toBe(401);
   });
 
   it('a factory cannot verify itself', async () => {
@@ -100,7 +100,7 @@ describe('authorisation', () => {
     const { registerEmployer } = await import('./helpers/app.ts');
     await registerEmployer(a);
     const rec = (await env.db.query(`SELECT id FROM verification_records LIMIT 1`)).rows[0];
-    expect((await a.post('/api/admin/verify').send({ recordId: rec.id, status: 'VERIFIED' })).status).toBe(403);
+    expect((await a.post('/api/admin/verify').send({ recordId: rec.id, status: 'VERIFIED' })).status).toBe(401);
     expect((await env.db.query('SELECT kyb_status FROM employers')).rows[0].kyb_status).toBe('PENDING');
   });
 

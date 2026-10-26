@@ -29,7 +29,6 @@ import { WorkerPortal } from './components/WorkerPortal';
 import { EmployerPortal } from './components/EmployerPortal';
 import { WorkerProfileView } from './components/WorkerProfileView';
 import { EmployerProfileView } from './components/EmployerProfileView';
-import { AdminTrustConsole } from './components/AdminTrustConsole';
 import { Footer } from './components/Footer';
 import { NcvtCertificateModal } from './components/NcvtCertificateModal';
 import { DigitalOfferModal } from './components/DigitalOfferModal';
@@ -61,8 +60,6 @@ import {
   eraseDpdpDataApi,
   unlockCandidateContactApi,
   purchaseCreditPackApi,
-  verifyRecordApi,
-  adminUpdateReportStatusApi,
   registerHiringDriveApi,
   submitRetentionCheckInApi,
   updateDpdpConsentApi,
@@ -118,7 +115,7 @@ export default function App() {
   // Modals & Drawers
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalInitialTab, setAuthModalInitialTab] = useState<
-    'worker' | 'employer' | 'admin'
+    'worker' | 'employer'
   >('worker');
   const [authModalInitialMode, setAuthModalInitialMode] = useState<
     'login' | 'register'
@@ -187,21 +184,6 @@ export default function App() {
     return () => clearInterval(interval);
   }, [syncFromBackend]);
 
-  // "#staff" opens the staff login (the admin console is not linked from the public site).
-  useEffect(() => {
-    const check = () => {
-      if (window.location.hash === '#staff') {
-        setAuthModalInitialTab('admin');
-        setAuthModalInitialMode('login');
-        setIsAuthModalOpen(true);
-        history.replaceState(null, '', window.location.pathname);
-      }
-    };
-    check();
-    window.addEventListener('hashchange', check);
-    return () => window.removeEventListener('hashchange', check);
-  }, []);
-
   // Server says our session is gone (expired, revoked elsewhere): drop to the public site.
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => {
@@ -234,7 +216,6 @@ export default function App() {
     const needs: Partial<Record<UserRole, AuthSession['role']>> = {
       'worker-profile': 'worker',
       'employer-profile': 'employer',
-      admin: 'admin',
     };
     const need = needs[currentRole];
     if (need && authSession?.role !== need) setCurrentRole('landing');
@@ -267,7 +248,6 @@ export default function App() {
     const role = data?.session?.role;
     if (role === 'worker') handleRoleChange('worker');
     else if (role === 'employer') handleRoleChange('employer-profile');
-    else if (role === 'admin') handleRoleChange('admin');
   };
 
   const handleLogout = async () => {
@@ -368,23 +348,6 @@ export default function App() {
     packId: 'PACK_10' | 'PACK_25' | 'PACK_100'
   ) => {
     await run(purchaseCreditPackApi(packId, employerProfile));
-  };
-
-  const handleVerifyRecord = async (
-    id: string,
-    status: 'VERIFIED' | 'REJECTED',
-    reasonCode?: string,
-    reviewerNotes?: string
-  ) => {
-    await run(verifyRecordApi(id, status, reasonCode, reviewerNotes));
-  };
-
-  const handleUpdateFeeReportStatus = async (
-    id: string,
-    status: NonNullable<FeeReport['status']>,
-    opts?: { pauseFactory?: boolean; resumeFactory?: boolean }
-  ) => {
-    await run(adminUpdateReportStatusApi(id, status, undefined, opts?.pauseFactory, opts?.resumeFactory));
   };
 
   const handleRegisterDrive = async (driveId: string) => {
@@ -563,24 +526,6 @@ export default function App() {
             onOpenPostJob={() => setIsPostJobOpen(true)}
             onBrowseTalent={() => handleRoleChange('employer')}
             onLogout={handleLogout}
-          />
-        )}
-
-        {currentRole === 'admin' && (
-          <AdminTrustConsole
-            verificationRecords={verificationRecords}
-            feeReports={feeReports}
-            jobs={jobs}
-            notifications={notifications}
-            candidates={candidates}
-            applications={applications}
-            offers={offers}
-            adminRole={authSession?.adminRole}
-            onVerifyRecord={handleVerifyRecord}
-            onUpdateReportStatus={handleUpdateFeeReportStatus}
-            onViewAsUser={(role) =>
-              handleRoleChange(role === 'worker' ? 'worker' : 'employer-profile')
-            }
           />
         )}
       </main>

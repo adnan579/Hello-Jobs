@@ -5,7 +5,11 @@ export interface AuthContext {
   sessionId: string;
   accountId: string;
   role: 'worker' | 'employer' | 'admin';
-  adminRole?: 'Verifier' | 'Support' | 'Trust & Safety';
+  adminRole?: import('./lib/permissions.ts').AdminRole;
+  /** Admin sessions only */
+  email?: string;
+  displayName?: string;
+  mustChangePassword?: boolean;
   phone: string;
   /** Present for role=worker */
   workerId?: string;
@@ -31,6 +35,8 @@ declare global {
   namespace Express {
     interface Request {
       auth?: AuthContext;
+      /** Set only for a valid admin console session (cookie hj_admin). */
+      admin?: AuthContext;
       ctx: AppContext;
     }
   }

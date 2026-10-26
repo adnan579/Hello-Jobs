@@ -7,7 +7,7 @@ A two-way marketplace for blue and grey-collar manufacturing work in India. Veri
 | Area | Status |
 | --- | --- |
 | Worker and factory sign-up with a 6-digit login code | Works. Codes go out over WhatsApp once you connect the Meta WhatsApp Cloud API (see `docs/DEPLOY.md`). No SMS provider is built. |
-| Factory verification | A staff member checks the GSTIN on the official GST portal and approves it in the staff console (`/#staff`). The server checks the GSTIN format and checksum. |
+| Factory verification | A staff member checks the GSTIN on the official GST portal and approves it in the staff console (`/admin`, password + authenticator app). The server checks the GSTIN format and checksum. |
 | Jobs, applications, shortlist, interview, offer, accept, joined | Works and is covered by API tests and a browser test. Joining needs both the worker and the factory. |
 | Talent directory | Verified factories only. Phone numbers are masked until the worker applies or the factory spends a credit. |
 | Credits and invoices | Server-owned prices. Razorpay Checkout, signature check and webhook are written but not yet tried against a live Razorpay account. |
@@ -30,7 +30,7 @@ Folder map: `server/` (API), `src/` (UI), `server/migrations/` (SQL), `tests/` (
 npm install
 npm run db:local          # starts a throwaway PostgreSQL on port 54329 (leave it running)
 cp .env.example .env      # then set DATABASE_URL=postgres://hj:hj@localhost:54329/hellojobs_test
-                          # and SESSION_SECRET to any 32+ characters, ADMIN_BOOTSTRAP_PHONES to your number
+                          # and SESSION_SECRET to any 32+ characters, ADMIN_BOOTSTRAP_EMAIL and ADMIN_BOOTSTRAP_PASSWORD for your first admin
 npm run dev               # http://localhost:3000
 ```
 

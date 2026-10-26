@@ -42,6 +42,8 @@ import { NcvtSearchModal } from './components/NcvtSearchModal';
 import { AuthModal } from './components/AuthModal';
 import { LegalModal } from './components/LegalModal';
 import { DpdpComplianceModal } from './components/DpdpComplianceModal';
+import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { stopJobAudio } from './utils/audioNarrator';
 import {
   fetchBootstrap,
@@ -872,6 +874,8 @@ export default function App() {
           handleInspectCertificate(c);
         }}
       />
+      <Analytics />
+      <SpeedInsights />
     </div>
   );
 }

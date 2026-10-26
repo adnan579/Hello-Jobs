@@ -38,6 +38,8 @@ Open `https://your-site/#staff`. Enter your number. Until WhatsApp is connected 
 3. Add `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` in Vercel. Do a ₹1 test purchase first.
 4. Until then factories cannot buy credits in production, which is intentional.
 
+See `docs/ENVIRONMENT.md` for every setting and how to keep things running smoothly. Run `npm run doctor` to check yours.
+
 ## 7. Day-to-day
 - New factories appear in the staff console under **Verification queue**. Check the GSTIN on services.gst.gov.in, then press Approve.
 - Fee complaints appear under **Trust & safety**.

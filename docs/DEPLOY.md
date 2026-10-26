@@ -16,14 +16,20 @@ Make a long random text for `SESSION_SECRET`: open any password generator in you
    - `DATABASE_URL` — from step 1
    - `SESSION_SECRET` — from step 2
    - `APP_URL` — your site address, for example `https://hello-jobs.vercel.app` (edit after the first deploy if it differs)
-   - `ADMIN_BOOTSTRAP_PHONES` — your own 10-digit mobile number
+   - `ADMIN_BOOTSTRAP_EMAIL` — your email (this becomes the first Super Admin)
+   - `ADMIN_BOOTSTRAP_PASSWORD` — a temporary password, 12+ characters (you change it at first sign-in)
    - `CRON_SECRET` — another long random text
 4. Press **Deploy**. The database tables are created automatically on the first visit.
 
-## 4. First login (staff)
-Open `https://your-site/#staff`. Enter your number. Until WhatsApp is connected (step 5) production hides the code, so for the very first pilot only:
-- add `OTP_DEMO_MODE` = `true` and `OTP_DEMO_ALLOWLIST` = your own number in Vercel, redeploy. The code shows on screen only for that number.
-- Remove both variables as soon as WhatsApp works.
+## 4. First login (staff console)
+1. Open `https://your-site/admin` (the address is not linked from the public site).
+2. Sign in with the bootstrap email and temporary password.
+3. Scan the QR code with Google Authenticator or Microsoft Authenticator, then type the 6-digit code.
+4. Choose your own password when asked.
+5. **Go to Vercel → Settings → Environment Variables and delete `ADMIN_BOOTSTRAP_PASSWORD`, then redeploy.** It is only needed once.
+6. In the console open **Staff** to add colleagues with the right role (Super Admin, Trust & Safety, Verifier, Support, Finance).
+
+Lost your phone or locked out as the only Super Admin? Set `ADMIN_BOOTSTRAP_RESET` = `true` (with the bootstrap email and password still set) for one deploy, sign in again, then remove all three. See `docs/ADMIN_CONSOLE_PLAN.md` for what each role can do.
 
 ## 5. WhatsApp login codes (Meta)
 1. business.facebook.com → create a business account, then WhatsApp → add a phone number you control.

@@ -24,6 +24,13 @@ export interface Config {
     razorpayWebhookSecret?: string;
   };
   cronSecret?: string;
+  admin: {
+    /** Key material for encrypting authenticator secrets. */
+    totpKey: string;
+    bootstrapEmail?: string;
+    bootstrapPassword?: string;
+    bootstrapReset: boolean;
+  };
 }
 
 type Env = Record<string, string | undefined>;
@@ -77,5 +84,11 @@ export function loadConfig(env: Env = process.env): Config {
       razorpayWebhookSecret: env.RAZORPAY_WEBHOOK_SECRET,
     },
     cronSecret: env.CRON_SECRET,
+    admin: {
+      totpKey: env.ADMIN_2FA_KEY || sessionSecret || 'dev-only-secret-do-not-use-in-production-0000',
+      bootstrapEmail: env.ADMIN_BOOTSTRAP_EMAIL?.trim().toLowerCase() || undefined,
+      bootstrapPassword: env.ADMIN_BOOTSTRAP_PASSWORD || undefined,
+      bootstrapReset: env.ADMIN_BOOTSTRAP_RESET === 'true',
+    },
   };
 }

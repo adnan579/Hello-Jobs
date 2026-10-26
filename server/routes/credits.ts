@@ -20,7 +20,7 @@ creditsRouter.post(
     await req.ctx.db.tx(async (q) => {
       const emp = (await q.query('SELECT * FROM employers WHERE id = $1 FOR UPDATE', [eid])).rows[0];
       if (emp.kyb_status !== 'VERIFIED' || emp.paused) throw forbidden('Your factory must be verified before you can unlock worker phone numbers.');
-      const w = (await q.query('SELECT id, name, trade FROM workers WHERE id = $1 AND directory_visible', [candidateId])).rows[0];
+      const w = (await q.query("SELECT w.id, w.name, w.trade FROM workers w WHERE w.id = $1 AND w.directory_visible AND EXISTS (SELECT 1 FROM accounts ac WHERE ac.id = w.account_id AND ac.status = 'active')", [candidateId])).rows[0];
       if (!w) throw notFound('Candidate not found.');
       const already = await q.query('SELECT 1 FROM contact_unlocks WHERE employer_id = $1 AND worker_id = $2', [eid, candidateId]);
       if (already.rowCount) return; // idempotent: never charge twice

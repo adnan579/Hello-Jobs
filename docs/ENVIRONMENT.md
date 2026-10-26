@@ -22,7 +22,8 @@ Never point preview at the production database. Never reuse `SESSION_SECRET` bet
 | `DATABASE_URL` | Neon connection string ending `?sslmode=require` | The site shows "starting up or misconfigured" |
 | `SESSION_SECRET` | 48+ random characters, kept secret | Server refuses to start |
 | `APP_URL` | `https://your-domain` | Cross-site protection is looser; cookies and links can break |
-| `ADMIN_BOOTSTRAP_PHONES` | Your 10-digit number(s), comma separated | No staff, so no factory can be verified |
+| `ADMIN_BOOTSTRAP_EMAIL` + `ADMIN_BOOTSTRAP_PASSWORD` | Your email and a temporary 12+ character password. Delete the password after first sign-in | Nobody can reach `/admin` until a Super Admin exists |
+| `ADMIN_2FA_KEY` (optional) | Long random text that encrypts staff authenticator secrets. Defaults to `SESSION_SECRET`. Do not change after staff enrol | Changing it forces everyone to re-enrol |
 
 **Login codes (WhatsApp)**: `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_OTP_TEMPLATE`, optional `WHATSAPP_OTP_LANGUAGE`, `WHATSAPP_API_VERSION`. Without them production cannot send codes.
 
@@ -43,5 +44,5 @@ Never point preview at the production database. Never reuse `SESSION_SECRET` bet
 - **Health check:** `GET /api/health` returns `{"ok":true}` when the database answers. Point a free uptime monitor (UptimeRobot) at it.
 - **Logs:** production writes one JSON line per API call (method, path, status, milliseconds). No phone numbers or bodies. Read them in Vercel → Logs.
 - **Secrets:** change `SESSION_SECRET` only when you want everyone logged out. Rotate WhatsApp and Razorpay tokens if they ever leak.
-- **After every deploy:** open `/api/health`, then sign in at `/#staff`.
+- **After every deploy:** open `/api/health`, then sign in at `/admin`.
 - **Backups:** Neon keeps history. Also export the audit log monthly if your lawyer asks for it.

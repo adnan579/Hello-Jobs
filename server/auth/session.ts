@@ -2,7 +2,8 @@ import type { Request, Response, NextFunction } from 'express';
 import type { Queryable } from '../db.ts';
 import type { AppContext, AuthContext } from '../types.ts';
 import { newToken, sha256 } from '../lib/ids.ts';
-import { forbidden, unauthorized } from '../lib/errors.ts';
+import { HttpError, forbidden, unauthorized } from '../lib/errors.ts';
+import { can } from '../lib/permissions.ts';
 
 export const COOKIE_NAME = 'hj_session';
 export const SESSION_TTL_SEC = 60 * 60 * 24 * 30;
@@ -70,7 +71,7 @@ export async function loadAuth(ctx: AppContext, token: string | undefined): Prom
        JOIN accounts a ON a.id = s.account_id
        LEFT JOIN workers w ON w.account_id = a.id
        LEFT JOIN employer_members m ON m.account_id = a.id
-      WHERE s.token_hash = $1 AND s.revoked_at IS NULL AND s.expires_at > now() AND a.status = 'active'`,
+      WHERE s.token_hash = $1 AND s.kind = 'user' AND a.role <> 'admin' AND s.revoked_at IS NULL AND s.expires_at > now() AND a.status = 'active'`,
     [sha256(token)]
   );
   const r = rows[0];
@@ -91,12 +92,60 @@ export async function loadAuth(ctx: AppContext, token: string | undefined): Prom
   };
 }
 
+// ---------- Admin console sessions ----------
+export const ADMIN_COOKIE = 'hj_admin';
+export const ADMIN_IDLE_SEC = 30 * 60;
+export const ADMIN_ABSOLUTE_SEC = 12 * 60 * 60;
+
+export async function createAdminSession(q: Queryable, input: { accountId: string; ip: string; device: string }): Promise<{ token: string; id: string }> {
+  const token = newToken(32);
+  const { rows } = await q.query<{ id: string }>(
+    `INSERT INTO sessions (account_id, token_hash, device_label, ip, kind, expires_at, absolute_expires_at)
+     VALUES ($1, $2, $3, $4, 'admin', now() + make_interval(secs => $5), now() + make_interval(secs => $6)) RETURNING id`,
+    [input.accountId, sha256(token), input.device.slice(0, 120), input.ip, ADMIN_IDLE_SEC, ADMIN_ABSOLUTE_SEC]
+  );
+  await q.query('UPDATE accounts SET last_login_at = now() WHERE id = $1', [input.accountId]);
+  return { token, id: rows[0].id };
+}
+
+export function setAdminCookie(res: Response, token: string, secure: boolean): void {
+  res.cookie(ADMIN_COOKIE, token, { httpOnly: true, sameSite: 'strict', secure, path: '/', maxAge: ADMIN_ABSOLUTE_SEC * 1000 });
+}
+export function clearAdminCookie(res: Response, secure: boolean): void {
+  res.clearCookie(ADMIN_COOKIE, { httpOnly: true, sameSite: 'strict', secure, path: '/' });
+}
+
+export async function loadAdminAuth(ctx: AppContext, token: string | undefined): Promise<AuthContext | null> {
+  if (!token || token.length < 20 || token.length > 200) return null;
+  const { rows } = await ctx.db.query<any>(
+    `SELECT s.id AS session_id, s.last_seen_at, a.id AS account_id, a.admin_role, c.email, c.display_name, c.must_change_password
+       FROM sessions s
+       JOIN accounts a ON a.id = s.account_id AND a.role = 'admin' AND a.status = 'active'
+       JOIN admin_credentials c ON c.account_id = a.id
+      WHERE s.token_hash = $1 AND s.kind = 'admin' AND s.revoked_at IS NULL
+        AND s.expires_at > now() AND s.absolute_expires_at > now()`,
+    [sha256(token)]
+  );
+  const r = rows[0];
+  if (!r) return null;
+  // Slide the idle window forward (at most once a minute), never past the absolute limit.
+  if (Date.now() - new Date(r.last_seen_at).getTime() > 60_000) {
+    await ctx.db.query(
+      `UPDATE sessions SET last_seen_at = now(), expires_at = LEAST(now() + make_interval(secs => $2), absolute_expires_at) WHERE id = $1`,
+      [r.session_id, ADMIN_IDLE_SEC]
+    );
+  }
+  return { sessionId: r.session_id, accountId: r.account_id, role: 'admin', adminRole: r.admin_role, phone: '', email: r.email, displayName: r.display_name, mustChangePassword: r.must_change_password };
+}
+
 export function attachAuth(ctx: AppContext) {
   return async (req: Request, _res: Response, next: NextFunction) => {
     req.ctx = ctx;
     try {
       const token = parseCookies(req.headers.cookie)[COOKIE_NAME];
       req.auth = (await loadAuth(ctx, token)) ?? undefined;
+      const adminToken = parseCookies(req.headers.cookie)[ADMIN_COOKIE];
+      if (adminToken) req.admin = (await loadAdminAuth(ctx, adminToken)) ?? undefined;
       next();
     } catch (err) {
       next(err);
@@ -117,12 +166,13 @@ export function requireRole(...roles: AuthContext['role'][]) {
   };
 }
 
-export function requireAdminRole(...adminRoles: NonNullable<AuthContext['adminRole']>[]) {
+/** Admin API guard: a valid admin session, a finished password change, and the permission for this area. */
+export function requireAdmin(permission?: import('../lib/permissions.ts').Permission) {
   return (req: Request, _res: Response, next: NextFunction) => {
-    if (!req.auth) return next(unauthorized());
-    if (req.auth.role !== 'admin' || !req.auth.adminRole || !adminRoles.includes(req.auth.adminRole)) {
-      return next(forbidden());
-    }
+    if (!req.admin) return next(unauthorized('Please sign in to the admin console.'));
+    if (req.admin.mustChangePassword) return next(new HttpError(403, 'You must choose a new password first.', { code: 'PASSWORD_CHANGE_REQUIRED' }));
+    if (permission && !can(req.admin.adminRole, permission)) return next(forbidden('Your role does not allow this.'));
+    req.auth = req.admin; // so shared helpers (audit, respond) see the staff member
     next();
   };
 }

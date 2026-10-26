@@ -13,6 +13,7 @@ import { applicationsRouter } from './routes/applications.ts';
 import { offersRouter } from './routes/offers.ts';
 import { creditsRouter, webhookRouter } from './routes/credits.ts';
 import { adminRouter } from './routes/admin.ts';
+import { adminAuthRouter } from './routes/adminAuth.ts';
 import { communityRouter } from './routes/community.ts';
 import { dpdpRouter } from './routes/dpdp.ts';
 import { cronRouter } from './routes/cron.ts';
@@ -118,7 +119,7 @@ export function createApp(ctx: AppContext): express.Express {
     }
   });
 
-  for (const r of [authRouter, bootstrapRouter, workersRouter, employersRouter, jobsRouter, applicationsRouter, offersRouter, creditsRouter, webhookRouter, adminRouter, communityRouter, dpdpRouter, cronRouter]) {
+  for (const r of [authRouter, bootstrapRouter, workersRouter, employersRouter, jobsRouter, applicationsRouter, offersRouter, creditsRouter, webhookRouter, adminAuthRouter, adminRouter, communityRouter, dpdpRouter, cronRouter]) {
     app.use('/api', r);
   }
 

@@ -27,8 +27,11 @@ export function reviewConfig(config: Config, env: Env = process.env): Finding[] 
     if (config.appUrl && !config.appUrl.startsWith('https://')) add('warn', 'Security', 'APP_URL is not https. Login cookies are marked Secure in production and will not work over plain http.');
   }
 
-  const phones = (env.ADMIN_BOOTSTRAP_PHONES ?? '').split(/[,;\s]+/).filter(Boolean);
-  add(phones.length ? 'ok' : 'warn', 'Staff', phones.length ? `${phones.length} staff number(s) will be created as admins.` : 'ADMIN_BOOTSTRAP_PHONES is empty. Nobody can verify factories until you create an admin (npm run admin:create).');
+  const email = (env.ADMIN_BOOTSTRAP_EMAIL ?? '').trim();
+  const pw = env.ADMIN_BOOTSTRAP_PASSWORD ?? '';
+  add(email && pw ? 'warn' : 'ok', 'Staff', email && pw
+    ? 'ADMIN_BOOTSTRAP_PASSWORD is set. After your first sign-in and password change, delete that variable.'
+    : 'No bootstrap variables set. That is fine once a Super Admin exists. For the first one set ADMIN_BOOTSTRAP_EMAIL and ADMIN_BOOTSTRAP_PASSWORD.');
 
   if (config.whatsapp) add('ok', 'Login codes', 'WhatsApp delivery is configured.');
   else if (config.otp.demoMode) add('warn', 'Login codes', `Pilot mode: codes are SHOWN ON SCREEN for ${config.otp.demoAllowlist.length} allow-listed number(s). Turn off before real users.`);

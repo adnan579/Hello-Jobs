@@ -3,7 +3,7 @@ import { loadConfig } from './config.ts';
 import { formatFindings, reviewConfig } from './lib/doctor.ts';
 import { createDb, migrate, type Db } from './db.ts';
 import { createApp } from './app.ts';
-import { normalizeIndianPhone } from './lib/phone.ts';
+import { ensureBootstrapAdmin } from './services/adminAccounts.ts';
 import type { AppContext } from './types.ts';
 
 /**
@@ -27,16 +27,7 @@ export function createServerApp(): express.Express {
       const applied = await migrate(db);
       if (applied.length) console.log(`[db] applied migrations: ${applied.join(', ')}`);
     }
-    // Browser-only way to create the first admin(s): list their mobile numbers in ADMIN_BOOTSTRAP_PHONES.
-    for (const raw of (process.env.ADMIN_BOOTSTRAP_PHONES ?? '').split(/[,;\s]+/).filter(Boolean)) {
-      const phone = normalizeIndianPhone(raw);
-      if (phone) {
-        await db.query(
-          `INSERT INTO accounts (phone, role, admin_role) VALUES ($1, 'admin', 'Trust & Safety') ON CONFLICT (phone, role) DO NOTHING`,
-          [phone]
-        );
-      }
-    }
+    await ensureBootstrapAdmin(db, config);
     const ctx: AppContext = { db, config, deps: { fetch: globalThis.fetch, now: () => new Date() } };
     return createApp(ctx);
   };

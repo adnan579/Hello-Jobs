@@ -95,7 +95,7 @@ authRouter.post(
     const { phone, role } = body;
     const ip = clientIp(req);
 
-    if (body.mode === 'register' && role !== 'admin') {
+    if (body.mode === 'register') {
       if (!body.adultConfirmed) throw badRequest('Please confirm that you are 18 years of age or older.');
       if (!body.termsAccepted) throw badRequest('Please accept the Terms and Privacy Policy to create an account.');
       if (role === 'worker' && !body.registration) throw badRequest('Please fill in your name, trade and city.');
@@ -114,7 +114,7 @@ authRouter.post(
       if (found.rows[0] && found.rows[0].status !== 'active') throw forbidden('This account is not active. Please contact support.');
 
       if (!accountId) {
-        if (body.mode !== 'register' || role === 'admin') throw notFound('No account found for this number. Please register first.');
+        if (body.mode !== 'register') throw notFound('No account found for this number. Please register first.');
         const ins = await q.query<{ id: string }>('INSERT INTO accounts (phone, role) VALUES ($1, $2) RETURNING id', [phone, role]);
         accountId = ins.rows[0].id;
         isNew = true;

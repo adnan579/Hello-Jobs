@@ -10,7 +10,7 @@ const MAX_ATTEMPTS_PER_CODE = 5;
 const MAX_FAILS_BEFORE_LOCK = 10;
 const LOCK_SEC = 3600;
 
-export type OtpRole = 'worker' | 'employer' | 'admin';
+export type OtpRole = 'worker' | 'employer';
 
 export function generateCode(): string {
   return String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
@@ -44,12 +44,6 @@ export async function sendOtp(
     }
     console.error('[otp] No OTP provider configured. Set WHATSAPP_* variables, or OTP_DEMO_MODE=true with OTP_DEMO_ALLOWLIST for a private test.');
     return { ok: false, status: 503, error: 'Login codes cannot be sent right now. Please try again later.' };
-  }
-
-  // Admin accounts are created by hand. Do not reveal whether a number is an admin.
-  if (role === 'admin') {
-    const { rowCount } = await db.query("SELECT 1 FROM accounts WHERE phone = $1 AND role = 'admin' AND status = 'active'", [phone]);
-    if (!rowCount) return { ok: true, channel: 'whatsapp', expiresInSec: OTP_TTL_SEC, resendAfterSec: OTP_RESEND_AFTER_SEC };
   }
 
   const locked = await lockedUntil(db, `otp-lock:${phone}`);

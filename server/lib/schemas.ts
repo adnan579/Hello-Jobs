@@ -26,7 +26,7 @@ export const languageField = z.enum(['en', 'hi', 'mr', 'ta']);
 // ---------- Auth ----------
 export const otpSendSchema = z.object({
   phone: phoneField,
-  role: z.enum(['worker', 'employer', 'admin']),
+  role: z.enum(['worker', 'employer']),
 });
 
 export const workerRegistration = z.object({
@@ -76,13 +76,6 @@ export const authVerifySchema = z.discriminatedUnion('role', [
     adultConfirmed: z.boolean().optional(),
     termsAccepted: z.boolean().optional(),
     registration: employerRegistration.optional(),
-  }),
-  z.object({
-    role: z.literal('admin'),
-    phone: phoneField,
-    code: z.string().trim().length(6),
-    mode: z.literal('login').default('login'),
-    deviceLabel: str(120).optional(),
   }),
 ]);
 

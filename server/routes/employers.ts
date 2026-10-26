@@ -66,7 +66,7 @@ employersRouter.post(
     const eid = employerWriter(req);
     const candidateId = String(req.body?.candidateId ?? '');
     if (!candidateId) throw badRequest('Missing candidateId');
-    const w = (await req.ctx.db.query('SELECT 1 FROM workers WHERE id = $1 AND directory_visible', [candidateId])).rowCount;
+    const w = (await req.ctx.db.query("SELECT 1 FROM workers w WHERE w.id = $1 AND w.directory_visible AND EXISTS (SELECT 1 FROM accounts ac WHERE ac.id = w.account_id AND ac.status = 'active')", [candidateId])).rowCount;
     const already = (await req.ctx.db.query('SELECT 1 FROM shortlists WHERE employer_id = $1 AND worker_id = $2', [eid, candidateId])).rowCount;
     if (already) await req.ctx.db.query('DELETE FROM shortlists WHERE employer_id = $1 AND worker_id = $2', [eid, candidateId]);
     else if (w) await req.ctx.db.query('INSERT INTO shortlists (employer_id, worker_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [eid, candidateId]);

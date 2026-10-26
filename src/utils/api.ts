@@ -101,7 +101,7 @@ export async function fetchBootstrap(): Promise<BootstrapPayload | null> {
 
 export async function sendOtpApi(
   phone: string,
-  role: 'worker' | 'employer' | 'admin'
+  role: 'worker' | 'employer'
 ): Promise<{ ok: true; demoCode?: string } | { ok: false; error: string }> {
   const r = await request<{ demoCode?: string }>('POST', '/api/otp/send', { phone, role }, { quiet: true });
   return r.ok ? { ok: true, demoCode: r.data.demoCode } : { ok: false, error: r.error };
@@ -231,32 +231,6 @@ export async function purchaseCreditPackApi(
     });
     rzp.open();
   });
-}
-
-// ---------- admin ----------
-export const adminVerifyRecordApi = (
-  recordId: string,
-  status: 'VERIFIED' | 'REJECTED' | 'Verified' | 'Rejected',
-  reasonCode?: string,
-  reviewerNotes?: string
-) => snap('POST', '/api/admin/verify', { recordId, status, reasonCode, reviewerNotes });
-export const verifyRecordApi = adminVerifyRecordApi;
-
-export const adminUpdateReportStatusApi = (
-  reportId: string,
-  status: WhistleblowerReport['status'],
-  outcomeNote?: string,
-  pauseFactoryPostings?: boolean,
-  resumeFactoryPostings?: boolean
-) => snap('PATCH', `/api/admin/reports/${reportId}`, { status, outcomeNote, pauseFactoryPostings, resumeFactoryPostings });
-
-export async function updateFeeReportStatusApi(reportId: string, status: WhistleblowerReport['status']): Promise<WhistleblowerReport[] | null> {
-  const r = await adminUpdateReportStatusApi(reportId, status);
-  return r ? r.reports : null;
-}
-
-export async function adminUpdateGrievanceApi(id: string, status: DpdpGrievanceTicket['status']) {
-  return snap('PATCH', `/api/admin/grievances/${id}`, { status });
 }
 
 // ---------- community ----------

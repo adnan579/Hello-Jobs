@@ -212,9 +212,15 @@ describe('workflow integrity', () => {
     expect((await w.agent.patch(`/api/offers/${offerId}/status`).send({ status: 'Joined Confirmed' })).status).toBe(200);
     expect((await w.agent.patch(`/api/offers/${offerId}/status`).send({ status: 'Joined Confirmed' })).status).toBe(400);
 
-    const row = (await env.db.query('SELECT status FROM applications WHERE id = $1', [appId])).rows[0];
-    expect(row.status).toBe('Joined');
+    // The worker's claim alone must not fill a vacancy.
+    expect((await env.db.query('SELECT status FROM applications WHERE id = $1', [appId])).rows[0].status).toBe('Accepted');
+    expect((await env.db.query('SELECT vacancies_left FROM jobs WHERE id = $1', [job.id])).rows[0].vacancies_left).toBe(2);
+    expect((await w.agent.patch(`/api/applications/${appId}`).send({ status: 'Joined' })).status).toBe(400);
+
+    expect((await e.agent.patch(`/api/applications/${appId}`).send({ status: 'Joined' })).status).toBe(200);
+    expect((await env.db.query('SELECT status FROM applications WHERE id = $1', [appId])).rows[0].status).toBe('Joined');
     expect((await env.db.query('SELECT vacancies_left FROM jobs WHERE id = $1', [job.id])).rows[0].vacancies_left).toBe(1);
+    expect((await env.db.query('SELECT status FROM offers WHERE id = $1', [offerId])).rows[0].status).toBe('Joined Confirmed');
   });
 });
 

@@ -1,3 +1,4 @@
+import { canTransitionPipeline } from '../modules/domain';
 import React, { useState } from 'react';
 import {
   EmployerFactoryProfile,
@@ -702,7 +703,13 @@ export const EmployerProfileView: React.FC<Props> = ({
                                     'Declined',
                                     'Rejected',
                                     'No-show',
-                                  ].map((st) => (
+                                  ].filter(
+                                    (st) =>
+                                      st === app.status ||
+                                      (st !== 'Offer Issued' &&
+                                        st !== 'Accepted' &&
+                                        canTransitionPipeline('employer', app.status as any, st as any))
+                                  ).map((st) => (
                                     <option key={st} value={st}>
                                       {st}
                                     </option>
@@ -758,13 +765,7 @@ export const EmployerProfileView: React.FC<Props> = ({
                                 {matchedCandidate && (
                                   <button
                                     type="button"
-                                    onClick={() => {
-                                      onUpdateApplicationStatus(
-                                        app.id,
-                                        'Offer Issued'
-                                      );
-                                      onOpenIssueOffer(matchedCandidate);
-                                    }}
+                                    onClick={() => onOpenIssueOffer(matchedCandidate)}
                                     className="px-2.5 py-1 text-[11px] font-extrabold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded"
                                   >
                                     Issue Offer

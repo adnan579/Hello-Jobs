@@ -114,6 +114,7 @@ applicationsRouter.patch(
         await appendHistory(q, row.id, nextStatus, event(nextStatus, role, actorName, body.note ?? body.declineOrRejectReason), extra);
         if (nextStatus === 'Joined') {
           await markJoined(q, row.id, row.job_id);
+          await q.query(`UPDATE offers SET status = 'Joined Confirmed', updated_at = now() WHERE application_id = $1 AND status = 'Accepted' AND COALESCE((data->>'workerConfirmedJoining')::boolean, false)`, [row.id]);
           if (!isWorker) extra.factoryMarkedJoinedAt = fmtDateTime(new Date());
         }
         const eventType = nextStatus === 'Interview' ? 'INTERVIEW_SET' : nextStatus === 'Joined' ? 'JOINING_CONFIRMED' : 'SHORTLISTED';

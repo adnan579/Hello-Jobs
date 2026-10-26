@@ -8,7 +8,7 @@ import { newId } from '../lib/ids.ts';
 import { notify } from '../lib/audit.ts';
 import { respond } from '../lib/respond.ts';
 import { fmtDateTime } from '../lib/format.ts';
-import { appendHistory, markJoined } from './applications.ts';
+import { appendHistory } from './applications.ts';
 import { OFFER_SELECT, offerView } from '../services/serialize.ts';
 
 export const offersRouter = Router();
@@ -82,17 +82,23 @@ offersRouter.patch(
 
       const data = { ...o.data };
       if (body.declineReason) data.declineReason = body.declineReason;
-      if (body.status === 'Joined Confirmed') data.workerConfirmedJoining = true;
-      await q.query('UPDATE offers SET status = $2, data = $3, updated_at = now() WHERE id = $1', [o.id, body.status, JSON.stringify(data)]);
+      const isJoinClaim = body.status === 'Joined Confirmed';
+      // Joining needs BOTH sides: the worker says they reported, the factory marks them Joined.
+      // The worker alone cannot fill a vacancy.
+      if (isJoinClaim && o.data?.workerConfirmedJoining) throw badRequest('You have already confirmed joining. Waiting for the factory to confirm.');
+      if (isJoinClaim) data.workerConfirmedJoining = true;
+      const newOfferStatus = isJoinClaim ? (o.app_status === 'Joined' ? 'Joined Confirmed' : 'Accepted') : body.status;
+      await q.query('UPDATE offers SET status = $2, data = $3, updated_at = now() WHERE id = $1', [o.id, newOfferStatus, JSON.stringify(data)]);
 
-      const stage = body.status === 'Accepted' ? 'Accepted' : body.status === 'Declined' ? 'Declined' : 'Joined';
       const note = body.status === 'Declined' ? `Declined the offer${body.declineReason ? `: ${body.declineReason}` : ''}` : body.status === 'Accepted' ? 'Accepted the offer' : 'Confirmed joining';
-      const extra: Record<string, unknown> = {};
-      if (body.status === 'Declined') extra.declineOrRejectReason = body.declineReason;
-      if (body.status === 'Joined Confirmed') extra.workerConfirmedJoining = true;
-      const wasJoined = o.app_status === 'Joined';
-      await appendHistory(q, o.application_id, stage, { id: newId('ev'), stage, toStage: stage, actorRole: 'worker', actor: 'worker', actorName: o.worker_name, timestamp: fmtDateTime(new Date()), note }, extra);
-      if (stage === 'Joined' && !wasJoined) await markJoined(q, o.application_id, o.job_id);
+      if (isJoinClaim) {
+        await q.query(`UPDATE applications SET data = data || '{"workerConfirmedJoining": true}'::jsonb, updated_at = now() WHERE id = $1`, [o.application_id]);
+      } else {
+        const stage = body.status === 'Accepted' ? 'Accepted' : 'Declined';
+        const extra: Record<string, unknown> = {};
+        if (body.status === 'Declined') extra.declineOrRejectReason = body.declineReason;
+        await appendHistory(q, o.application_id, stage, { id: newId('ev'), stage, toStage: stage, actorRole: 'worker', actor: 'worker', actorName: o.worker_name, timestamp: fmtDateTime(new Date()), note }, extra);
+      }
 
       await notify(q, { role: 'employer', recipientId: o.employer_id, eventType: body.status === 'Joined Confirmed' ? 'JOINING_CONFIRMED' : 'OFFER_ACCEPTED', title: `Offer ${body.status.toLowerCase()}: ${o.worker_name}`, body: `${o.worker_name} ${note.toLowerCase()} for ${o.job_title}.` });
     });

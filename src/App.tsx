@@ -299,7 +299,7 @@ export default function App() {
     return res;
   };
 
-  const handleIssueOffer = async (newOffer: OfferLetter) => {
+  const handleIssueOffer = async (newOffer: OfferLetter): Promise<boolean> => {
     // An offer attaches to the worker's application to one of this factory's jobs.
     const app =
       applications.find(
@@ -312,9 +312,10 @@ export default function App() {
       setToast(
         'This worker has not applied to one of your jobs yet. Invite them first, then send the offer once they apply.'
       );
-      return;
+      return false;
     }
-    await run(createOfferApi({ ...newOffer, applicationId: app.id }));
+    const res = await run(createOfferApi({ ...newOffer, applicationId: app.id }));
+    return !!res;
   };
 
   const handleUpdateOfferStatus = async (
@@ -824,6 +825,7 @@ export default function App() {
             setSelectedOfferCandidate(null);
           }}
           onIssueOffer={handleIssueOffer}
+          employer={employerProfile}
         />
       )}
 

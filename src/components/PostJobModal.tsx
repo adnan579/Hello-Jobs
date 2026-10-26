@@ -296,6 +296,18 @@ export const PostJobModal: React.FC<Props> = ({ isOpen, onClose, onJobCreated, e
               </div>
             </div>
 
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">State *</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Maharashtra"
+                value={state}
+                onChange={(e) => setState(e.target.value)}
+                className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded focus:outline-hidden focus:ring-2 focus:ring-slate-900"
+              />
+            </div>
+
             {/* Compensation */}
             <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-3">
               <span className="text-xs font-bold text-slate-800 block">

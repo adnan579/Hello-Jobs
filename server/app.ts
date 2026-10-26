@@ -88,6 +88,18 @@ export function createApp(ctx: AppContext): express.Express {
     })
   );
 
+  // One log line per API call in production: no bodies, no phone numbers, no cookies.
+  if (ctx.config.isProd) {
+    app.use('/api', (req, res, next) => {
+      const t0 = Date.now();
+      res.on('finish', () => {
+        if (req.path === '/health') return;
+        console.log(JSON.stringify({ t: new Date().toISOString(), m: req.method, p: req.path, s: res.statusCode, ms: Date.now() - t0 }));
+      });
+      next();
+    });
+  }
+
   app.use('/api', apiLimiter(600, 60_000));
   app.use('/api', (req, res, next) => {
     if (MUTATING.has(req.method) && !sameOrigin(req, ctx.config.appUrl)) {

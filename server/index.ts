@@ -1,5 +1,6 @@
 import express from 'express';
 import { loadConfig } from './config.ts';
+import { formatFindings, reviewConfig } from './lib/doctor.ts';
 import { createDb, migrate, type Db } from './db.ts';
 import { createApp } from './app.ts';
 import { normalizeIndianPhone } from './lib/phone.ts';
@@ -16,6 +17,10 @@ export function createServerApp(): express.Express {
 
   const init = async () => {
     const config = loadConfig();
+    if (config.isProd) {
+      const notes = reviewConfig(config).filter((x) => x.level !== 'ok');
+      if (notes.length) console.warn('[config]\n' + formatFindings(notes));
+    }
     if (!config.databaseUrl) throw new Error('DATABASE_URL is not set. Add your Postgres connection string to the environment variables.');
     db = createDb(config.databaseUrl);
     if (process.env.AUTO_MIGRATE !== 'false') {

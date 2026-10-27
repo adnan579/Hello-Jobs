@@ -4,6 +4,8 @@ import { ADMIN_TEST_PASSWORD, loginAdmin, makeEnv, reloginAdmin } from './helper
 import { postJob, verifiedEmployer, worker } from './helpers/scenario.ts';
 import { createAdminAccount } from '../server/services/adminAccounts.ts';
 import { totpAt } from '../server/lib/totp.ts';
+import { ensureBootstrapAdmin } from '../server/services/adminAccounts.ts';
+import { loadConfig } from '../server/config.ts';
 
 const env = makeEnv();
 beforeEach(() => env.reset());
@@ -139,5 +141,22 @@ describe('admin actions', () => {
     const csv = (await a.get('/api/admin/audit.csv')).text;
     expect(csv).toContain(`"'=HYPERLINK`);
     expect(csv).toContain(`"'+cmd"`);
+  });
+});
+
+describe('first admin from server settings', () => {
+  const cfg = (extra: Record<string, string>) => loadConfig({ NODE_ENV: 'production', DATABASE_URL: 'x', SESSION_SECRET: 'x'.repeat(40), APP_URL: 'https://x.test', ...extra });
+
+  it('accepts a simple temporary password, never throws, and still forces a change', async () => {
+    await ensureBootstrapAdmin(env.db, cfg({ ADMIN_BOOTSTRAP_EMAIL: 'adnan@gmail.com', ADMIN_BOOTSTRAP_PASSWORD: 'Adnan@123' }));
+    const a = env.agent();
+    const first = await a.post('/api/admin-auth/login').send({ email: 'adnan@gmail.com', password: 'Adnan@123' });
+    expect(first.status).toBe(200);
+    expect(first.body.next).toBe('enroll');
+  });
+
+  it('a bad bootstrap setting does not break the site', async () => {
+    await expect(ensureBootstrapAdmin(env.db, cfg({ ADMIN_BOOTSTRAP_EMAIL: 'not-an-email', ADMIN_BOOTSTRAP_PASSWORD: 'longenough1' }))).resolves.toBeUndefined();
+    await expect(ensureBootstrapAdmin(env.db, cfg({ ADMIN_BOOTSTRAP_EMAIL: 'a@b.co', ADMIN_BOOTSTRAP_PASSWORD: 'short' }))).resolves.toBeUndefined();
   });
 });

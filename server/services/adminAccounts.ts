@@ -34,10 +34,21 @@ export async function createAdminAccount(
 export async function ensureBootstrapAdmin(db: Db, config: Config): Promise<void> {
   const { bootstrapEmail: email, bootstrapPassword: password, bootstrapReset } = config.admin;
   if (!email || !password) return;
+  // The bootstrap password is temporary (it must be changed at first sign-in, and that new password
+  // has to pass the full policy), so only basic checks here. A problem must never take the whole site down.
+  if (password.length < 8) return void console.error('[admin] ADMIN_BOOTSTRAP_PASSWORD is shorter than 8 characters, so no admin was created. Use a longer temporary password.');
+  try {
+    await bootstrapInner(db, email, password, bootstrapReset);
+  } catch (err) {
+    console.error('[admin] Could not create or reset the bootstrap admin:', (err as Error)?.message ?? err);
+  }
+}
+
+async function bootstrapInner(db: Db, email: string, password: string, bootstrapReset: boolean): Promise<void> {
   await db.tx(async (q) => {
     const existing = (await q.query<{ account_id: string }>('SELECT account_id FROM admin_credentials WHERE lower(email) = $1', [email])).rows[0];
     if (!existing) {
-      await createAdminAccount(q, { email, name: 'Super Admin', role: 'Super Admin', password, skipPolicy: config.isProd ? false : true });
+      await createAdminAccount(q, { email, name: 'Super Admin', role: 'Super Admin', password, skipPolicy: true });
       return;
     }
     if (bootstrapReset) {

@@ -34,6 +34,15 @@ offersRouter.post(
         )
       ).rows[0];
       if (!app) throw notFound('Application not found. A worker must apply (or accept your invite) before you can send an offer.');
+      // An unanswered offer past its 14 days is closed, so the factory can send a fresh one.
+      if (app.status === 'Offer Issued') {
+        const stale = await q.query(`UPDATE offers SET status = 'Declined', data = data || '{"expired": true}'::jsonb, updated_at = now()
+                                      WHERE application_id = $1 AND status = 'Issued' AND (data->>'expiresAtIso')::timestamptz < now()`, [app.id]);
+        if (stale.rowCount) {
+          await appendHistory(q, app.id, 'Shortlisted', { id: newId('ev'), stage: 'Shortlisted', toStage: 'Shortlisted', actorRole: 'system', actor: 'system', actorName: 'Hello Jobs', timestamp: fmtDateTime(new Date()), note: 'The earlier offer expired without an answer.' });
+          app.status = 'Shortlisted';
+        }
+      }
       if (!OFFERABLE.has(app.status)) throw badRequest(`An offer cannot be issued while the application is "${app.status}".`);
 
       const live = await q.query(`SELECT 1 FROM offers WHERE application_id = $1 AND status IN ('Issued','Accepted','Joined Confirmed')`, [app.id]);

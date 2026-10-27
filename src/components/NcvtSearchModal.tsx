@@ -40,10 +40,10 @@ export const NcvtSearchModal: React.FC<Props> = ({
             </div>
             <div>
               <div className="text-xs font-mono uppercase tracking-wider text-amber-400">
-                Official DGT Portal Simulation
+                Hello Jobs Credential Check
               </div>
               <h2 className="text-base font-bold text-white">
-                NCVT / SCVT MIS Credential Verification
+                Workers with a checked ITI certificate
               </h2>
             </div>
           </div>
@@ -68,7 +68,7 @@ export const NcvtSearchModal: React.FC<Props> = ({
             />
           </div>
           <div className="text-[11px] text-slate-500 mt-2 flex items-center gap-2">
-            <span>Directly checks DGT MIS portal schema against verified practical scores.</span>
+            <span>Lists workers whose ITI certificate Hello Jobs staff have checked. This is not a live government registry lookup.</span>
           </div>
         </div>
 

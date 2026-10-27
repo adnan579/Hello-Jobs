@@ -24,6 +24,7 @@ export function createServerApp(): express.Express {
       const notes = reviewConfig(config).filter((x) => x.level !== 'ok');
       if (notes.length) console.warn('[config]\n' + formatFindings(notes));
     }
+    stage = 'config';
     if (!config.databaseUrl) throw new Error('DATABASE_URL is not set. Add your Postgres connection string to the environment variables.');
     stage = 'database';
     db = createDb(config.databaseUrl);
@@ -45,7 +46,7 @@ export function createServerApp(): express.Express {
     stage,
     code: typeof err?.code === 'string' ? err.code : undefined,
     // Only schema/migration problems carry a readable detail; connection errors may name the database user.
-    detail: stage === 'migrations' ? String(err?.message ?? '').replace(/postgres(ql)?:\/\/\S+/gi, '[url]').slice(0, 240) : undefined,
+    detail: stage === 'migrations' || stage === 'config' ? String(err?.message ?? '').replace(/postgres(ql)?:\/\/\S+/gi, '[url]').slice(0, 240) : undefined,
   });
 
   outer.get('/api/health', (req, res, next) => {

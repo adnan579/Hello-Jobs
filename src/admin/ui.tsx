@@ -9,7 +9,7 @@ export function Badge({ children, tone = 'slate' }: { children: ReactNode; tone?
   return <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap ${t}`}>{children}</span>;
 }
 export const statusTone = (s: string): 'slate' | 'green' | 'red' | 'amber' | 'blue' =>
-  /verified|active|paid|approved|resolved|restored/i.test(s) ? 'green' : /reject|suspend|paused|fail|cancel|hidden|overdue/i.test(s) ? 'red' : /pending|issued|review|registered|investigat/i.test(s) ? 'amber' : 'slate';
+  /verified|active|paid|approved|resolved|restored/i.test(s) ? 'green' : /reject|suspend|paused|fail|cancel|hidden|overdue/i.test(s) ? 'red' : /pending|issued|review|registered|investigat|flagged/i.test(s) ? 'amber' : 'slate';
 
 export function Btn({ children, onClick, tone = 'dark', disabled, type = 'button', small }: { children: ReactNode; onClick?: () => void; tone?: 'dark' | 'light' | 'red' | 'green'; disabled?: boolean; type?: 'button' | 'submit'; small?: boolean }) {
   const t = { dark: 'bg-slate-900 text-white hover:bg-slate-700', light: 'bg-white text-slate-800 border border-slate-300 hover:bg-slate-50', red: 'bg-red-600 text-white hover:bg-red-700', green: 'bg-emerald-600 text-white hover:bg-emerald-700' }[tone];

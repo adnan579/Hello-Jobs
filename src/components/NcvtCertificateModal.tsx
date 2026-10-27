@@ -32,10 +32,10 @@ export const NcvtCertificateModal: React.FC<Props> = ({
             </div>
             <div>
               <div className="text-xs font-mono uppercase tracking-wider text-amber-400">
-                Official Credential Verification
+                Hello Jobs Credential Check
               </div>
               <h2 className="text-base font-bold text-white">
-                NCVT National Trade Certificate (NTC)
+                ITI National Trade Certificate
               </h2>
             </div>
           </div>
@@ -56,7 +56,7 @@ export const NcvtCertificateModal: React.FC<Props> = ({
             <div className="text-center pb-4 border-b border-amber-200/80">
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-100/70 border border-amber-300 rounded text-xs font-semibold text-amber-900 mb-2">
                 <Award className="w-4 h-4 text-amber-700" />
-                Directorate General of Training (DGT) · Ministry of Skill Development
+                Details entered by the worker · checked by Hello Jobs staff
               </div>
               <h3 className="text-xl font-extrabold text-slate-900 tracking-tight">
                 NATIONAL TRADE CERTIFICATE (NTC)
@@ -157,16 +157,15 @@ export const NcvtCertificateModal: React.FC<Props> = ({
                 <div className="text-xs text-slate-600">
                   <div className="flex items-center gap-1 text-emerald-700 font-semibold">
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    Verified on NCVT MIS Portal
+                    Checked by Hello Jobs staff
                   </div>
                   <div className="text-slate-500">Validation Date: {certificate.verifiedDate}</div>
-                  <div className="text-slate-400">UIDAI Aadhaar KYC: Match Confirmed</div>
                 </div>
               </div>
 
               <div className="text-center sm:text-right text-xs text-slate-500">
-                <div className="font-mono text-slate-700 font-semibold">Direct Verification Stamp</div>
-                <div className="text-[11px] text-slate-400">Zero Middleman / 100% Genuine Candidate</div>
+                <div className="font-mono text-slate-700 font-semibold">Hello Jobs Check</div>
+                <div className="text-[11px] text-slate-400">Direct hiring, no middleman</div>
               </div>
             </div>
           </div>

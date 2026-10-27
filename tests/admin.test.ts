@@ -160,3 +160,30 @@ describe('first admin from server settings', () => {
     await expect(ensureBootstrapAdmin(env.db, cfg({ ADMIN_BOOTSTRAP_EMAIL: 'a@b.co', ADMIN_BOOTSTRAP_PASSWORD: 'short' }))).resolves.toBeUndefined();
   });
 });
+
+describe('every admin screen loads with real data', () => {
+  it('lists and detail pages return 200', async () => {
+    const { agent, employerId } = await verifiedEmployer(env);
+    const w = await worker(env);
+    const job = await postJob(agent);
+    await w.agent.post('/api/applications').send({ jobId: job.id });
+    expect((await request(env.app).post('/api/reports').send({ reportedCompany: 'Acme Works', issueType: 'Fee Demanded', details: 'Asked for 2000 rupees to join', amountDemanded: 2000 })).status).toBe(201);
+    expect((await request(env.app).post('/api/dpdp/grievance').send({ dataPrincipalName: 'Test Person', dataPrincipalPhone: '9876543210', role: 'worker', category: 'Other DPDP Right', description: 'Please show my data' })).status).toBe(201);
+    const a = env.agent();
+    await loginAdmin(env, a, 'Super Admin');
+    const rep = (await a.get('/api/admin/reports')).body.rows[0];
+    expect((await a.patch(`/api/admin/reports/${rep.id}`).send({ status: 'Investigating', pauseFactoryPostings: true })).status).toBe(200);
+    const gr = (await a.get('/api/admin/grievances')).body.rows[0];
+    expect((await a.patch(`/api/admin/grievances/${gr.id}`).send({ status: 'Resolved', note: 'Shown to the person' })).status).toBe(200);
+    const paths = [
+      '/overview', '/verifications', '/workers', `/workers/${w.workerId}`, '/employers', `/employers/${employerId}`, '/jobs', '/reports', '/grievances',
+      '/orders', '/ledger', '/notifications', '/audit', '/staff', '/system',
+      '/workers?q=test&status=active', '/employers?q=a&kyb=VERIFIED', '/jobs?moderation=Approved', '/audit?q=x&action=ADMIN_LOGIN&actor=staff',
+    ];
+    for (const p of paths) {
+      const r = await a.get(`/api/admin${p}`);
+      expect(r.status, `${p} -> ${r.status} ${JSON.stringify(r.body)}`).toBe(200);
+    }
+    expect((await a.get('/api/admin/audit.csv')).status).toBe(200);
+  });
+});

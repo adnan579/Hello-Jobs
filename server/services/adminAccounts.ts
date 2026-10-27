@@ -48,7 +48,7 @@ async function bootstrapInner(db: Db, email: string, password: string, bootstrap
   await db.tx(async (q) => {
     const existing = (await q.query<{ account_id: string }>('SELECT account_id FROM admin_credentials WHERE lower(email) = $1', [email])).rows[0];
     if (!existing) {
-      await createAdminAccount(q, { email, name: 'Super Admin', role: 'Super Admin', password, skipPolicy: true });
+      await createAdminAccount(q, { email, name: email.split('@')[0], role: 'Super Admin', password, skipPolicy: true });
       return;
     }
     if (bootstrapReset) {

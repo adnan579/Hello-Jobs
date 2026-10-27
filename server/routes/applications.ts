@@ -43,7 +43,7 @@ applicationsRouter.post(
       const job = (
         await q.query(
           `SELECT j.id, j.title, j.employer_id FROM jobs j JOIN employers e ON e.id = j.employer_id
-            WHERE j.id = $1 AND j.is_active AND j.moderation_status = 'Approved' AND e.kyb_status = 'VERIFIED' AND NOT e.paused AND j.expires_at > now()`,
+            WHERE j.id = $1 AND j.is_active AND j.moderation_status = 'Approved' AND e.kyb_status = 'VERIFIED' AND NOT e.paused AND j.expires_at > now() AND j.vacancies_left > 0`,
           [jobId]
         )
       ).rows[0];
@@ -111,6 +111,7 @@ applicationsRouter.patch(
       }
 
       if (nextStatus) {
+        if (nextStatus === 'Withdrawn') await q.query(`UPDATE offers SET status = 'Declined', data = data || '{"withdrawn": true}'::jsonb, updated_at = now() WHERE application_id = $1 AND status = 'Issued'`, [row.id]);
         await appendHistory(q, row.id, nextStatus, event(nextStatus, role, actorName, body.note ?? body.declineOrRejectReason), extra);
         if (nextStatus === 'Joined') {
           await markJoined(q, row.id, row.job_id);

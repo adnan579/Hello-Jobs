@@ -415,7 +415,7 @@ export const DualLanding: React.FC<Props> = ({
 
       {/* Platform Impact Metrics */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 p-6 bg-white border border-slate-200 rounded-2xl shadow-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-6 bg-white border border-slate-200 rounded-2xl shadow-xs">
           <div className="space-y-1 p-2">
             <span className="text-2xl sm:text-3xl font-extrabold text-emerald-600 block tabular-nums">
               ₹0.00
@@ -439,14 +439,6 @@ export const DualLanding: React.FC<Props> = ({
             <div className="text-xs font-bold text-slate-900">{t.statFactories}</div>
             <p className="text-xs text-slate-500">{t.statFactoriesDesc}</p>
           </div>
-
-          <div className="space-y-1 p-2 border-l border-slate-100">
-            <span className="text-2xl sm:text-3xl font-extrabold text-amber-600 block tabular-nums">
-              {employerProfile.promiseKeptScorePct != null ? `${employerProfile.promiseKeptScorePct}%` : '—'}
-            </span>
-            <div className="text-xs font-bold text-slate-900">Verified Offer Accuracy</div>
-            <p className="text-xs text-slate-500">Direct payroll & promised take-home pay</p>
-          </div>
         </div>
       </section>
 
@@ -467,7 +459,7 @@ export const DualLanding: React.FC<Props> = ({
                 </div>
               </div>
               <p className="text-xs text-slate-700 leading-relaxed">
-                Middlemen often bill factories ₹28,000 per worker while handing over only ₹18,000 in cash—taking a monthly cut from the worker's hard-earned wages and causing high attrition.
+                For example, a contractor may bill a factory ₹28,000 for a worker but hand over only ₹18,000, keeping a monthly cut of the worker's wages. This is an illustration, not a statistic.
               </p>
             </div>
 

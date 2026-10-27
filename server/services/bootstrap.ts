@@ -5,7 +5,7 @@ import {
   ledgerView, notificationView, offerView, reportView, verificationView, workerView,
 } from './serialize.ts';
 
-const PUBLIC_JOB_WHERE = `j.is_active AND j.moderation_status = 'Approved' AND e.kyb_status = 'VERIFIED' AND NOT e.paused AND j.expires_at > now()`;
+const PUBLIC_JOB_WHERE = `j.is_active AND j.moderation_status = 'Approved' AND e.kyb_status = 'VERIFIED' AND NOT e.paused AND j.expires_at > now() AND j.vacancies_left > 0`;
 
 async function publicStats(ctx: AppContext) {
   const { rows } = await ctx.db.query<{ workers: number; factories: number; jobs: number }>(

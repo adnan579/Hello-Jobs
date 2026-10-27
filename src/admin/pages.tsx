@@ -155,13 +155,13 @@ export function Jobs({ can }: { can: Can }) {
     { head: 'Job', cell: (r) => <><div className="font-semibold">{r.title}</div><div className="text-xs text-slate-500">{r.company} · {r.hub}</div></> },
     { head: 'Trade', cell: (r) => r.trade }, { head: 'Take-home', cell: (r) => (r.pay ? inr(r.pay) : '—') },
     { head: 'Flags', cell: (r) => r.flagged.length ? <Badge tone="amber">{r.flagged.join(', ')}</Badge> : '—' },
-    { head: 'Status', cell: (r) => <Badge tone={statusTone(r.moderation)}>{r.moderation === 'Paused' ? 'Hidden by staff' : r.moderation}</Badge> },
+    { head: 'Status', cell: (r) => <Badge tone={statusTone(r.moderation)}>{r.moderation === 'Paused' ? 'Hidden' : r.moderation === 'Flagged' ? 'Flagged: needs review' : r.moderation}</Badge> },
     { head: 'Posted', cell: (r) => fmt(r.postedAt) },
-    { head: '', cell: (r) => can('jobs.moderate') ? <Btn small tone="light" onClick={() => setSel(r)}>{r.moderation === 'Paused' ? 'Restore' : 'Hide'}</Btn> : null },
+    { head: '', cell: (r) => can('jobs.moderate') ? <Btn small tone="light" onClick={() => setSel(r)}>{r.moderation === 'Approved' ? 'Hide' : r.moderation === 'Paused' ? 'Restore' : 'Approve'}</Btn> : null },
   ];
   return <>
-    <ListView path="/admin/jobs" cols={cols} reloadKey={key} filters={[{ key: 'q', label: 'Search title, company or ID', search: true }, { key: 'moderation', label: 'Status', options: ['Approved', 'Paused'] }]} />
-    {sel && <ReasonDialog title={`${sel.moderation === 'Paused' ? 'Restore' : 'Hide'}: ${sel.title}`} intro="The factory is notified with your reason." cta="Confirm" onClose={() => setSel(null)} onSubmit={async (reason) => { await api('POST', `/admin/jobs/${sel.id}/moderate`, { action: sel.moderation === 'Paused' ? 'restore' : 'hide', reason }); setKey(key + 1); }} />}
+    <ListView path="/admin/jobs" cols={cols} reloadKey={key} filters={[{ key: 'q', label: 'Search title, company or ID', search: true }, { key: 'moderation', label: 'Status', options: ['Flagged', 'Approved', 'Paused'] }]} />
+    {sel && <ReasonDialog title={`${sel.moderation === 'Approved' ? 'Hide' : sel.moderation === 'Paused' ? 'Restore' : 'Approve'}: ${sel.title}`} intro="The factory is notified with your reason." cta="Confirm" onClose={() => setSel(null)} onSubmit={async (reason) => { await api('POST', `/admin/jobs/${sel.id}/moderate`, { action: sel.moderation === 'Approved' ? 'hide' : 'restore', reason }); setKey(key + 1); }} />}
   </>;
 }
 

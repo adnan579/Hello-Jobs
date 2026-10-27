@@ -92,7 +92,7 @@ export const Footer: React.FC<Props> = ({
                   onClick={onOpenNcvtSearch}
                   className="hover:text-white transition-colors text-left"
                 >
-                  NCVT / ITI Certificate Lookup
+                  Workers with checked ITI certificates
                 </button>
               </li>
             </ul>

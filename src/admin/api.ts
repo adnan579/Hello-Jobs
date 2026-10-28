@@ -15,7 +15,8 @@ export async function api<T = any>(method: string, path: string, body?: unknown)
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     if (res.status === 401 && !path.startsWith('/admin-auth/login') && !path.startsWith('/admin-auth/verify') && !path.startsWith('/admin-auth/me')) onUnauthorized();
-    throw new ApiError(res.status, data.error || data.message || 'Something went wrong. Please try again.', data.code);
+    const hint = data.stage ? ` (server step: ${data.stage}; open /api/health for details)` : '';
+    throw new ApiError(res.status, (data.error || data.message || `The server answered with an unexpected error (HTTP ${res.status}). Please try again.`) + hint, data.code);
   }
   return data as T;
 }

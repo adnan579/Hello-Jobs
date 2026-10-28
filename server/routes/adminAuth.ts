@@ -118,14 +118,14 @@ adminAuthRouter.post(
     const { challenge, code } = parse(verifyInput, req.body);
     const ip = clientIp(req);
     const db = req.ctx.db;
-    if ((await hit(db, `adminlogin:ip:${ip}`, 40, 900)).blocked) throw tooMany('Too many attempts from this network. Try again in 15 minutes.');
+    if ((await hit(db, `adminverify:ip:${ip}`, 40, 900)).blocked) throw tooMany('Too many attempts from this network. Try again in 15 minutes.');
     const accountId = readChallenge(req.ctx, challenge);
     const c = await loadCred(db, 'c.account_id = $1', accountId);
     if (!c || c.status !== 'active') throw unauthorized('Please sign in again.');
     assertNotLocked(c);
     if (!c.totp_secret_enc) throw badRequest('Authenticator is not set up. Please sign in again.');
     const secret = decryptSecret(c.totp_secret_enc, req.ctx.config.admin.totpKey);
-    if (!secret) throw new HttpError(500, 'Your authenticator data cannot be read. Ask a Super Admin to reset your authenticator.');
+    if (!secret) throw new HttpError(409, 'Your authenticator can no longer be read (the server security key changed). A Super Admin must reset it from Staff, or set ADMIN_BOOTSTRAP_RESET=true for one deploy.');
 
     const step = verifyTotp(secret, code, Number(c.totp_last_step));
     if (step === null) {

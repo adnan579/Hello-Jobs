@@ -20,3 +20,34 @@
     font-variant-numeric: tabular-nums;
   }
 }
+
+
+/* ---- Hello Jobs visual system ---------------------------------------------
+   Ink + hi-vis amber (workers) + steel blue (factories) + green (verified).
+   The hi-vis stripe is the one memorable device, taken from factory signage. */
+@layer base {
+  body { background-color: #f5f6f8; }
+  :focus-visible { outline: 3px solid #1f4fd8; outline-offset: 2px; border-radius: 6px; }
+  ::selection { background: #fde68a; color: #101828; }
+}
+
+.hv-stripe {
+  background: repeating-linear-gradient(135deg, #f5a800 0 14px, #101828 14px 28px);
+}
+
+@layer components {
+  .btn-amber, .btn-blue {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.8rem 1.25rem; border-radius: 0.625rem;
+    font-weight: 800; font-size: 0.9375rem; line-height: 1.2; cursor: pointer;
+    transition: background-color 0.15s, transform 0.15s;
+  }
+  .btn-amber { background: #f5a800; color: #101828; }
+  .btn-amber:hover { background: #ffb91f; }
+  .btn-blue { background: #1f4fd8; color: #fff; }
+  .btn-blue:hover { background: #2f5fe6; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
+}

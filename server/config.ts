@@ -43,7 +43,8 @@ export function loadConfig(env: Env = process.env): Config {
   if (isProd && sessionSecret.length < 32) {
     throw new Error('SESSION_SECRET must be set to a random string of 32+ characters in production');
   }
-  const databaseUrl = env.DATABASE_URL || '';
+  // The Neon and Vercel integration also sets POSTGRES_URL; accept it if DATABASE_URL is missing.
+  const databaseUrl = (env.DATABASE_URL || env.POSTGRES_URL || '').trim();
   if (isProd && !databaseUrl) {
     throw new Error('DATABASE_URL must be set in production');
   }

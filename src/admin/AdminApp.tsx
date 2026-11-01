@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, setUnauthorizedHandler, type Me } from './api.ts';
 import { ChangePassword, Login } from './Login.tsx';
 import { Account, Audit, Factories, Grievances, Jobs, Notifications, Overview, Payments, Reports, Staff, System, Verification, Workers } from './pages.tsx';
+import { BrandLogo } from '../components/BrandLogo.tsx';
 
 const IDLE_MS = 30 * 60_000;
 
@@ -61,7 +62,7 @@ export function AdminApp() {
   return (
     <div className="flex min-h-screen">
       <aside className={`${menu ? 'block' : 'hidden'} fixed inset-y-0 left-0 z-40 w-60 overflow-y-auto bg-slate-900 p-3 text-slate-200 lg:static lg:block`}>
-        <div className="mb-4 px-2 pt-2"><div className="text-lg font-extrabold text-white">Shramkart</div><div className="text-xs text-slate-400">Staff console</div></div>
+        <div className="mb-4 px-2 pt-2"><BrandLogo tone="dark" /><div className="mt-2 text-xs font-semibold uppercase tracking-wider text-slate-400">Staff console</div></div>
         <nav aria-label="Console sections" className="space-y-0.5">
           {items.map((n) => <button key={n.id} onClick={() => go(n.id)} aria-current={active === n.id ? 'page' : undefined} className={`block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold ${active === n.id ? 'bg-white text-slate-900' : 'hover:bg-slate-800'}`}>{n.label}</button>)}
         </nav>

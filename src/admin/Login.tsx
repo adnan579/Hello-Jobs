@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { api, ApiError, type Me } from './api.ts';
 import { Btn, Field, inputCls } from './ui.tsx';
+import { BrandLogo } from '../components/BrandLogo.tsx';
 
 type Step = { kind: 'password' } | { kind: 'code'; challenge: string } | { kind: 'enroll'; challenge: string; secret: string; qr: string };
 
@@ -24,7 +25,8 @@ export function Login({ onDone, notice }: { onDone: (me: Me) => void; notice?: s
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-900 p-4">
       <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
-        <h1 className="text-xl font-extrabold text-slate-900">Shramkart Staff Console</h1>
+        <div className="mb-3"><BrandLogo /></div>
+        <h1 className="text-xl font-extrabold text-slate-900">Staff Console</h1>
         <p className="mb-4 text-sm text-slate-500">Authorised staff only. Everything you do here is recorded.</p>
         {notice && <p role="status" className="mb-3 rounded-lg bg-amber-50 p-2 text-sm font-semibold text-amber-800">{notice}</p>}
         {step.kind === 'password' ? (

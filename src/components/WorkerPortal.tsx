@@ -244,7 +244,7 @@ export const WorkerPortal: React.FC<Props> = ({
       ? 'I am ready for immediate joining (No Certificate Needed).'
       : 'My trade profile is verified.';
     const text = encodeURIComponent(
-      `Namaste, I am applying directly for the ${job.trade} position at ${job.companyName} (${job.industrialHub}) via Hello Jobs. ${certNote} Please let me know the walk-in / gate pass details.`
+      `Namaste, I am applying directly for the ${job.trade} position at ${job.companyName} (${job.industrialHub}) via Shramkart. ${certNote} Please let me know the walk-in / gate pass details.`
     );
     window.open(`https://wa.me/${job.whatsappApplyNumber}?text=${text}`, '_blank');
   };

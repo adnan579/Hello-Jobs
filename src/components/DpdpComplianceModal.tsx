@@ -591,7 +591,7 @@ export const DpdpComplianceModal: React.FC<Props> = ({
                           Erase My Personal Profile & Applications ("Right to be Forgotten")
                         </h3>
                         <p className="text-xs text-slate-600 mt-1">
-                          Request immediate deletion of your worker profile, mobile number, job applications, and offer letters from Hello Jobs servers.
+                          Request immediate deletion of your worker profile, mobile number, job applications, and offer letters from Shramkart servers.
                         </p>
                       </div>
                     </div>

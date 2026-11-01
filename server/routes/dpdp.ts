@@ -80,7 +80,7 @@ dpdpRouter.get(
       db.query('SELECT action, details, created_at FROM audit_logs WHERE principal_id = $1 ORDER BY created_at', [wid]),
     ]);
     await audit(db, { actorAccountId: req.auth!.accountId, principalId: wid, principalName: profile.rows[0]?.name ?? '', action: 'DATA_EXPORTED', ip: clientIp(req), details: 'Worker downloaded a copy of their personal data.' });
-    res.set('Content-Disposition', 'attachment; filename="hello-jobs-my-data.json"');
+    res.set('Content-Disposition', 'attachment; filename="shramkart-my-data.json"');
     res.json({ exportedAt: new Date().toISOString(), profile: profile.rows[0] ? workerView(profile.rows[0], 'self') : null, applications: apps.rows, offers: offers.rows, consentHistory: consents.rows, notifications: notes.rows, activityLog: audits.rows });
   })
 );

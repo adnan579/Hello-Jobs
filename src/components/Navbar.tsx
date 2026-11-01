@@ -72,7 +72,7 @@ export const Navbar: React.FC<Props> = ({
           onClick={() => onRoleChange('landing')}
           className="text-lg font-extrabold tracking-tight text-slate-900 whitespace-nowrap shrink-0 cursor-pointer hover:text-amber-600 transition-colors"
         >
-          Hello Jobs
+          Shramkart
         </button>
 
         {/* Zone 2: Contextual Navigation Links */}

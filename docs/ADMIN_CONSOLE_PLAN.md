@@ -1,7 +1,7 @@
 # Admin console: research and plan
 
 ## Why
-Staff need one place to run Hello Jobs: verify factories, keep scams out, support users, watch money, answer privacy requests, and see who did what. Today the staff screen is hidden behind a `#staff` link on the public site and signs in with a WhatsApp code. That is not good enough for the people who hold the keys to everyone's data.
+Staff need one place to run Shramkart: verify factories, keep scams out, support users, watch money, answer privacy requests, and see who did what. Today the staff screen is hidden behind a `#staff` link on the public site and signs in with a WhatsApp code. That is not good enough for the people who hold the keys to everyone's data.
 
 ## What the research says
 Sources: [LowCode Agency, admin panel design for marketplaces](https://www.lowcode.agency/blog/admin-panel-design-for-marketplace-platforms); [auth security checklist (knowledgelib)](https://knowledgelib.io/software/security/auth-security-checklist/2026.md); OWASP guidance it summarises.

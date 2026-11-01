@@ -62,7 +62,7 @@ creditsRouter.post(
     const eid = employerWriter(req);
     const { packId } = parse(packInput, req.body);
     const mode = req.ctx.config.payments.mode;
-    if (mode === 'off') throw new HttpError(503, 'Online payments are not switched on yet. Please contact Hello Jobs to buy credits.');
+    if (mode === 'off') throw new HttpError(503, 'Online payments are not switched on yet. Please contact Shramkart to buy credits.');
     const emp = (await req.ctx.db.query('SELECT kyb_status FROM employers WHERE id = $1', [eid])).rows[0];
     if (emp.kyb_status !== 'VERIFIED') throw forbidden('Verify your factory before buying credits.');
 

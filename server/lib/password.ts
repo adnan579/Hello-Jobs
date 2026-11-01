@@ -37,7 +37,7 @@ export function passwordProblem(password: string, email = ''): string | null {
   const local = email.split('@')[0]?.toLowerCase();
   if (local && local.length >= 4 && password.toLowerCase().includes(local)) return 'The password must not contain your email name.';
   if (/^(.)\1+$/.test(password)) return 'Choose a less repetitive password.';
-  const common = ['password1234', '123456789012', 'qwertyuiop12', 'adminadmin12', 'helloJobs1234'.toLowerCase()];
+  const common = ['password1234', '123456789012', 'qwertyuiop12', 'adminadmin12', 'helloJobs1234'.toLowerCase(), 'shramkart1234'];
   if (common.includes(password.toLowerCase())) return 'That password is too common.';
   return null;
 }

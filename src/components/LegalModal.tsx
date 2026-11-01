@@ -59,7 +59,7 @@ export const LegalModal: React.FC<Props> = ({
                 Legal, Privacy Policy & Terms of Use
               </h2>
               <p className="text-xs text-slate-400">
-                Hello Jobs India · Direct Industrial Workforce Platform
+                Shramkart India · Direct Industrial Workforce Platform
               </p>
             </div>
           </div>
@@ -118,7 +118,7 @@ export const LegalModal: React.FC<Props> = ({
                   1. Information We Collect & Purpose Limitation
                 </h3>
                 <p>
-                  Hello Jobs collects only the minimum personal information necessary to connect industrial workers directly with verified manufacturing employers:
+                  Shramkart collects only the minimum personal information necessary to connect industrial workers directly with verified manufacturing employers:
                 </p>
                 <ul className="list-disc pl-5 space-y-1">
                   <li>
@@ -155,7 +155,7 @@ export const LegalModal: React.FC<Props> = ({
                   3. Your Rights Under the DPDP Act, 2023
                 </h3>
                 <p>
-                  As a user on Hello Jobs, you have the following statutory rights regarding your personal data:
+                  As a user on Shramkart, you have the following statutory rights regarding your personal data:
                 </p>
                 <ul className="list-disc pl-5 space-y-1">
                   <li>
@@ -207,7 +207,7 @@ export const LegalModal: React.FC<Props> = ({
                     Manage Your Personal Data ({activeWorker.name})
                   </div>
                   <p className="text-[11px] text-slate-600">
-                    You can export a copy of your account data or permanently delete your profile from Hello Jobs at any time.
+                    You can export a copy of your account data or permanently delete your profile from Shramkart at any time.
                   </p>
                   <div className="flex flex-wrap items-center gap-3">
                     {onExportWorkerData && (
@@ -262,7 +262,7 @@ export const LegalModal: React.FC<Props> = ({
                   Terms & Conditions of Use
                 </div>
                 <div className="text-slate-500 text-[11px]">
-                  Governing the use of Hello Jobs by Industrial Job Seekers and Verified Manufacturing Employers.
+                  Governing the use of Shramkart by Industrial Job Seekers and Verified Manufacturing Employers.
                 </div>
               </div>
 
@@ -271,7 +271,7 @@ export const LegalModal: React.FC<Props> = ({
                   1. Eligibility & Age Requirement (18+ Years)
                 </h3>
                 <p>
-                  In accordance with the Factories Act, 1948 and the Occupational Safety, Health and Working Conditions Code, 2020, all workers registering on Hello Jobs must be at least <strong>18 years of age</strong>. By creating an account, you confirm that you meet this statutory age requirement.
+                  In accordance with the Factories Act, 1948 and the Occupational Safety, Health and Working Conditions Code, 2020, all workers registering on Shramkart must be at least <strong>18 years of age</strong>. By creating an account, you confirm that you meet this statutory age requirement.
                 </p>
               </section>
 
@@ -280,7 +280,7 @@ export const LegalModal: React.FC<Props> = ({
                   2. Strictly Zero Recruitment Fee Policy for Workers
                 </h3>
                 <p>
-                  Hello Jobs is 100% free for workers. No employer, HR representative, or agent using this platform is permitted to charge any registration fee, gate-pass fee, security deposit, medical/uniform advance, or salary commission from any candidate. Any employer found demanding fees from workers will have their account immediately suspended.
+                  Shramkart is 100% free for workers. No employer, HR representative, or agent using this platform is permitted to charge any registration fee, gate-pass fee, security deposit, medical/uniform advance, or salary commission from any candidate. Any employer found demanding fees from workers will have their account immediately suspended.
                 </p>
               </section>
 
@@ -293,7 +293,7 @@ export const LegalModal: React.FC<Props> = ({
                     <strong>Authentic Job Listings:</strong> Employers must hold a valid GSTIN or Udyam Registration and provide accurate monthly in-hand take-home salary, overtime rates, shift timings, and hostel/mess details.
                   </li>
                   <li>
-                    <strong>Offer Integrity:</strong> Digital offer letters issued through Hello Jobs must honor the advertised monthly in-hand salary and statutory PF/ESIC provisions under Indian labour codes.
+                    <strong>Offer Integrity:</strong> Digital offer letters issued through Shramkart must honor the advertised monthly in-hand salary and statutory PF/ESIC provisions under Indian labour codes.
                   </li>
                   <li>
                     <strong>Authorized Use of Candidate Data:</strong> Employers agree to use unlocked worker contact details solely for genuine recruitment at their registered manufacturing plants and never to forward candidate data to third parties.
@@ -306,7 +306,7 @@ export const LegalModal: React.FC<Props> = ({
                   4. Accuracy of Worker Profiles & Credentials
                 </h3>
                 <p>
-                  Workers agree to provide truthful information regarding their identity, work experience, machines operated, and optional NCVT/SCVT ITI certificates. Note that the shareable Hello Jobs Trade Card is a skill profile summary for recruitment purposes and is not a government-issued identity document.
+                  Workers agree to provide truthful information regarding their identity, work experience, machines operated, and optional NCVT/SCVT ITI certificates. Note that the shareable Shramkart Trade Card is a skill profile summary for recruitment purposes and is not a government-issued identity document.
                 </p>
               </section>
 

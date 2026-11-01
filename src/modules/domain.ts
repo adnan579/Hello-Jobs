@@ -751,7 +751,7 @@ export const SHOP_FLOOR_PRACTICE_QUIZ: TradeQuizQuestion[] = [
   {
     id: 'q5',
     questionEn:
-      'Under Hello Jobs Zero-Fee Rules, how much registration or gate-pass fee should a worker pay a contractor?',
+      'Under Shramkart Zero-Fee Rules, how much registration or gate-pass fee should a worker pay a contractor?',
     questionHi: 'हेलो जॉब्स के नियमों के अनुसार, किसी कामगार को ठेकेदार को कितनी रजिस्ट्रेशन फीस देनी चाहिए?',
     options: ['₹0 — Strictly Zero Fees', '₹500', '₹1,500', '10% of first salary'],
     optionsEn: ['₹0 — Strictly Zero Fees', '₹500', '₹1,500', '10% of first salary'],

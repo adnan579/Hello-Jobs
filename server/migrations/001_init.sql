@@ -1,4 +1,4 @@
--- Hello Jobs production schema (v1).
+-- Shramkart production schema (v1).
 -- Design: security- and money-critical facts are real columns with constraints;
 -- the rich UI shapes (trade cards, job cards, offer letters) live in `data jsonb`
 -- and are validated by the API before they are stored.

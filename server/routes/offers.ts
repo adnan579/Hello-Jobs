@@ -39,7 +39,7 @@ offersRouter.post(
         const stale = await q.query(`UPDATE offers SET status = 'Declined', data = data || '{"expired": true}'::jsonb, updated_at = now()
                                       WHERE application_id = $1 AND status = 'Issued' AND (data->>'expiresAtIso')::timestamptz < now()`, [app.id]);
         if (stale.rowCount) {
-          await appendHistory(q, app.id, 'Shortlisted', { id: newId('ev'), stage: 'Shortlisted', toStage: 'Shortlisted', actorRole: 'system', actor: 'system', actorName: 'Hello Jobs', timestamp: fmtDateTime(new Date()), note: 'The earlier offer expired without an answer.' });
+          await appendHistory(q, app.id, 'Shortlisted', { id: newId('ev'), stage: 'Shortlisted', toStage: 'Shortlisted', actorRole: 'system', actor: 'system', actorName: 'Shramkart', timestamp: fmtDateTime(new Date()), note: 'The earlier offer expired without an answer.' });
           app.status = 'Shortlisted';
         }
       }
@@ -60,7 +60,7 @@ offersRouter.post(
       };
       await q.query(`INSERT INTO offers (id, application_id, worker_id, employer_id, data) VALUES ($1,$2,$3,$4,$5)`, [offerId, app.id, app.worker_id, eid, JSON.stringify(data)]);
       await appendHistory(q, app.id, 'Offer Issued', { id: newId('ev'), stage: 'Offer Issued', toStage: 'Offer Issued', actorRole: 'employer', actor: 'employer', actorName: app.company_name, timestamp: fmtDateTime(new Date()), note: `Offer issued: ₹${body.monthlyInHand.toLocaleString('en-IN')} in-hand per month` });
-      await notify(q, { role: 'worker', recipientId: app.worker_id, eventType: 'OFFER_RECEIVED', title: `New offer: ₹${body.monthlyInHand.toLocaleString('en-IN')} in-hand/month at ${app.company_name}`, body: `${app.job_title}. Open Hello Jobs to read and accept or decline.${warning ? ' Note: ' + warning : ''}` });
+      await notify(q, { role: 'worker', recipientId: app.worker_id, eventType: 'OFFER_RECEIVED', title: `New offer: ₹${body.monthlyInHand.toLocaleString('en-IN')} in-hand/month at ${app.company_name}`, body: `${app.job_title}. Open Shramkart to read and accept or decline.${warning ? ' Note: ' + warning : ''}` });
     });
     const offer = (await req.ctx.db.query(`${OFFER_SELECT} WHERE o.id = $1`, [offerId])).rows[0];
     await respond(req, res, { offer: offerView(offer) }, 201);

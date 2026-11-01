@@ -350,7 +350,7 @@ export const WorkerProfileView: React.FC<Props> = ({
   const handleDownloadTradeCard = () => {
     const content = [
       '======================================================',
-      '   HELLO JOBS — SHAREABLE WORKER TRADE CARD           ',
+      '   SHRAMKART — SHAREABLE WORKER TRADE CARD           ',
       '   (Note: Skill Profile Only — Not a Government ID)   ',
       '======================================================',
       `Worker Name         : ${worker.name}`,
@@ -377,14 +377,14 @@ export const WorkerProfileView: React.FC<Props> = ({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `HelloJobs_TradeCard_${worker.name.replace(/\s+/g, '_')}.txt`;
+    a.download = `Shramkart_TradeCard_${worker.name.replace(/\s+/g, '_')}.txt`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   const handleShareTradeCardWhatsApp = () => {
     const text = encodeURIComponent(
-      `Namaste, view my verified Hello Jobs Worker Trade Card (${worker.trade}, ${worker.experienceYears} yrs exp, ${worker.currentCity}). Token: ${worker.shareToken || worker.id}. Phone number is protected until direct invite.`
+      `Namaste, view my verified Shramkart Worker Trade Card (${worker.trade}, ${worker.experienceYears} yrs exp, ${worker.currentCity}). Token: ${worker.shareToken || worker.id}. Phone number is protected until direct invite.`
     );
     window.open(`https://wa.me/?text=${text}`, '_blank');
   };
@@ -1453,7 +1453,7 @@ export const WorkerProfileView: React.FC<Props> = ({
             <div className="bg-amber-400 text-slate-950 px-6 py-3 flex items-center justify-between">
               <div className="flex items-center gap-2 font-black text-xs uppercase tracking-wider">
                 <ShieldCheck className="w-4 h-4" />
-                <span>HELLO JOBS — SHAREABLE WORKER TRADE CARD</span>
+                <span>SHRAMKART — SHAREABLE WORKER TRADE CARD</span>
               </div>
               <span className="text-xs font-bold tabular-nums">
                 TOKEN: {worker.shareToken || worker.id.toUpperCase()}

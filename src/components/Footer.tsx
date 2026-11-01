@@ -32,10 +32,10 @@ export const Footer: React.FC<Props> = ({
           <div className="space-y-3 md:col-span-2">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded bg-amber-400 text-slate-950 flex items-center justify-center font-extrabold text-xs">
-                HJ
+                SK
               </div>
               <span className="text-base font-extrabold text-white tracking-tight">
-                Hello Jobs
+                Shramkart
               </span>
             </div>
             <p className="text-slate-400 text-xs leading-relaxed max-w-md">
@@ -145,7 +145,7 @@ export const Footer: React.FC<Props> = ({
         {/* Bottom bar */}
         <div className="pt-6 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between gap-4 text-slate-500 text-[11px]">
           <div>
-            © {new Date().getFullYear()} Hello Jobs India. All rights reserved.
+            © {new Date().getFullYear()} Shramkart India. All rights reserved.
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <button

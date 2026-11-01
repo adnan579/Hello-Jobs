@@ -1,6 +1,6 @@
 # Environments and settings
 
-Hello Jobs needs three things to run: a PostgreSQL database, a place to run one Node app, and a few settings. Run `npm run doctor` (with the same settings) any time. It tells you in plain words what is missing or unsafe. The server also prints the same warnings when it starts in production.
+Shramkart needs three things to run: a PostgreSQL database, a place to run one Node app, and a few settings. Run `npm run doctor` (with the same settings) any time. It tells you in plain words what is missing or unsafe. The server also prints the same warnings when it starts in production.
 
 ## Three environments
 

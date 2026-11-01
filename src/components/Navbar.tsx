@@ -17,6 +17,7 @@ import {
   Users,
   Plus,
 } from 'lucide-react';
+import { BrandLogo } from './BrandLogo';
 
 interface Props {
   currentRole: UserRole;
@@ -65,14 +66,16 @@ export const Navbar: React.FC<Props> = ({
   const isEmployerLoggedIn = authSession?.role === 'employer';
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200">
+    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
+      <div className="hv-stripe h-1" aria-hidden="true" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
         {/* Zone 1: Brand Wordmark */}
         <button
           onClick={() => onRoleChange('landing')}
-          className="text-lg font-extrabold tracking-tight text-slate-900 whitespace-nowrap shrink-0 cursor-pointer hover:text-amber-600 transition-colors"
+          aria-label="Shramkart home"
+          className="shrink-0 cursor-pointer rounded-lg py-1 transition-opacity hover:opacity-80"
         >
-          Shramkart
+          <BrandLogo showTagline />
         </button>
 
         {/* Zone 2: Contextual Navigation Links */}

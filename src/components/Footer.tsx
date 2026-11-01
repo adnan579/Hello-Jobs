@@ -2,6 +2,7 @@ import React from 'react';
 import { CONTACT } from '../config/contact';
 import { UserRole, Language } from '../types';
 import { ShieldCheck } from 'lucide-react';
+import { BrandLogo } from './BrandLogo';
 
 interface Props {
   currentLang: Language;
@@ -30,14 +31,7 @@ export const Footer: React.FC<Props> = ({
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand Info */}
           <div className="space-y-3 md:col-span-2">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded bg-amber-400 text-slate-950 flex items-center justify-center font-extrabold text-xs">
-                SK
-              </div>
-              <span className="text-base font-extrabold text-white tracking-tight">
-                Shramkart
-              </span>
-            </div>
+            <BrandLogo tone="dark" showTagline />
             <p className="text-slate-400 text-xs leading-relaxed max-w-md">
               Direct Hands for Indian Industry. Connecting skilled ITI technicians, machine operators, and factory helpers directly with verified manufacturing plants across India.
             </p>

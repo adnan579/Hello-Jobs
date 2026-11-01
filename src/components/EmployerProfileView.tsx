@@ -225,7 +225,7 @@ export const EmployerProfileView: React.FC<Props> = ({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `HelloJobs_Factory_DPDP_Export_${employer.gstin}.json`;
+    a.download = `Shramkart_Factory_DPDP_Export_${employer.gstin}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };

@@ -40,7 +40,7 @@ export const NcvtSearchModal: React.FC<Props> = ({
             </div>
             <div>
               <div className="text-xs font-mono uppercase tracking-wider text-amber-400">
-                Hello Jobs Credential Check
+                Shramkart Credential Check
               </div>
               <h2 className="text-base font-bold text-white">
                 Workers with a checked ITI certificate
@@ -68,7 +68,7 @@ export const NcvtSearchModal: React.FC<Props> = ({
             />
           </div>
           <div className="text-[11px] text-slate-500 mt-2 flex items-center gap-2">
-            <span>Lists workers whose ITI certificate Hello Jobs staff have checked. This is not a live government registry lookup.</span>
+            <span>Lists workers whose ITI certificate Shramkart staff have checked. This is not a live government registry lookup.</span>
           </div>
         </div>
 

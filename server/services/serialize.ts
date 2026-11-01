@@ -169,7 +169,7 @@ export function jobView(row: Row, opts: { owner?: boolean; now?: Date } = {}): J
   };
   if (opts.owner) {
     if (!kybOk) job.moderationReason = 'Not visible to workers yet: your factory (GSTIN) is still being verified.';
-    else if (row.employer_paused) job.moderationReason = 'Paused by Hello Jobs Trust & Safety. Contact support.';
+    else if (row.employer_paused) job.moderationReason = 'Paused by Shramkart Trust & Safety. Contact support.';
   } else {
     delete job.moderationReason;
     delete job.flaggedKeywords;
@@ -251,7 +251,7 @@ export function notificationView(row: Row): NotificationEvent {
     title: row.title,
     body: row.body,
     createdAt: relTime(row.created_at),
-    deliveredAt: 'In your Hello Jobs inbox',
+    deliveredAt: 'In your Shramkart inbox',
     status: 'Delivered',
     read: row.read,
   };

@@ -475,7 +475,7 @@ adminRouter.get(
     const { where, args } = auditQuery(req);
     const rows = (await req.ctx.db.query(`SELECT l.*, c.email AS actor_email FROM audit_logs l LEFT JOIN admin_credentials c ON c.account_id = l.actor_account_id WHERE ${where} ORDER BY l.created_at DESC, l.id DESC LIMIT 5000`, args)).rows;
     await log(req.ctx.db, req, { id: 'audit-export', name: 'Audit log', action: 'AUDIT_EXPORTED', details: `Exported ${rows.length} rows` });
-    res.set({ 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="hello-jobs-audit.csv"' });
+    res.set({ 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="shramkart-audit.csv"' });
     res.send(['When,Action,Subject,Details,Staff,IP', ...rows.map((r: any) => [iso(r.created_at), r.action, r.principal_name, r.details, r.actor_email ?? '', r.ip ?? ''].map(csvCell).join(','))].join('\n'));
   })
 );

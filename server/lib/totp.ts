@@ -50,7 +50,7 @@ export function verifyTotp(secret: string, code: string, lastUsedStep: number, n
 }
 
 export const otpauthUrl = (secret: string, email: string) =>
-  `otpauth://totp/${encodeURIComponent('Hello Jobs Admin')}:${encodeURIComponent(email)}?secret=${secret}&issuer=${encodeURIComponent('Hello Jobs Admin')}&algorithm=SHA1&digits=6&period=30`;
+  `otpauth://totp/${encodeURIComponent('Shramkart Admin')}:${encodeURIComponent(email)}?secret=${secret}&issuer=${encodeURIComponent('Shramkart Admin')}&algorithm=SHA1&digits=6&period=30`;
 
 // Secrets are stored encrypted. The key comes from ADMIN_2FA_KEY, or from SESSION_SECRET if that is not set.
 const keyFor = (material: string) => crypto.createHash('sha256').update('hj-admin-2fa:' + material).digest();

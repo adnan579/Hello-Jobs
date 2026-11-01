@@ -1,4 +1,4 @@
-# Deploy Hello Jobs (browser only, about 30 minutes)
+# Deploy Shramkart (browser only, about 30 minutes)
 
 You need: a GitHub account (you have it), a Neon account (database), a Vercel account (hosting). All have free plans good enough for a pilot.
 

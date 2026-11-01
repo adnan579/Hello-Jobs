@@ -102,7 +102,7 @@ export const DualLanding: React.FC<Props> = ({
     ['Offer in writing', 'Rare', 'Digital offer letter with the pay'],
   ];
   const faqs: [string, React.ReactNode][] = [
-    ['Does it cost anything for workers?', 'No. Registering, applying and accepting offers are free. Nobody on Hello Jobs is allowed to ask a worker for money.'],
+    ['Does it cost anything for workers?', 'No. Registering, applying and accepting offers are free. Nobody on Shramkart is allowed to ask a worker for money.'],
     ['Do I need an ITI certificate?', 'No. Helper, packer and loader jobs do not need one. If you have an ITI certificate, add it and our team checks it, which helps factories trust your profile.'],
     ['How do I know a factory is real?', 'A factory\'s jobs are shown only after our team checks its GSTIN. Jobs from unchecked factories stay hidden.'],
     [
@@ -242,7 +242,7 @@ export const DualLanding: React.FC<Props> = ({
             <div key={topic} className="rounded-xl border border-slate-200 bg-white p-4">
               <div className="font-bold text-slate-900">{topic}</div>
               <div className="mt-2 flex items-start gap-2 text-sm text-slate-600"><XIcon className="mt-0.5 w-4 h-4 shrink-0 text-red-500" /><span><span className="font-semibold">Contractor:</span> {them}</span></div>
-              <div className="mt-1.5 flex items-start gap-2 text-sm font-medium text-slate-900"><Check className="mt-0.5 w-4 h-4 shrink-0 text-emerald-700" /><span><span className="font-bold">Hello Jobs:</span> {us}</span></div>
+              <div className="mt-1.5 flex items-start gap-2 text-sm font-medium text-slate-900"><Check className="mt-0.5 w-4 h-4 shrink-0 text-emerald-700" /><span><span className="font-bold">Shramkart:</span> {us}</span></div>
             </div>
           ))}
         </div>
@@ -252,7 +252,7 @@ export const DualLanding: React.FC<Props> = ({
               <tr className="border-b border-slate-200 bg-slate-50">
                 <th scope="col" className="px-5 py-3 font-semibold text-slate-500"><span className="sr-only">Topic</span></th>
                 <th scope="col" className="px-5 py-3 font-bold text-slate-700">Through a contractor</th>
-                <th scope="col" className="px-5 py-3 font-bold text-slate-950 bg-amber-50">On Hello Jobs</th>
+                <th scope="col" className="px-5 py-3 font-bold text-slate-950 bg-amber-50">On Shramkart</th>
               </tr>
             </thead>
             <tbody>

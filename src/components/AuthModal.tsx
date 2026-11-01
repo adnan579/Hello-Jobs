@@ -238,7 +238,7 @@ export const AuthModal: React.FC<Props> = ({
         <div className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-black text-xs">
-              HJ
+              SK
             </div>
             <div>
               <h2 className="text-base font-bold text-white">

@@ -26,7 +26,7 @@ async function start() {
     app.use(express.static(dist, { maxAge: '1h', index: false }));
     app.get('*', (_req, res) => res.sendFile(path.join(dist, 'index.html')));
   }
-  app.listen(PORT, '0.0.0.0', () => console.log(`Hello Jobs running on http://localhost:${PORT}`));
+  app.listen(PORT, '0.0.0.0', () => console.log(`Shramkart running on http://localhost:${PORT}`));
 }
 
 if (!IS_VERCEL) start();

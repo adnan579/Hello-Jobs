@@ -1,4 +1,4 @@
-# Hello Jobs — Direct Hands for Indian Industry
+# Shramkart — Direct Hands for Indian Industry
 
 A two-way marketplace for blue and grey-collar manufacturing work in India. Verified factories and ITI / semi-skilled workers find each other directly. No contractor cut. Free for workers. Factories pay for talent-directory credits.
 

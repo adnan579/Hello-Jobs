@@ -699,7 +699,7 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
                       className="mt-0.5 rounded border-emerald-400 text-emerald-600 focus:ring-emerald-500"
                     />
                     <span className="text-[11px]">
-                      <strong>Section 6 Verifiable Consent:</strong> I consent to Hello Jobs processing my Name, Mobile Number, and Work Skills strictly to connect me with GSTIN-verified factories. My data will <strong>never be sold to contractors (thekedars)</strong>, and I can withdraw consent or erase my data anytime.
+                      <strong>Section 6 Verifiable Consent:</strong> I consent to Shramkart processing my Name, Mobile Number, and Work Skills strictly to connect me with GSTIN-verified factories. My data will <strong>never be sold to contractors (thekedars)</strong>, and I can withdraw consent or erase my data anytime.
                     </span>
                   </label>
                 </div>

@@ -21,7 +21,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     enterEmployerSub: 'Post Requirements · Hire Helpers & ITI Staff · Digital Offers',
     statZeroCuts: '₹0 Contractor Deductions',
     statZeroCutsDesc: '100% of the wage goes to the worker\'s account',
-    statWorkers: 'Workers on Hello Jobs',
+    statWorkers: 'Workers on Shramkart',
     statWorkersDesc: 'Helpers, packers, fitters, welders, CNC operators and electricians',
     statFactories: 'Jobs from verified factories',
     statFactoriesDesc: 'Every factory is GSTIN-checked by our team',
@@ -67,7 +67,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     verifiedNcvt: 'NCVT Certified',
     ncvtCheckTitle: 'NCVT MIS Certificate Verification',
     reportModalTitle: 'Report Contractor (Thekedar) Exploitation',
-    reportModalDesc: 'Hello Jobs guarantees ₹0 recruiter fee. If any contractor demands salary cuts or commission, report them immediately.',
+    reportModalDesc: 'Shramkart guarantees ₹0 recruiter fee. If any contractor demands salary cuts or commission, report them immediately.',
     calculatorTitle: 'Zero-Middleman Wage Calculator',
     calculatorDesc: 'See how much extra money you keep when hiring directly vs through manpower thekedars.',
     thekedarCutWarning: 'Traditional thekedars pocket 15% to 30% of your earned wage every single month.',
@@ -249,7 +249,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     enterEmployerSub: 'தேவையை பதிவிடு · ஹெல்பர் & ITI தேடு · டிஜிட்டல் ஆஃபர்',
     statZeroCuts: '₹0 இடைத்தரகர் பிடித்தம்',
     statZeroCutsDesc: '100% முழு ஊதியமும் தொழிலாளரின் கணக்கில் சேரும்',
-    statWorkers: 'Hello Jobs தொழிலாளர்கள்',
+    statWorkers: 'Shramkart தொழிலாளர்கள்',
     statWorkersDesc: 'ஹெல்பர், பேக்கர், ஃபிட்டர், வெல்டர், CNC, எலக்ட்ரீஷியன்',
     statFactories: 'சரிபார்க்கப்பட்ட ஆலைகளின் வேலைகள்',
     statFactoriesDesc: 'ஒவ்வொரு ஆலையின் GSTIN-ஐயும் எங்கள் குழு சரிபார்க்கிறது',
@@ -343,7 +343,7 @@ export function getVoiceGuideScript(
       case 'ta':
         return 'டிஜிட்டல் தனிநபர் தரவு பாதுகாப்பு சட்டம் 2023 (DPDP சட்டம்) அறிவிப்பு: ஹலோ ஜாப்ஸ் உங்கள் பெயர் மற்றும் மொபைல் எண்ணை நேரடி தொழிற்சாலை வேலைக்காக மட்டுமே பயன்படுத்துகிறது. எந்த இடைத்தரகருக்கும் உங்கள் தகவல் விற்கப்படாது. நீங்கள் எப்போது வேண்டுமானாலும் உங்கள் ஒப்புதலை திரும்பப் பெறலாம் அல்லது தரவை அழிக்கலாம்.';
       default:
-        return 'Digital Personal Data Protection Act 2023 Notice: Hello Jobs collects your name, mobile number, and work skills strictly to connect you directly with GSTIN-verified factories and issue direct payroll offer letters. Your data is never shared with third-party contractors or thekedars. Under the DPDP Act, you have the right to withdraw consent, erase your data, appoint a nominee, or file a grievance at any time.';
+        return 'Digital Personal Data Protection Act 2023 Notice: Shramkart collects your name, mobile number, and work skills strictly to connect you directly with GSTIN-verified factories and issue direct payroll offer letters. Your data is never shared with third-party contractors or thekedars. Under the DPDP Act, you have the right to withdraw consent, erase your data, appoint a nominee, or file a grievance at any time.';
     }
   }
 
@@ -382,6 +382,6 @@ export function getVoiceGuideScript(
     case 'ta':
       return 'ஹலோ ஜாப்ஸுக்கு வரவேற்கிறோம். உங்களிடம் சான்றிதழ் இல்லையென்றால், பச்சை நிற ஹெல்பர் மற்றும் பேக்கிங் பட்டனை அழுத்தவும். வேலை விவரங்களைக் கேட்க ஸ்பீக்கர் பட்டனை அழுத்தவும்.';
     default:
-      return 'Welcome to the Hello Jobs Worker Feed. If you do not have an ITI certificate, tap the green No Certificate Helper and Packing button at the top. You can also tap Listen Job Audio on any card to hear the salary and facilities read aloud.';
+      return 'Welcome to the Shramkart Worker Feed. If you do not have an ITI certificate, tap the green No Certificate Helper and Packing button at the top. You can also tap Listen Job Audio on any card to hear the salary and facilities read aloud.';
   }
 }

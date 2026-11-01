@@ -253,7 +253,7 @@ export const DigitalOfferModal: React.FC<Props> = ({
 
             {/* Zero Contractor Legal Clause Box */}
             <div className="p-3 bg-slate-100 border border-slate-200 rounded text-[11px] text-slate-600">
-              <span className="font-bold text-slate-800 block mb-0.5">Hello Jobs Direct Employment Covenant:</span>
+              <span className="font-bold text-slate-800 block mb-0.5">Shramkart Direct Employment Covenant:</span>
               By issuing this digital offer, the employer certifies that this candidate is onboarded on direct company payroll or transparent fixed-fee contract. No third-party labor thekedar or intermediary is permitted to claim commission or withhold worker wages.
             </div>
 

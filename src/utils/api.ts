@@ -220,7 +220,7 @@ export async function purchaseCreditPackApi(
       amount: o.amountPaise,
       currency: 'INR',
       order_id: o.razorpayOrderId,
-      name: 'Hello Jobs',
+      name: 'Shramkart',
       description: o.packLabel,
       prefill: { name: employer?.companyName, contact: employer?.hrPhone, email: employer?.hrEmail },
       theme: { color: '#0f172a' },
@@ -279,7 +279,7 @@ export async function downloadMyDataApi(): Promise<void> {
   const blob = await res.blob();
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'hello-jobs-my-data.json';
+  a.download = 'shramkart-my-data.json';
   a.click();
   URL.revokeObjectURL(a.href);
 }

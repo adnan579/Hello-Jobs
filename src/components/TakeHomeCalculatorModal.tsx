@@ -22,7 +22,7 @@ export const TakeHomeCalculatorModal: React.FC<Props> = ({ isOpen, onClose, lang
   const totalOtEarnings = overtimeHours * otHourlyRate;
   const totalGrossWithOt = grossWage + totalOtEarnings;
 
-  // Direct Hello Jobs route:
+  // Direct Shramkart route:
   // Statutory deductions: PF 12% (credited to worker's EPFO account with employer match), ESI 0.75%
   const workerPfDeduction = Math.round(grossWage * 0.12);
   const employerPfMatch = Math.round(grossWage * 0.12); // Employer also adds 12% to worker's PF asset
@@ -66,7 +66,7 @@ export const TakeHomeCalculatorModal: React.FC<Props> = ({ isOpen, onClose, lang
         {/* Content */}
         <div className="p-6 overflow-y-auto space-y-6">
           <p className="text-xs text-slate-600">
-            {t.thekedarCutWarning} On Hello Jobs, 100% of the wage goes directly to the worker with zero recruiter deductions.
+            {t.thekedarCutWarning} On Shramkart, 100% of the wage goes directly to the worker with zero recruiter deductions.
           </p>
 
           {/* Sliders Input Control Box */}
@@ -164,12 +164,12 @@ export const TakeHomeCalculatorModal: React.FC<Props> = ({ isOpen, onClose, lang
               </div>
             </div>
 
-            {/* Hello Jobs Direct Column */}
+            {/* Shramkart Direct Column */}
             <div className="p-4 bg-emerald-50/50 border-2 border-emerald-300 rounded-lg space-y-3">
               <div className="flex items-center gap-2 text-emerald-800">
                 <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-600" />
                 <h4 className="text-xs font-bold uppercase tracking-wider">
-                  Hello Jobs Direct Portal
+                  Shramkart Direct Portal
                 </h4>
               </div>
 

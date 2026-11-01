@@ -24,7 +24,7 @@ export function Login({ onDone, notice }: { onDone: (me: Me) => void; notice?: s
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-900 p-4">
       <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
-        <h1 className="text-xl font-extrabold text-slate-900">Hello Jobs Staff Console</h1>
+        <h1 className="text-xl font-extrabold text-slate-900">Shramkart Staff Console</h1>
         <p className="mb-4 text-sm text-slate-500">Authorised staff only. Everything you do here is recorded.</p>
         {notice && <p role="status" className="mb-3 rounded-lg bg-amber-50 p-2 text-sm font-semibold text-amber-800">{notice}</p>}
         {step.kind === 'password' ? (

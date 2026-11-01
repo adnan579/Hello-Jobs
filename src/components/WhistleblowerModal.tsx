@@ -95,7 +95,7 @@ export const WhistleblowerModal: React.FC<Props> = ({
             <div className="p-3 bg-red-50 border border-red-200 rounded text-xs text-red-800 flex items-start gap-2">
               <AlertOctagon className="w-4 h-4 shrink-0 mt-0.5 text-red-600" />
               <span>
-                <strong>100% Free Policy:</strong> No recruiter, HR, or thekedar on Hello Jobs is allowed to ask for registration fees, uniform charges, or salary percentage.
+                <strong>100% Free Policy:</strong> No recruiter, HR, or thekedar on Shramkart is allowed to ask for registration fees, uniform charges, or salary percentage.
               </span>
             </div>
 

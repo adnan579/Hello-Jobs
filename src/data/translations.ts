@@ -1,3 +1,5 @@
+import { Language, JobListing } from '../types';
+
 export const TRANSLATIONS: Record<string, Record<string, string>> = {
   en: {
     // Worker Feed
@@ -240,3 +242,82 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
 };
 
 export type TranslationKeys = keyof (typeof TRANSLATIONS)['en'];
+
+export function getAudioNarrationScript(job: JobListing, lang: Language): string {
+  const takeHomeFormatted = job.takeHomeSalary.toLocaleString('en-IN');
+  const otFormatted = job.overtimeHourlyRate.toLocaleString('en-IN');
+  const noCertNoteHi = job.noCertificateRequired
+    ? 'इस काम के लिए किसी आईटीआई या सर्टिफिकेट की ज़रूरत नहीं है, सीधी भर्ती है।'
+    : '';
+  const noCertNoteEn = job.noCertificateRequired
+    ? 'No ITI certificate or formal document is required for this job. Direct joining.'
+    : '';
+
+  switch (lang) {
+    case 'hi':
+      return `नमस्ते! ${job.companyName} में ${job.industrialHub} के लिए ${job.trade} की भर्ती है। ${noCertNoteHi} हाथ में मिलने वाली सैलरी ₹${takeHomeFormatted} महीना है। ओवरटाइम ₹${otFormatted} प्रति घंटा। ${job.facilities.hasHostel ? 'फैक्ट्री में रहने के लिए हॉस्टल सुविधा उपलब्ध है।' : ''} ${job.facilities.hasSubsidizedMess ? 'सस्ती कैंटीन सुविधा उपलब्ध है।' : ''} अप्लाई करने के लिए पीले बटन को दबाएं या सीधे HR को कॉल करें। कोई ठेकेदार नहीं, पूरा वेतन आपका।`;
+    case 'mr':
+      return `नमस्कार! ${job.companyName} येथे ${job.industrialHub} मधील कारखान्यासाठी ${job.trade} पदाची भरती सुरू आहे. हातात मिळणारा पगार महिना ₹${takeHomeFormatted} आहे. ओव्हरटाईम दर ₹${otFormatted} प्रति तास आहे. ${job.noCertificateRequired ? 'या कामासाठी कोणत्याही सर्टिफिकेटची गरज नाही.' : ''} ${job.facilities.hasHostel ? 'कामगारांसाठी हॉस्टेल सुविधा उपलब्ध आहे.' : ''} थेट कंपनी HR सोबत संपर्क साधण्यासाठी खालील बटण दाबा.`;
+    case 'ta':
+      return `வணக்கம்! ${job.companyName} நிறுவனத்தில் ${job.industrialHub} தொழிற்சாலைக்கு ${job.trade} பணிக்கான ஆட்கள் தேவை. கைக்கு வரும் மாத சம்பளம் ₹${takeHomeFormatted}. ஓவர்டைம் ஊதியம் மணிக்கு ₹${otFormatted}. ${job.noCertificateRequired ? 'இந்த வேலைக்கு எந்த சான்றிதழும் தேவையில்லை.' : ''} இடைத்தரகர் இன்றி நேரடியாக HR-ஐ அழைக்கவும்.`;
+    case 'en':
+    default:
+      return `Hello! Urgent opening at ${job.companyName} in ${job.industrialHub} for ${job.trade}. ${noCertNoteEn} Guaranteed take-home salary is ₹${takeHomeFormatted} per month, with overtime pay of ₹${otFormatted} per hour. Shift pattern: ${job.shiftPattern}. Full ESI and PF included. Tap 1-Tap Direct Apply or call HR directly with zero agency cuts.`;
+  }
+}
+
+export function getVoiceGuideScript(
+  context: 'worker-feed' | 'onboarding' | 'worker-profile' | 'dpdp-notice',
+  lang: Language
+): string {
+  if (context === 'dpdp-notice') {
+    switch (lang) {
+      case 'hi':
+        return 'डिजिटल पर्सनल डेटा प्रोटेक्शन एक्ट 2023 (DPDP कानून) के तहत सूचना: हेलो जॉब्स आपका नाम, मोबाइल नंबर और काम का विवरण केवल सत्यापित फैक्ट्रियों में सीधी नौकरी और ऑफर लेटर दिलाने के लिए लेता है। आपका डेटा किसी भी ठेकेदार या एजेंट को नहीं बेचा जाता। आप कभी भी अपनी सहमति वापस ले सकते हैं, अपना डेटा मिटा सकते हैं, या डेटा सुरक्षा अधिकारी से शिकायत कर सकते हैं।';
+      case 'mr':
+        return 'डिजिटल पर्सनल डेटा प्रोटेक्शन कायदा 2023 अंतर्गत सूचना: हॅलो जॉब्स तुमचे नाव, मोबाईल नंबर आणि कामाची माहिती फक्त नोंदणीकृत कंपन्यांमध्ये थेट नोकरी मिळवून देण्यासाठी वापरते. तुमचा डेटा कोणत्याही ठेकेदाराला दिला जात नाही. तुम्ही तुमची संमती कधीही मागे घेऊ शकता किंवा डेटा हटवू शकता.';
+      case 'ta':
+        return 'டிஜிட்டல் தனிநபர் தரவு பாதுகாப்பு சட்டம் 2023 (DPDP சட்டம்) அறிவிப்பு: ஹலோ ஜாப்ஸ் உங்கள் பெயர் மற்றும் மொபைல் எண்ணை நேரடி தொழிற்சாலை வேலைக்காக மட்டுமே பயன்படுத்துகிறது. எந்த இடைத்தரகருக்கும் உங்கள் தகவல் விற்கப்படாது. நீங்கள் எப்போது வேண்டுமானாலும் உங்கள் ஒப்புதலை திரும்பப் பெறலாம் அல்லது தரவை அழிக்கலாம்.';
+      default:
+        return 'Digital Personal Data Protection Act 2023 Notice: Shramkart collects your name, mobile number, and work skills strictly to connect you directly with GSTIN-verified factories and issue direct payroll offer letters. Your data is never shared with third-party contractors or thekedars. Under the DPDP Act, you have the right to withdraw consent, erase your data, appoint a nominee, or file a grievance at any time.';
+    }
+  }
+
+  if (context === 'onboarding') {
+    switch (lang) {
+      case 'hi':
+        return 'नमस्ते! यहाँ प्रोफाइल बनाना बहुत आसान है। किसी सर्टिफिकेट या कागज़ की ज़रूरत नहीं है। पहले अपने काम का प्रकार चुनें जैसे हेल्पर, पैकिंग या मशीन ऑपरेटर। फिर अपनी ताकत चुनें और बस अपना नाम और मोबाइल नंबर लिखें।';
+      case 'mr':
+        return 'नमस्कार! येथे प्रोफाइल बनवणे खूप सोपे आहे. कोणत्याही सर्टिफिकेटची गरज नाही. फक्त तुमचे काम निवडा, जसे हेल्पर किंवा पॅकिंग, आणि तुमचे नाव व मोबाईल नंबर टाका.';
+      case 'ta':
+        return 'வணக்கம்! இங்கே சுயவிவரம் உருவாக்குவது மிகவும் எளிது. எந்த சான்றிதழும் தேவையில்லை. உங்கள் வேலை வகையைத் தேர்ந்தெடுத்து, உங்கள் பெயர் மற்றும் மொபைல் எண்ணை மட்டும் உள்ளிடவும்.';
+      default:
+        return 'Welcome! Creating your profile takes just 3 simple taps. No certificates or documents are required. Step 1: Tap your work type like Helper, Packing, or ITI Operator. Step 2: Tap your work-readiness badges. Step 3: Enter your name and mobile number.';
+    }
+  }
+
+  if (context === 'worker-profile') {
+    switch (lang) {
+      case 'hi':
+        return 'यह आपकी कामगार प्रोफाइल है। यहाँ आप बिना किसी सर्टिफिकेट के अपने काम के बैज देख सकते हैं, कंपनियों से आए ऑफर लेटर स्वीकार कर सकते हैं, और अपना क्यूआर गेट-पास आईडी कार्ड डाउनलोड कर सकते हैं।';
+      case 'mr':
+        return 'ही तुमची कामगार प्रोफाइल आहे. येथे तुम्ही तुमचे कामाचे बॅज पाहू शकता, कंपनीचे ऑफर लेटर स्वीकारू शकता आणि तुमचे गेट-पास आयडी कार्ड काढू शकता.';
+      case 'ta':
+        return 'இது உங்கள் தொழிலாளர் சுயவிவரம். இங்கே உங்கள் பணி பேட்ஜ்கள், ஆஃபர் கடிதங்கள் மற்றும் அடையாள அட்டையைப் பார்க்கலாம்.';
+      default:
+        return 'This is your Worker Profile and Gate Pass locker. Here you can update your work-readiness badges without needing certificates, accept factory offer letters, and print your QR Digital Worker Gate Pass.';
+    }
+  }
+
+  // worker-feed
+  switch (lang) {
+    case 'hi':
+      return 'हेलो जॉब्स में आपका स्वागत है। अगर आपके पास कोई सर्टिफिकेट नहीं है, तो हरे रंग का बिना सर्टिफिकेट हेल्पर और पैकिंग बटन दबाएं। हर नौकरी कार्ड पर पीला स्पीकर बटन दबाकर नौकरी की पूरी जानकारी अपनी भाषा में सुनें।';
+    case 'mr':
+      return 'हॅलो जॉब्स मध्ये आपले स्वागत आहे. तुमच्याकडे सर्टिफिकेट नसल्यास हिरवे हेल्पर आणि पॅकिंग बटण दाबा. प्रत्येक नोकरीची माहिती ऐकण्यासाठी स्पीकर बटण दाबा.';
+    case 'ta':
+      return 'ஹலோ ஜாப்ஸுக்கு வரவேற்கிறோம். உங்களிடம் சான்றிதழ் இல்லையென்றால், பச்சை நிற ஹெல்பர் மற்றும் பேக்கிங் பட்டனை அழுத்தவும். வேலை விவரங்களைக் கேட்க ஸ்பீக்கர் பட்டனை அழுத்தவும்.';
+    default:
+      return 'Welcome to the Shramkart Worker Feed. If you do not have an ITI certificate, tap the green No Certificate Helper and Packing button at the top. You can also tap Listen Job Audio on any card to hear the salary and facilities read aloud.';
+  }
+}

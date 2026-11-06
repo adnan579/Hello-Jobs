@@ -69,6 +69,9 @@ interface Props {
   onBrowseJobs: () => void;
   onLogout: () => void;
   onOpenDpdpModal?: () => void;
+  /** Optional: lets the app control which section is open, so navigation can mark it active. */
+  activeTab?: 'profile' | 'inbox' | 'idcard';
+  onActiveTabChange?: (tab: 'profile' | 'inbox' | 'idcard') => void;
 }
 
 const TRADES: TradeType[] = [
@@ -120,9 +123,17 @@ export const WorkerProfileView: React.FC<Props> = ({
   onBrowseJobs,
   onLogout,
   onOpenDpdpModal,
+  activeTab: controlledTab,
+  onActiveTabChange,
 }) => {
   const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
-  const [activeTab, setActiveTab] = useState<'profile' | 'inbox' | 'idcard'>('profile');
+  const [ownTab, setOwnTab] = useState<'profile' | 'inbox' | 'idcard'>('profile');
+  // Follows the app when it controls the tab; otherwise keeps its own state.
+  const activeTab = controlledTab ?? ownTab;
+  const setActiveTab = (tab: 'profile' | 'inbox' | 'idcard') => {
+    setOwnTab(tab);
+    onActiveTabChange?.(tab);
+  };
   const [isVoicePlaying, setIsVoicePlaying] = useState(false);
 
   // Form states synced with worker prop

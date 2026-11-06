@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   UserRole,
   Language,
@@ -7,20 +7,21 @@ import {
   EmployerFactoryProfile,
 } from '../types';
 import {
+  UserCheck,
+  Factory,
+  FileText,
+  LogIn,
+  UserPlus,
+  Bell,
+  LogOut,
   Briefcase,
   Users,
-  Building2,
-  Globe,
-  LogIn,
-  LogOut,
-  UserCheck,
-  FileText,
-  MapPin,
-  Bell,
-  Menu,
-  X,
+  Plus,
 } from 'lucide-react';
-import { TRANSLATIONS } from '../data/translations';
+import { BrandLogo } from './BrandLogo';
+import { makeT } from '../data/translations';
+
+export type WorkerTab = 'profile' | 'inbox' | 'idcard';
 
 interface Props {
   currentRole: UserRole;
@@ -28,8 +29,13 @@ interface Props {
   authSession: AuthSession | null;
   activeWorker?: CandidateProfile;
   employerProfile: EmployerFactoryProfile;
-  unreadNotificationsCount: number;
+  /** Notifications the person has not seen yet. */
+  unreadNotificationsCount?: number;
+  /** Which section of the worker profile page is open (for the active nav marker). */
+  workerTab?: WorkerTab;
   onRoleChange: (role: UserRole) => void;
+  /** Opens a section of the worker profile page, e.g. "Applications & offers". */
+  onOpenWorkerTab?: (tab: WorkerTab) => void;
   onLangChange: (lang: Language) => void;
   onOpenCalculator: () => void;
   onOpenReport: () => void;
@@ -38,10 +44,44 @@ interface Props {
     initialTab?: 'worker' | 'employer',
     initialMode?: 'login' | 'register'
   ) => void;
-  onOpenNotifications: () => void;
-  onOpenPostJob: () => void;
-  onLogout: () => void;
+  onOpenPostJob?: () => void;
+  onOpenNotifications?: () => void;
+  onLogout?: () => void;
 }
+
+const LANGUAGES: { code: Language; nativeName: string }[] = [
+  { code: 'en', nativeName: 'English' },
+  { code: 'hi', nativeName: 'हिंदी' },
+  { code: 'mr', nativeName: 'मराठी' },
+  { code: 'ta', nativeName: 'தமிழ்' },
+];
+
+/** One desktop navigation link. The current page is marked in text, underline and aria-current. */
+const NavLink: React.FC<{
+  active: boolean;
+  tone: 'worker' | 'employer' | 'neutral';
+  onClick: () => void;
+  children: React.ReactNode;
+}> = ({ active, tone, onClick, children }) => {
+  const activeStyle =
+    tone === 'employer'
+      ? 'text-[var(--sk-blue-text)] border-[var(--sk-blue)]'
+      : tone === 'worker'
+        ? 'text-[var(--sk-amber-text)] border-[var(--sk-amber)]'
+        : 'text-slate-900 border-slate-900';
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-current={active ? 'page' : undefined}
+      className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-0.5 text-sm font-bold transition-colors ${
+        active ? `${activeStyle} font-extrabold` : 'border-transparent text-slate-700 hover:text-slate-900'
+      }`}
+    >
+      {children}
+    </button>
+  );
+};
 
 export const Navbar: React.FC<Props> = ({
   currentRole,
@@ -49,333 +89,188 @@ export const Navbar: React.FC<Props> = ({
   authSession,
   activeWorker,
   employerProfile,
-  unreadNotificationsCount,
+  unreadNotificationsCount = 0,
+  workerTab = 'profile',
   onRoleChange,
+  onOpenWorkerTab,
   onLangChange,
   onOpenCalculator,
-  onOpenReport,
-  onOpenNcvtSearch,
   onOpenAuthModal,
-  onOpenNotifications,
   onOpenPostJob,
+  onOpenNotifications,
   onLogout,
 }) => {
-  const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
-  const [menuOpen, setMenuOpen] = React.useState(false);
+  const t = useMemo(() => makeT(currentLang), [currentLang]);
 
-  const languages: { code: Language; label: string }[] = [
-    { code: 'en', label: 'English' },
-    { code: 'hi', label: 'हिंदी' },
-    { code: 'mr', label: 'मराठी' },
-    { code: 'ta', label: 'தமிழ்' },
-  ];
+  const isWorkerLoggedIn = authSession?.role === 'worker' && Boolean(activeWorker);
+  const isEmployerLoggedIn = authSession?.role === 'employer';
 
-  const roleLabel: Record<string, string> = {
-    landing: t.navLanding,
-    worker: t.navWorkerFeed,
-    employer: t.navEmployerFeed,
-    'worker-profile': t.navWorkerProfile,
-    'employer-profile': t.navEmployerProfile,
-  };
+  const openWorkerTab = (tab: WorkerTab) =>
+    onOpenWorkerTab ? onOpenWorkerTab(tab) : onRoleChange('worker-profile');
 
-  const isWorker = authSession?.role === 'worker';
-  const isEmployer = authSession?.role === 'employer';
+  const onProfilePage = currentRole === 'worker-profile';
+  const authTone = currentRole === 'employer' || isEmployerLoggedIn ? 'employer' : 'worker';
 
   return (
-    <nav className="bg-slate-950 text-slate-300 border-b border-slate-800 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-14">
-          {/* Logo + Brand */}
-          <button
-            onClick={() => onRoleChange('landing')}
-            className="flex items-center gap-2 shrink-0"
-            aria-label="Go to home"
-          >
-            <div className="w-8 h-8 rounded-lg bg-amber-400 text-slate-950 flex items-center justify-center font-black text-sm">
-              S
-            </div>
-            <div className="hidden sm:block">
-              <span className="text-base font-black text-white tracking-tight">
-                Shramkart
-              </span>
-              <span className="block text-[10px] text-slate-400 -mt-0.5">
-                {t.navSubtitle}
-              </span>
-            </div>
-          </button>
+    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur-md">
+      <div className="hv-stripe h-1" aria-hidden="true" />
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+        {/* Zone 1: Brand wordmark */}
+        <button
+          type="button"
+          onClick={() => onRoleChange('landing')}
+          aria-label={t('navHomeAria')}
+          className="min-h-11 shrink-0 cursor-pointer rounded-lg py-1 transition-opacity hover:opacity-80"
+        >
+          <BrandLogo showTagline />
+        </button>
 
-          {/* Desktop Role Tabs */}
-          <div className="hidden md:flex items-center gap-1 bg-slate-900/80 rounded-lg p-0.5">
-            {(
-              [
-                { key: 'landing', label: t.navLanding, icon: Briefcase },
-                ...(isWorker
-                  ? [
-                      { key: 'worker', label: t.navWorkerFeed, icon: Briefcase },
-                      {
-                        key: 'worker-profile',
-                        label: t.navWorkerProfile,
-                        icon: UserCheck,
-                      },
-                    ]
-                  : []),
-                ...(isEmployer
-                  ? [
-                      {
-                        key: 'employer',
-                        label: t.navEmployerFeed,
-                        icon: Users,
-                      },
-                      {
-                        key: 'employer-profile',
-                        label: t.navEmployerProfile,
-                        icon: Building2,
-                      },
-                    ]
-                  : []),
-              ] as { key: UserRole; label: string; icon: React.ElementType }[]
-            ).map((item) => {
-              const isActive = currentRole === item.key;
-              return (
-                <button
-                  key={item.key}
-                  onClick={() => onRoleChange(item.key)}
-                  aria-current={isActive ? 'page' : undefined}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${
-                    isActive
-                      ? 'bg-amber-400 text-slate-950 shadow-xs'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                  }`}
-                >
-                  <item.icon className="w-3.5 h-3.5" />
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
+        {/* Zone 2: Navigation for the current role (desktop; phones and tablets use the bottom bar) */}
+        <nav aria-label={t('navMainAria')} className="hidden items-center gap-6 lg:flex">
+          {isWorkerLoggedIn ? (
+            <>
+              <NavLink tone="worker" active={currentRole === 'worker'} onClick={() => onRoleChange('worker')}>
+                <Briefcase className="h-4 w-4" aria-hidden="true" />
+                <span>{t('navJobsFeed')}</span>
+              </NavLink>
+              <NavLink
+                tone="worker"
+                active={onProfilePage && workerTab === 'inbox'}
+                onClick={() => openWorkerTab('inbox')}
+              >
+                <FileText className="h-4 w-4" aria-hidden="true" />
+                <span>{t('navApplications')}</span>
+              </NavLink>
+              <NavLink
+                tone="worker"
+                active={onProfilePage && workerTab !== 'inbox'}
+                onClick={() => openWorkerTab('profile')}
+              >
+                <UserCheck className="h-4 w-4" aria-hidden="true" />
+                <span>{t('navMyProfile')}</span>
+              </NavLink>
+              <NavLink tone="neutral" active={false} onClick={onOpenCalculator}>
+                {t('navSalaryCalc')}
+              </NavLink>
+            </>
+          ) : isEmployerLoggedIn ? (
+            <>
+              <NavLink
+                tone="employer"
+                active={currentRole === 'employer-profile'}
+                onClick={() => onRoleChange('employer-profile')}
+              >
+                <Factory className="h-4 w-4" aria-hidden="true" />
+                <span>{t('navDashboard')}</span>
+              </NavLink>
+              <NavLink tone="employer" active={currentRole === 'employer'} onClick={() => onRoleChange('employer')}>
+                <Users className="h-4 w-4" aria-hidden="true" />
+                <span>{t('navCandidates')}</span>
+              </NavLink>
+              {onOpenPostJob && (
+                <NavLink tone="employer" active={false} onClick={onOpenPostJob}>
+                  <Plus className="h-4 w-4" aria-hidden="true" />
+                  <span>{t('navPostJob')}</span>
+                </NavLink>
+              )}
+            </>
+          ) : (
+            <>
+              <NavLink tone="neutral" active={currentRole === 'landing'} onClick={() => onRoleChange('landing')}>
+                {t('navHome')}
+              </NavLink>
+              <NavLink tone="worker" active={currentRole === 'worker'} onClick={() => onRoleChange('worker')}>
+                {t('navBrowseJobs')}
+              </NavLink>
+              <NavLink tone="employer" active={currentRole === 'employer'} onClick={() => onRoleChange('employer')}>
+                {t('navForEmployers')}
+              </NavLink>
+              <NavLink tone="neutral" active={false} onClick={onOpenCalculator}>
+                {t('navSalaryCalc')}
+              </NavLink>
+            </>
+          )}
+        </nav>
+
+        {/* Zone 3: language, alerts and account */}
+        <div className="flex shrink-0 items-center gap-2">
+          {/* A native select works on every screen size, by keyboard, touch and screen reader. */}
+          <div>
+            <label htmlFor="lang-select" className="sr-only">
+              {t('langLabel')}
+            </label>
+            <select
+              id="lang-select"
+              value={currentLang}
+              onChange={(e) => onLangChange(e.target.value as Language)}
+              className="field !min-h-11 !w-auto !py-1 !pl-2 !pr-1 !text-sm font-semibold"
+            >
+              {LANGUAGES.map((l) => (
+                <option key={l.code} value={l.code}>
+                  {l.nativeName}
+                </option>
+              ))}
+            </select>
           </div>
 
-          {/* Right Controls */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            {/* Language Switcher */}
-            <div className="hidden sm:flex items-center gap-0.5">
-              {languages.map((lang) => (
-                <button
-                  key={lang.code}
-                  onClick={() => onLangChange(lang.code)}
-                  className={`px-2 py-1 text-[10px] font-bold rounded transition-colors ${
-                    currentLang === lang.code
-                      ? 'bg-slate-800 text-amber-400'
-                      : 'text-slate-500 hover:text-slate-300'
-                  }`}
-                >
-                  {lang.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Notification Bell */}
+          {(isWorkerLoggedIn || isEmployerLoggedIn) && onOpenNotifications && (
             <button
+              type="button"
               onClick={onOpenNotifications}
-              aria-label={`Notifications, ${unreadNotificationsCount} unread`}
-              className="relative p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+              aria-label={
+                unreadNotificationsCount > 0
+                  ? t('bellAria', { n: unreadNotificationsCount })
+                  : t('bellAriaNone')
+              }
+              className="btn btn-secondary relative !min-w-11 !px-0"
             >
-              <Bell className="w-4 h-4" />
+              <Bell className="h-5 w-5" aria-hidden="true" />
               {unreadNotificationsCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
-                  {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
+                <span
+                  aria-hidden="true"
+                  className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--sk-amber)] px-1 text-meta font-black tabular-nums text-slate-950"
+                >
+                  {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
                 </span>
               )}
             </button>
+          )}
 
-            {/* Desktop Quick Actions */}
-            <div className="hidden md:flex items-center gap-1.5">
-              {isWorker && (
-                <button
-                  onClick={onOpenCalculator}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  <span className="hidden lg:inline">Take-Home Estimator</span>
-                </button>
-              )}
-
-              {isEmployer && (
-                <button
-                  onClick={onOpenPostJob}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-400 hover:text-emerald-300 hover:bg-slate-800 rounded-lg transition-colors"
-                >
-                  <Briefcase className="w-3.5 h-3.5" />
-                  <span>Post Job</span>
-                </button>
-              )}
-
+          {isWorkerLoggedIn || isEmployerLoggedIn ? (
+            onLogout && (
               <button
-                onClick={onOpenReport}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-red-400 hover:text-red-300 hover:bg-slate-800 rounded-lg transition-colors"
+                type="button"
+                onClick={onLogout}
+                aria-label={t('navLogout')}
+                className="btn btn-secondary max-[380px]:hidden sm:!px-3"
               >
-                <MapPin className="w-3.5 h-3.5" />
-                <span className="hidden lg:inline">Report Cut</span>
+                <LogOut className="h-4 w-4" aria-hidden="true" />
+                <span className="hidden sm:inline">{t('navLogout')}</span>
               </button>
-
-              {authSession ? (
-                <button
-                  onClick={onLogout}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  <span className="hidden lg:inline">
-                    {authSession.role === 'worker'
-                      ? `${activeWorker?.name || 'Worker'} · Logout`
-                      : `${employerProfile.companyName || 'Factory'} · Logout`}
-                  </span>
-                </button>
-              ) : (
-                <button
-                  onClick={() => onOpenAuthModal('worker', 'login')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-extrabold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-lg transition-colors"
-                >
-                  <LogIn className="w-3.5 h-3.5" />
-                  <span>Login</span>
-                </button>
-              )}
+            )
+          ) : (
+            // Phones get Log in / Register from the bottom bar and the page itself.
+            <div className="hidden items-center gap-2 sm:flex">
+              <button
+                type="button"
+                onClick={() => onOpenAuthModal(authTone, 'login')}
+                className="btn btn-secondary"
+              >
+                <LogIn className="h-4 w-4" aria-hidden="true" />
+                <span>{t('navLogin')}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onOpenAuthModal(authTone, 'register')}
+                className={`btn ${authTone === 'employer' ? 'btn-employer' : 'btn-worker'}`}
+              >
+                <UserPlus className="h-4 w-4" aria-hidden="true" />
+                <span>{t('navRegister')}</span>
+              </button>
             </div>
-
-            {/* Mobile Hamburger */}
-            <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="md:hidden p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
-              aria-label="Toggle menu"
-            >
-              {menuOpen ? (
-                <X className="w-5 h-5" />
-              ) : (
-                <Menu className="w-5 h-5" />
-              )}
-            </button>
-          </div>
+          )}
         </div>
-
-        {/* Mobile Menu */}
-        {menuOpen && (
-          <div className="md:hidden border-t border-slate-800 pb-3 space-y-1">
-            {(
-              [
-                { key: 'landing', label: t.navLanding, icon: Briefcase },
-                ...(isWorker
-                  ? [
-                      { key: 'worker', label: t.navWorkerFeed, icon: Briefcase },
-                      {
-                        key: 'worker-profile',
-                        label: t.navWorkerProfile,
-                        icon: UserCheck,
-                      },
-                    ]
-                  : []),
-                ...(isEmployer
-                  ? [
-                      {
-                        key: 'employer',
-                        label: t.navEmployerFeed,
-                        icon: Users,
-                      },
-                      {
-                        key: 'employer-profile',
-                        label: t.navEmployerProfile,
-                        icon: Building2,
-                      },
-                    ]
-                  : []),
-              ] as { key: UserRole; label: string; icon: React.ElementType }[]
-            ).map((item) => {
-              const isActive = currentRole === item.key;
-              return (
-                <button
-                  key={item.key}
-                  onClick={() => {
-                    onRoleChange(item.key);
-                    setMenuOpen(false);
-                  }}
-                  aria-current={isActive ? 'page' : undefined}
-                  className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-bold rounded-lg transition-colors ${
-                    isActive
-                      ? 'bg-amber-400 text-slate-950'
-                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                  }`}
-                >
-                  <item.icon className="w-4 h-4" />
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
-
-            <div className="border-t border-slate-800 pt-2 space-y-1">
-              {languages.map((lang) => (
-                <button
-                  key={lang.code}
-                  onClick={() => {
-                    onLangChange(lang.code);
-                    setMenuOpen(false);
-                  }}
-                  className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-bold rounded-lg transition-colors ${
-                    currentLang === lang.code
-                      ? 'bg-slate-800 text-amber-400'
-                      : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-                  }`}
-                >
-                  <Globe className="w-4 h-4" />
-                  {lang.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="border-t border-slate-800 pt-2 space-y-1">
-              <button
-                onClick={() => {
-                  onOpenCalculator();
-                  setMenuOpen(false);
-                }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-400 hover:bg-slate-800 hover:text-white rounded-lg"
-              >
-                <FileText className="w-4 h-4" />
-                Take-Home Estimator
-              </button>
-              <button
-                onClick={() => {
-                  onOpenReport();
-                  setMenuOpen(false);
-                }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-red-400 hover:bg-slate-800 rounded-lg"
-              >
-                <MapPin className="w-4 h-4" />
-                Report Cut
-              </button>
-              {authSession ? (
-                <button
-                  onClick={() => {
-                    onLogout();
-                    setMenuOpen(false);
-                  }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-400 hover:bg-slate-800 hover:text-white rounded-lg"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Logout
-                </button>
-              ) : (
-                <button
-                  onClick={() => {
-                    onOpenAuthModal('worker', 'login');
-                    setMenuOpen(false);
-                  }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-950 bg-amber-400 rounded-lg"
-                >
-                  <LogIn className="w-4 h-4" />
-                  Login
-                </button>
-              )}
-            </div>
-          </div>
-        )}
       </div>
-    </nav>
+    </header>
   );
 };

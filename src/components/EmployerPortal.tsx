@@ -1,529 +1,624 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import {
-  MapPin,
-  Briefcase,
-  IndianRupee,
-  Clock,
-  Building2,
-  Phone,
-  Search,
-  X,
-  Heart,
-  SlidersHorizontal,
-  ChevronDown,
-  ChevronUp,
-  RotateCcw,
-  Users,
-  Star,
-  CheckCircle,
-  GraduationCap,
-  ShieldCheck,
-  Award,
-} from 'lucide-react';
-import type { Language, JobListing, CandidateProfile, NotificationEvent } from '../types';
+  CandidateProfile,
+  JobListing,
+  Language,
+  AuthSession,
+  EmployerFactoryProfile,
+} from '../types';
 import { TRANSLATIONS } from '../data/translations';
-import { SAMPLE_CANDIDATES } from '../data/sampleCandidates';
+import {
+  Briefcase,
+  MapPin,
+  Search,
+  PhoneCall,
+  FileText,
+  QrCode,
+  Award,
+  Heart,
+  ShieldCheck,
+  Phone,
+  Lock,
+  Package,
+  UserCheck,
+  Building2,
+  Users,
+  Layers,
+} from 'lucide-react';
 
-interface EmployerPortalProps {
-  employerProfile: { id: string; companyName: string; companyId: string; credits: number; unlockedCandidateIds?: string[] };
-  searchQuery: string;
-  selectedTrade: string;
-  selectedHub: string;
-  language: Language;
-  onLanguageChange: (lang: Language) => void;
-  onOpenProfile: () => void;
-  onUnlockCandidate: (candidateId: string, cost: number) => void;
-  onAddNotification: (e: Omit<NotificationEvent, 'id' | 'timestamp'>) => void;
-  candidateProfiles: Record<string, CandidateProfile>;
+interface Props {
+  candidates: CandidateProfile[];
+  jobs: JobListing[];
+  currentLang: Language;
+  authSession: AuthSession | null;
+  employerProfile: EmployerFactoryProfile;
+  shortlistedIds: string[];
+  onToggleShortlist: (candidateId: string) => void;
+  onUnlockCandidateContact: (candidateId: string) => void;
+  onOpenEmployerProfile: () => void;
+  onOpenAuthModal: () => void;
+  onOpenPostJob: () => void;
+  onInspectCertificate: (candidate: CandidateProfile) => void;
+  onOpenVideoDemo: (candidate: CandidateProfile) => void;
+  onOpenIssueOffer: (candidate: CandidateProfile) => void;
 }
 
-export default function EmployerPortal(props: EmployerPortalProps) {
-  const t = TRANSLATIONS[props.language];
-  const [searchInput, setSearchInput] = useState(props.searchQuery);
-  const [selectedTrade, setSelectedTrade] = useState(props.selectedTrade);
-  const [selectedHub, setSelectedHub] = useState(props.selectedHub);
-  const [experienceFilter, setExperienceFilter] = useState<'all' | '0-2' | '2-5' | '5+'>('all');
-  const [sortBy, setSortBy] = useState<'best-match' | 'experience' | 'rating'>('best-match');
-  const [showFilterBar, setShowFilterBar] = useState(false);
-  const [shortlistedIds, setShortlistedIds] = useState<string[]>([]);
-  const [showPhoneModal, setShowPhoneModal] = useState<string | null>(null);
-  const [showOfferModal, setShowOfferModal] = useState<string | null>(null);
+export const EmployerPortal: React.FC<Props> = ({
+  candidates,
+  jobs,
+  currentLang,
+  authSession,
+  employerProfile,
+  shortlistedIds,
+  onToggleShortlist,
+  onUnlockCandidateContact,
+  onOpenEmployerProfile,
+  onOpenAuthModal,
+  onOpenPostJob,
+  onInspectCertificate,
+  onOpenVideoDemo,
+  onOpenIssueOffer,
+}) => {
+  const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
 
-  const unlockedIds = useMemo(
-    () => new Set(props.employerProfile.unlockedCandidateIds || []),
-    [props.employerProfile.unlockedCandidateIds]
-  );
+  const [tab, setTab] = useState<'candidates' | 'jobs'>('candidates');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTrade, setSelectedTrade] = useState<string>('all');
+  const [selectedCity, setSelectedCity] = useState<string>('all');
+  const [selectedExp, setSelectedExp] = useState<string>('all');
+  const [selectedSalaryMin, setSelectedSalaryMin] = useState<string>('all');
+  const [selectedCertificateFilter, setSelectedCertificateFilter] =
+    useState<'all' | 'certified' | 'iti-graduate' | 'ncvt-verified'>('all');
 
-  const hasActiveFilters = useMemo(() => {
-    return (
-      searchInput.trim() !== '' ||
-      selectedTrade !== 'all' ||
-      selectedHub !== 'all' ||
-      experienceFilter !== 'all' ||
-      sortBy !== 'best-match'
-    );
-  }, [searchInput, selectedTrade, selectedHub, experienceFilter, sortBy]);
+  const isPremium = employerProfile.subscriptionTier === 'premium';
+  const isPaid = employerProfile.isPaid;
+  const isEnterprise = employerProfile.subscriptionTier === 'enterprise';
 
-  const resetFilters = () => {
-    setSearchInput('');
-    setSelectedTrade('all');
-    setSelectedHub('all');
-    setExperienceFilter('all');
-    setSortBy('best-match');
-  };
+  const allTrades = [
+    'all',
+    'Packing & Box Loading (No Certificate)',
+    'Factory Floor Helper (No Certificate)',
+    'Warehouse Loader / Packer',
+    'Assembly Line Helper',
+    'Press Machine Operator',
+    'CNC / VMC Operator',
+    'Fitter (Assembly & Bench)',
+    'Welder (MIG / TIG / ARC)',
+    'Machinist (Lathe / Milling)',
+    'Industrial Electrician',
+    'Quality Inspector',
+  ];
 
-  const toggleShortlist = (id: string) => {
-    setShortlistedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
-  };
+  const allCities = [
+    'all',
+    ...Array.from(new Set(candidates.map((c) => c.currentCity))),
+  ];
 
-  const filteredCandidates = useMemo(() => {
-    let candidates = SAMPLE_CANDIDATES;
+  const allExpRanges = [
+    'all',
+    '0-1 years',
+    '1-3 years',
+    '3-5 years',
+    '5-7 years',
+    '7+ years',
+  ];
 
-    if (searchInput.trim()) {
-      const q = searchInput.toLowerCase();
-      candidates = candidates.filter(
-        (c) =>
-          c.name.toLowerCase().includes(q) ||
-          c.skills.some((s) => s.toLowerCase().includes(q)) ||
-          c.trade.toLowerCase().includes(q)
+  const allSalaryMins = [
+    'all',
+    '10000',
+    '12000',
+    '15000',
+    '18000',
+    '22000',
+    '25000',
+    '30000',
+  ];
+
+  const unlockedSet = new Set(employerProfile.unlockedCandidateIds || []);
+  const shortlistSet = new Set(shortlistedIds);
+
+  const displayCandidates = candidates
+    .filter((c) => {
+      const matchesSearch =
+        searchQuery === '' ||
+        c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        c.trade.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        c.currentCity.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        c.previousCompanies.some((co) =>
+          co.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      const matchesTrade = selectedTrade === 'all' || c.trade === selectedTrade;
+      const matchesCity = selectedCity === 'all' || c.currentCity === selectedCity;
+      const matchesExp =
+        selectedExp === 'all' ||
+        (c.totalExperienceYears >= parseInt(selectedExp.split('-')[0]) &&
+          (selectedExp.includes('+')
+            ? c.totalExperienceYears >= parseInt(selectedExp.split('+')[0])
+            : c.totalExperienceYears <= parseInt(selectedExp.split('-')[1] || '999')));
+      const matchesSalary =
+        selectedSalaryMin === 'all' ||
+        c.expectedSalaryMin >= parseInt(selectedSalaryMin);
+      const matchesCert =
+        selectedCertificateFilter === 'all' ||
+        (selectedCertificateFilter === 'certified' && c.isCertified) ||
+        (selectedCertificateFilter === 'iti-graduate' && c.isItiGraduate) ||
+        (selectedCertificateFilter === 'ncvt-verified' && !!c.ncvtCertificate);
+
+      return (
+        matchesSearch &&
+        matchesTrade &&
+        matchesCity &&
+        matchesExp &&
+        matchesSalary &&
+        matchesCert
       );
-    }
-
-    if (selectedTrade !== 'all') {
-      candidates = candidates.filter((c) => c.trade === selectedTrade);
-    }
-
-    if (selectedHub !== 'all') {
-      candidates = candidates.filter((c) => c.preferredHub === selectedHub);
-    }
-
-    if (experienceFilter !== 'all') {
-      candidates = candidates.filter((c) => {
-        if (experienceFilter === '0-2') return c.experience <= 2;
-        if (experienceFilter === '2-5') return c.experience > 2 && c.experience <= 5;
-        if (experienceFilter === '5+') return c.experience > 5;
-        return true;
-      });
-    }
-
-    if (sortBy === 'experience') {
-      candidates = [...candidates].sort((a, b) => b.experience - a.experience);
-    } else if (sortBy === 'rating') {
-      candidates = [...candidates].sort((a, b) => (b.rating || 0) - (a.rating || 0));
-    }
-
-    return candidates;
-  }, [searchInput, selectedTrade, selectedHub, experienceFilter, sortBy]);
-
-  const trades = useMemo(() => ['all', ...Array.from(new Set(SAMPLE_CANDIDATES.map((c) => c.trade)))], []);
-  const hubs = useMemo(() => ['all', ...Array.from(new Set(SAMPLE_CANDIDATES.map((c) => c.preferredHub)))], []);
-
-  const handleUnlock = (candidate: CandidateProfile) => {
-    if (unlockedIds.has(candidate.id)) return;
-    if (props.employerProfile.credits < 1) {
-      props.onAddNotification({
-        title: '⚠️ Low Credits',
-        body: 'You need more credits to unlock candidate details. Top up now.',
-        type: 'alert',
-        targetRole: 'employer',
-      });
-      return;
-    }
-    props.onUnlockCandidate(candidate.id, 1);
-    props.onAddNotification({
-      title: '🔓 Candidate Unlocked',
-      body: `You can now contact ${candidate.name} directly.`,
-      type: 'success',
-      targetRole: 'employer',
+    })
+    .sort((a, b) => {
+      // Premium + paid factories see best-matched first.
+      const aScore =
+        (a.skillsMatchScore || 0) * 0.4 +
+        (a.isItiGraduate ? 10 : 0) +
+        (a.isCertified ? 10 : 0) +
+        (a.ncvtCertificate ? 10 : 0);
+      const bScore =
+        (b.skillsMatchScore || 0) * 0.4 +
+        (b.isItiGraduate ? 10 : 0) +
+        (b.isCertified ? 10 : 0) +
+        (b.ncvtCertificate ? 10 : 0);
+      return bScore - aScore;
     });
-  };
+
+  const factoryJobs = jobs.filter((j) => j.factoryId === employerProfile.id);
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-extrabold text-slate-950 dark:text-white">{t.candidatePoolTitle}</h2>
-          <p className="text-xs text-slate-500">{t.candidatePoolSubtitle}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold bg-amber-100 text-amber-800 px-2 py-1 rounded-full">
-            {props.employerProfile.credits} credits
-          </span>
-        </div>
-      </div>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-24">
+      {/* Employer Welcome & Dashboard Banner */}
+      {authSession?.role === 'employer' ? (
+        <div className="p-6 bg-slate-900 text-white rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-lg">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-black text-lg shrink-0">
+              {employerProfile.logoText || 'F'}
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-amber-400 font-semibold">
+                <Building2 className="w-4 h-4 text-emerald-400" />
+                <span>
+                  {employerProfile.companyName} · {employerProfile.industrialHub}
+                </span>
+                <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 text-[11px]">
+                  {employerProfile.onboardingStatus}
+                </span>
+              </div>
+              <h2 className="text-lg sm:text-xl font-bold text-white mt-0.5">
+                {t.candidateDirectory}
+              </h2>
+              <div className="flex flex-wrap items-center gap-2 mt-1">
+                <span className="px-2 py-0.5 text-[11px] font-semibold bg-slate-800 text-emerald-300 border border-slate-700 rounded-md">
+                  {factoryJobs.length} Active Job{factoryJobs.length === 1 ? '' : 's'}
+                </span>
+                <span className="px-2 py-0.5 text-[11px] font-semibold bg-slate-800 text-amber-300 border border-slate-700 rounded-md">
+                  {shortlistedIds.length} Shortlisted
+                </span>
+                <span className="px-2 py-0.5 text-[11px] font-semibold bg-slate-800 text-blue-300 border border-slate-700 rounded-md">
+                  ₹{(employerProfile.balanceCredits || 0).toLocaleString('en-IN')} Credits
+                </span>
+                {isEnterprise && (
+                  <span className="px-2 py-0.5 text-[11px] font-semibold bg-emerald-900 text-emerald-300 border border-emerald-700 rounded-md">
+                    Enterprise Plan
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
 
-      {/* Search & Filter Bar */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder={t.searchPlaceholder}
-            className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-          />
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <button
+              onClick={onOpenEmployerProfile}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-colors"
+            >
+              <Layers className="w-4 h-4" />
+              <span>Dashboard & Edit Profile</span>
+            </button>
+
+            <button
+              onClick={onOpenPostJob}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors shadow-xs"
+            >
+              <Briefcase className="w-4 h-4" />
+              <span>{t.postRequirement}</span>
+            </button>
+          </div>
         </div>
+      ) : (
+        <div className="p-6 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2 text-slate-900 text-xs font-bold">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span>Post Free Job Requirements · Direct Candidate Contact</span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+              Factory Employer Portal
+            </h2>
+            <p className="text-xs text-slate-700 max-w-2xl">
+              Post job requirements, shortlist verified candidates with skill badges, issue digital offer letters, and manage payroll compliance. Log in or register to unlock full features.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <button
+              onClick={onOpenAuthModal}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-extrabold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-colors shadow-xs"
+            >
+              <UserCheck className="w-4 h-4" />
+              <span>Employer Login</span>
+            </button>
+
+            <button
+              onClick={onOpenAuthModal}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-extrabold text-emerald-800 bg-emerald-50 border border-emerald-300 hover:bg-emerald-100 rounded-xl transition-colors"
+            >
+              <Building2 className="w-4 h-4" />
+              <span>Register Factory</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Tab Switcher */}
+      <div className="flex items-center gap-3 border-b border-slate-200">
         <button
-          onClick={() => setShowFilterBar((s) => !s)}
-          aria-expanded={showFilterBar}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+          onClick={() => setTab('candidates')}
+          className={`pb-2 text-xs font-bold border-b-2 transition-colors ${
+            tab === 'candidates'
+              ? 'border-slate-900 text-slate-900'
+              : 'border-transparent text-slate-400 hover:text-slate-600'
+          }`}
         >
-          <SlidersHorizontal className="w-4 h-4" />
-          {t.moreFilters}
-          {showFilterBar ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          <span className="flex items-center gap-1.5">
+            <Users className="w-3.5 h-3.5" />
+            Verified Candidate Pool
+          </span>
+        </button>
+        <button
+          onClick={() => setTab('jobs')}
+          className={`pb-2 text-xs font-bold border-b-2 transition-colors ${
+            tab === 'jobs'
+              ? 'border-slate-900 text-slate-900'
+              : 'border-transparent text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          <span className="flex items-center gap-1.5">
+            <Briefcase className="w-3.5 h-3.5" />
+            My Posted Jobs ({factoryJobs.length})
+          </span>
         </button>
       </div>
 
-      {showFilterBar && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-[10px] font-bold text-slate-500 uppercase">{t.filterTrade}</label>
-              <select
-                value={selectedTrade}
-                onChange={(e) => setSelectedTrade(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 px-2 py-1.5 text-sm bg-transparent focus:outline-none focus:ring-2 focus:ring-amber-400"
-              >
-                {trades.map((t) => (
-                  <option key={t} value={t}>
-                    {t === 'all' ? 'All Trades' : t}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-[10px] font-bold text-slate-500 uppercase">{t.filterHub}</label>
-              <select
-                value={selectedHub}
-                onChange={(e) => setSelectedHub(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 px-2 py-1.5 text-sm bg-transparent focus:outline-none focus:ring-2 focus:ring-amber-400"
-              >
-                {hubs.map((t) => (
-                  <option key={t} value={t}>
-                    {t === 'all' ? 'All Hubs' : t}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase">Experience</label>
-            <div className="flex gap-2 mt-1">
-              {[
-                { key: 'all', label: 'All' },
-                { key: '0-2', label: '0-2 yrs' },
-                { key: '2-5', label: '2-5 yrs' },
-                { key: '5+', label: '5+ yrs' },
-              ].map((s) => (
-                <button
-                  key={s.key}
-                  onClick={() => setExperienceFilter(s.key as any)}
-                  className={
-                    'px-2.5 py-1 rounded-lg text-xs font-bold transition ' +
-                    (experienceFilter === s.key
-                      ? 'bg-amber-100 text-amber-800'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300')
+      {tab === 'candidates' ? (
+        <>
+          <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder={t.searchCandidatePlaceholder}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 text-xs border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-500 bg-slate-50/50"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 text-xs">
+                <span className="font-bold text-slate-700">Certification:</span>
+                <select
+                  value={selectedCertificateFilter}
+                  onChange={(e) =>
+                    setSelectedCertificateFilter(e.target.value as typeof selectedCertificateFilter)
                   }
+                  className="px-3 py-2 text-xs font-bold border border-slate-300 rounded-lg bg-white text-slate-900"
                 >
-                  {s.label}
-                </button>
-              ))}
+                  <option value="all">All Levels</option>
+                  <option value="certified">Trade Certified</option>
+                  <option value="iti-graduate">ITI Graduate</option>
+                  <option value="ncvt-verified">NCVT Verified</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <span className="text-xs font-bold text-slate-700 block mb-2">
+                {t.filterTrade}:
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {allTrades.map((trade) => (
+                  <button
+                    key={trade}
+                    onClick={() => setSelectedTrade(trade)}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap ${
+                      selectedTrade === trade
+                        ? 'bg-slate-900 text-white font-semibold shadow-xs'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    {trade === 'all' ? t.filterAllTrades : trade}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-slate-100 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-slate-700">City:</span>
+                <select
+                  value={selectedCity}
+                  onChange={(e) => setSelectedCity(e.target.value)}
+                  className="px-2.5 py-1 text-xs border border-slate-200 rounded bg-white text-slate-800"
+                >
+                  {allCities.map((city) => (
+                    <option key={city} value={city}>
+                      {city === 'all' ? t.filterAllCities : city}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-slate-700">Experience:</span>
+                <select
+                  value={selectedExp}
+                  onChange={(e) => setSelectedExp(e.target.value)}
+                  className="px-2.5 py-1 text-xs border border-slate-200 rounded bg-white text-slate-800"
+                >
+                  {allExpRanges.map((exp) => (
+                    <option key={exp} value={exp}>
+                      {exp === 'all' ? t.filterAllExperience : exp}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-slate-700">Min Salary:</span>
+                <select
+                  value={selectedSalaryMin}
+                  onChange={(e) => setSelectedSalaryMin(e.target.value)}
+                  className="px-2.5 py-1 text-xs border border-slate-200 rounded bg-white text-slate-800"
+                >
+                  {allSalaryMins.map((s) => (
+                    <option key={s} value={s}>
+                      {s === 'all' ? 'Any' : `₹${parseInt(s).toLocaleString('en-IN')}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <span className="tabular-nums font-semibold text-slate-600">
+                {displayCandidates.length} Candidate{displayCandidates.length === 1 ? '' : 's'} Found
+              </span>
             </div>
           </div>
-          <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase">{t.sortByLabel}</label>
-            <div className="flex gap-2 mt-1">
-              {[
-                { key: 'best-match', label: t.bestMatch },
-                { key: 'experience', label: 'Experience' },
-                { key: 'rating', label: 'Rating' },
-              ].map((s) => (
+
+          <div className="space-y-4">
+            {displayCandidates.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center bg-white border border-slate-200 rounded-xl">
+                <Search className="w-12 h-12 text-slate-300 mb-3" />
+                <h4 className="text-sm font-bold text-slate-700">{t.emptyStateNoCandidates}</h4>
+                <p className="text-xs text-slate-500 mt-1 max-w-xs">
+                  {t.emptyStateNoCandidatesDesc}
+                </p>
                 <button
-                  key={s.key}
-                  onClick={() => setSortBy(s.key as any)}
-                  className={
-                    'px-2.5 py-1 rounded-lg text-xs font-bold transition ' +
-                    (sortBy === s.key
-                      ? 'bg-amber-100 text-amber-800'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300')
-                  }
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSelectedTrade('all');
+                    setSelectedCity('all');
+                    setSelectedExp('all');
+                    setSelectedSalaryMin('all');
+                    setSelectedCertificateFilter('all');
+                  }}
+                  className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-extrabold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-colors"
                 >
-                  {s.label}
+                  {t.resetFilters}
                 </button>
-              ))}
-            </div>
+              </div>
+            ) : (
+              displayCandidates.map((c) => {
+                const isShortlisted = shortlistSet.has(c.id);
+                const isUnlocked = unlockedSet.has(c.id);
+
+                return (
+                  <div
+                    key={c.id}
+                    className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 transition-all hover:border-slate-300 shadow-xs space-y-4"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center font-black text-base shrink-0">
+                          {c.avatarSeed}
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="text-base font-extrabold text-slate-900">
+                              {c.name}
+                            </h3>
+                            <span className="px-2 py-0.5 text-[11px] font-semibold bg-emerald-100 text-emerald-900 rounded-md">
+                              {c.trade}
+                            </span>
+                            {c.isItiGraduate && (
+                              <span className="px-2 py-0.5 text-[11px] font-semibold bg-blue-100 text-blue-900 rounded-md">
+                                ITI Graduate
+                              </span>
+                            )}
+                            {c.isCertified && (
+                              <span className="px-2 py-0.5 text-[11px] font-semibold bg-amber-100 text-amber-900 rounded-md">
+                                Trade Certified
+                              </span>
+                            )}
+                            {c.ncvtCertificate && (
+                              <button
+                                onClick={() => onInspectCertificate(c)}
+                                className="px-2 py-0.5 text-[11px] font-semibold bg-slate-900 text-amber-300 rounded-md hover:bg-slate-800 transition-colors"
+                              >
+                                NCVT Verified
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="text-xs text-slate-600 space-y-0.5">
+                            <div className="flex items-center gap-1.5">
+                              <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                              {c.currentCity}, {c.homeState}
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <Briefcase className="w-3.5 h-3.5 text-slate-400" />
+                              {c.totalExperienceYears} years · Expected ₹{c.expectedSalaryMin.toLocaleString('en-IN')}/mo
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <Award className="w-3.5 h-3.5 text-slate-400" />
+                              {c.skillsMatchScore || 0}% Match
+                            </div>
+                          </div>
+
+                          {c.machinesHandled && c.machinesHandled.length > 0 && (
+                            <div className="text-xs text-slate-600 pt-1">
+                              <span className="font-semibold">{t.machinesHandled}:</span>{' '}
+                              {c.machinesHandled.join(', ')}
+                            </div>
+                          )}
+
+                          <div className="flex flex-wrap gap-1.5 pt-1">
+                            {c.isImmediateJoiner && (
+                              <span className="px-2 py-0.5 text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-md">
+                                Immediate Joiner
+                              </span>
+                            )}
+                            {c.isWillingToRelocate && (
+                              <span className="px-2 py-0.5 text-[11px] font-semibold bg-indigo-50 text-indigo-800 border border-indigo-200 rounded-md">
+                                Willing to Relocate
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => onToggleShortlist(c.id)}
+                          aria-label={isShortlisted ? 'Remove from shortlist' : 'Add to shortlist'}
+                          aria-pressed={isShortlisted}
+                          className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg border transition-colors ${
+                            isShortlisted
+                              ? 'bg-amber-400 text-slate-950 border-amber-500'
+                              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                          }`}
+                          title={isShortlisted ? 'Shortlisted' : 'Shortlist'}
+                        >
+                          <Heart className="w-3.5 h-3.5" />
+                          {isShortlisted ? 'Shortlisted' : 'Shortlist'}
+                        </button>
+
+                        <button
+                          onClick={() => onOpenVideoDemo(c)}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                        >
+                          <QrCode className="w-3.5 h-3.5" />
+                          Demo Video
+                        </button>
+
+                        <button
+                          onClick={() => onOpenIssueOffer(c)}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-lg transition-colors"
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          Issue Offer
+                        </button>
+
+                        {isUnlocked ? (
+                          <a
+                            href={`tel:${c.phone}`}
+                            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg"
+                          >
+                            <Phone className="w-3.5 h-3.5" />
+                            {c.phone}
+                          </a>
+                        ) : (
+                          <button
+                            onClick={() => onUnlockCandidateContact(c.id)}
+                            className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg transition-colors ${
+                              isPaid || isEnterprise
+                                ? 'bg-slate-900 text-amber-300 hover:bg-slate-800'
+                                : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                            }`}
+                            disabled={!isPaid && !isEnterprise}
+                            title={
+                              isPaid || isEnterprise
+                                ? 'Unlock phone contact'
+                                : 'Purchase credits to unlock contact'
+                            }
+                          >
+                            <Lock className="w-3.5 h-3.5" />
+                            {isPaid || isEnterprise ? 'Unlock Contact' : 'Locked'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
-        </div>
-      )}
-
-      {/* Active filters indicator */}
-      {hasActiveFilters && (
-        <div className="flex items-center gap-2">
-          <button
-            onClick={resetFilters}
-            className="flex items-center gap-1 text-xs font-bold text-amber-700 hover:text-amber-800"
-          >
-            <RotateCcw className="w-3 h-3" />
-            {t.resetFilters}
-          </button>
-        </div>
-      )}
-
-      {/* Results count */}
-      <p className="text-xs text-slate-500">
-        {filteredCandidates.length} {filteredCandidates.length === 1 ? 'candidate' : 'candidates'} found
-      </p>
-
-      {/* Candidate Cards */}
-      {filteredCandidates.length === 0 ? (
-        <div className="empty-state">
-          <Search className="empty-state-icon" />
-          <h4 className="empty-state-title">{t.emptyStateNoCandidates}</h4>
-          <p className="empty-state-desc">{t.emptyStateNoCandidatesDesc}</p>
-          <button onClick={resetFilters} className="btn-amber mt-2">
-            {t.resetFilters}
-          </button>
-        </div>
+        </>
       ) : (
-        <div className="space-y-3">
-          {filteredCandidates.map((candidate) => (
-            <CandidateCard
-              key={candidate.id}
-              candidate={candidate}
-              isUnlocked={unlockedIds.has(candidate.id)}
-              isShortlisted={shortlistedIds.includes(candidate.id)}
-              onToggleShortlist={() => toggleShortlist(candidate.id)}
-              onUnlock={() => handleUnlock(candidate)}
-              onShowPhone={() => setShowPhoneModal(candidate.id)}
-              onShowOffer={() => setShowOfferModal(candidate.id)}
-              language={props.language}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Phone Modal */}
-      {showPhoneModal && (
-        <div
-          className="dialog-overlay"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="emp-phone-title"
-          onClick={(e) => { if (e.target === e.currentTarget) setShowPhoneModal(null); }}
-        >
-          <div className="dialog-panel">
-            <div className="flex items-center justify-between mb-3">
-              <h3 id="emp-phone-title" className="text-base font-extrabold text-slate-950">{t.directHrContact}</h3>
+        <div className="space-y-4">
+          {factoryJobs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center bg-white border border-slate-200 rounded-xl">
+              <Briefcase className="w-12 h-12 text-slate-300 mb-3" />
+              <h4 className="text-sm font-bold text-slate-700">No jobs posted yet</h4>
+              <p className="text-xs text-slate-500 mt-1 max-w-xs">
+                Post your first job requirement to start receiving applications.
+              </p>
               <button
-                onClick={() => setShowPhoneModal(null)}
-                className="icon-btn"
-                aria-label={t.close}
+                onClick={onOpenPostJob}
+                className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors"
               >
-                <X className="w-4 h-4" />
+                <Briefcase className="w-4 h-4" />
+                Post a Job
               </button>
             </div>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                <Phone className="w-5 h-5 text-green-600" />
-                <div>
-                  <p className="text-sm font-bold text-slate-900 dark:text-white">+91 98765 43210</p>
-                  <p className="text-xs text-slate-500">{t.officialFactoryContact}</p>
+          ) : (
+            factoryJobs.map((job) => (
+              <div
+                key={job.id}
+                className="bg-white border border-slate-200 rounded-2xl p-5 transition-all hover:border-slate-300 shadow-xs"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-base font-extrabold text-slate-900">
+                        {job.title}
+                      </h3>
+                      <span className="px-2 py-0.5 text-[11px] font-semibold bg-emerald-100 text-emerald-900 rounded-md">
+                        ₹{job.takeHomeSalary.toLocaleString('en-IN')}/mo
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-600">
+                      {job.trade} · {job.industrialHub} · {job.shiftPattern}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {job.openingsCount} openings · Expires {job.expiresAt || 'in 30 days'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="px-2.5 py-1 text-[11px] font-semibold bg-slate-100 text-slate-700 rounded-md">
+                      {job.isActive !== false ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
                 </div>
               </div>
-              <a
-                href="tel:+919876543210"
-                className="w-full btn-blue justify-center"
-              >
-                <Phone className="w-4 h-4" />
-                {t.callNow}
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Offer Modal */}
-      {showOfferModal && (
-        <div
-          className="dialog-overlay"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="offer-title"
-          onClick={(e) => { if (e.target === e.currentTarget) setShowOfferModal(null); }}
-        >
-          <div className="dialog-panel">
-            <div className="flex items-center justify-between mb-3">
-              <h3 id="offer-title" className="text-base font-extrabold text-slate-950">{t.issueOffer}</h3>
-              <button
-                onClick={() => setShowOfferModal(null)}
-                className="icon-btn"
-                aria-label={t.close}
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs font-bold text-slate-500">Monthly Salary (₹)</label>
-                <input
-                  type="number"
-                  defaultValue={20000}
-                  className="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-400"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-500">Joining Date</label>
-                <input
-                  type="date"
-                  className="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-400"
-                />
-              </div>
-              <button
-                onClick={() => {
-                  setShowOfferModal(null);
-                  props.onAddNotification({
-                    title: '✅ Offer Issued',
-                    body: 'Your offer has been sent to the candidate.',
-                    type: 'success',
-                    targetRole: 'employer',
-                  });
-                }}
-                className="w-full btn-amber justify-center"
-              >
-                <CheckCircle className="w-4 h-4" />
-                {t.issueOffer}
-              </button>
-            </div>
-          </div>
+            ))
+          )}
         </div>
       )}
     </div>
   );
-}
-
-/* ── Candidate Card ────────────────────────────────────────────────────── */
-
-function CandidateCard({
-  candidate,
-  isUnlocked,
-  isShortlisted,
-  onToggleShortlist,
-  onUnlock,
-  onShowPhone,
-  onShowOffer,
-  language,
-}: {
-  candidate: CandidateProfile;
-  isUnlocked: boolean;
-  isShortlisted: boolean;
-  onToggleShortlist: () => void;
-  onUnlock: () => void;
-  onShowPhone: () => void;
-  onShowOffer: () => void;
-  language: Language;
-}) {
-  const t = TRANSLATIONS[language];
-
-  return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden transition hover:shadow-md">
-      <div className="p-4">
-        <div className="flex items-start justify-between">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-extrabold text-slate-950 dark:text-white">{candidate.name}</h3>
-              {candidate.verified && (
-                <ShieldCheck className="w-4 h-4 text-green-500 shrink-0" />
-              )}
-            </div>
-            <p className="text-xs text-slate-500 mt-0.5">{candidate.trade}</p>
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={onToggleShortlist}
-              aria-label={isShortlisted ? 'Remove from shortlist' : 'Add to shortlist'}
-              aria-pressed={isShortlisted}
-              className={
-                'p-1.5 rounded-lg transition ' +
-                (isShortlisted ? 'text-amber-500 bg-amber-50' : 'text-slate-400 hover:text-amber-500 hover:bg-amber-50')
-              }
-            >
-              <Heart className={`w-4 h-4 ${isShortlisted ? 'fill-current' : ''}`} />
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
-            <Briefcase className="w-3.5 h-3.5 text-purple-500" />
-            {candidate.experience} yrs
-          </div>
-          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
-            <MapPin className="w-3.5 h-3.5 text-blue-500" />
-            {candidate.preferredHub}
-          </div>
-          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
-            <IndianRupee className="w-3.5 h-3.5 text-amber-500" />
-            ₹{candidate.expectedSalary.toLocaleString('en-IN')}
-          </div>
-          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
-            <Star className="w-3.5 h-3.5 text-yellow-500" />
-            {candidate.rating || 'New'}
-          </div>
-        </div>
-
-        <div className="mt-2 flex flex-wrap gap-1">
-          {candidate.skills.slice(0, 3).map((skill) => (
-            <span
-              key={skill}
-              className="text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full"
-            >
-              {skill}
-            </span>
-          ))}
-          {candidate.skills.length > 3 && (
-            <span className="text-[10px] text-slate-400 px-1">+{candidate.skills.length - 3}</span>
-          )}
-        </div>
-
-        {candidate.ncvtCertified && (
-          <div className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
-            <GraduationCap className="w-3 h-3" />
-            NCVT Certified
-          </div>
-        )}
-
-        <div className="mt-3 flex gap-2">
-          {!isUnlocked ? (
-            <button
-              onClick={onUnlock}
-              className="flex-1 py-2.5 text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-lg transition flex items-center justify-center gap-1.5"
-            >
-              <Award className="w-3.5 h-3.5" />
-              {t.unlockInvite}
-            </button>
-          ) : (
-            <>
-              <button
-                onClick={onShowPhone}
-                className="flex-1 py-2.5 text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition flex items-center justify-center gap-1.5"
-              >
-                <Phone className="w-3.5 h-3.5" />
-                {t.callNow}
-              </button>
-              <button
-                onClick={onShowOffer}
-                className="flex-1 py-2.5 text-xs font-bold bg-green-500 hover:bg-green-400 text-white rounded-lg transition flex items-center justify-center gap-1.5"
-              >
-                <CheckCircle className="w-3.5 h-3.5" />
-                {t.issueOffer}
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+};

@@ -1,817 +1,1148 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
-  MapPin,
-  Briefcase,
-  IndianRupee,
-  Clock,
+  JobListing,
+  Language,
+  CandidateProfile,
+  JobApplication,
+  OfferLetter,
+  HiringDrive,
+} from '../types';
+import {
+  TRANSLATIONS,
+  getAudioNarrationScript,
+  getVoiceGuideScript,
+} from '../data/translations';
+import { playJobAudio, stopJobAudio } from '../utils/audioNarrator';
+import {
+  calculateTransparentMatchScore,
+  computeLabourCodeBreakdown,
+  estimateClusterDistanceKm,
+  SHOP_FLOOR_PRACTICE_QUIZ,
+} from '../modules/domain';
+import {
+  Volume2,
+  VolumeX,
+  PhoneCall,
+  MessageSquare,
+  ShieldCheck,
   Building2,
-  Phone,
-  MessageCircle,
-  X,
+  MapPin,
+  Home,
+  Utensils,
+  Bus,
+  Search,
+  AlertCircle,
+  CheckCircle2,
+  UserCheck,
+  Sparkles,
+  QrCode,
+  Send,
+  Package,
+  Wrench,
+  Layers,
+  Bookmark,
   ChevronDown,
   ChevronUp,
-  Star,
-  Share2,
-  Heart,
-  CheckCircle,
-  Filter,
-  SlidersHorizontal,
-  Search,
+  Award,
+  Navigation,
   Calendar,
-  ArrowLeft,
-  RotateCcw,
-  GraduationCap,
-  Landmark,
-  ShieldCheck,
-  Info,
 } from 'lucide-react';
-import type { Language, JobListing, NotificationEvent } from '../types';
-import { TRANSLATIONS } from '../data/translations';
-import { SAMPLE_JOBS } from '../data/sampleJobs';
-import { ITI_DRIVES } from '../data/itiDrives';
 
-interface WorkerPortalProps {
-  activeWorker: { id: string; name: string; phone: string; savedJobIds: string[] } | null;
-  searchQuery: string;
-  selectedTrade: string;
-  selectedHub: string;
-  language: Language;
-  onLanguageChange: (lang: Language) => void;
-  onOpenProfile: () => void;
-  onStartLogin: (phone?: string) => void;
-  onRegister: () => void;
-  onApplyJob: (jobId: string) => void;
-  existingApplications: Record<string, { status: string; employerId: string }>;
-  postedJobs: JobListing[];
-  factoryProfiles: Record<string, { name: string; verified: boolean; rating: number }>;
-  onAddNotification: (e: Omit<NotificationEvent, 'id' | 'timestamp'>) => void;
+interface Props {
+  jobs: JobListing[];
+  currentLang: Language;
+  activeWorker?: CandidateProfile;
+  applications: JobApplication[];
+  offers: OfferLetter[];
+  hiringDrives?: HiringDrive[];
+  onApplyJob: (job: JobListing) => void;
+  onOpenWorkerProfile: () => void;
+  onOpenAuthModal: () => void;
+  onOpenCreateProfile: () => void;
+  onOpenReport: (companyName?: string) => void;
+  onRegisterDrive?: (driveId: string) => void;
+  onToggleSaveJob?: (jobId: string) => void;
 }
 
-export default function WorkerPortal(props: WorkerPortalProps) {
-  const t = TRANSLATIONS[props.language];
-  const [searchInput, setSearchInput] = useState(props.searchQuery);
-  const [selectedTrade, setSelectedTrade] = useState(props.selectedTrade);
-  const [selectedHub, setSelectedHub] = useState(props.selectedHub);
-  const [hostelFilter, setHostelFilter] = useState(false);
+export const WorkerPortal: React.FC<Props> = ({
+  jobs,
+  currentLang,
+  activeWorker,
+  applications,
+  offers,
+  hiringDrives = [],
+  onApplyJob,
+  onOpenWorkerProfile,
+  onOpenAuthModal,
+  onOpenCreateProfile,
+  onOpenReport,
+  onRegisterDrive,
+  onToggleSaveJob,
+}) => {
+  const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
+
+  const [feedMode, setFeedMode] = useState<'all' | 'no-cert' | 'iti' | 'saved' | 'drives'>('all');
   const [sortBy, setSortBy] = useState<'best-match' | 'highest-pay' | 'nearest'>('best-match');
-  const [feedMode, setFeedMode] = useState<'all' | 'saved' | 'no-cert' | 'iti' | 'drives'>('all');
-  const [savedJobIds, setSavedJobIds] = useState<string[]>(props.activeWorker?.savedJobIds || []);
-  const [showSalaryModal, setShowSalaryModal] = useState<string | null>(null);
-  const [showRelocateModal, setShowRelocateModal] = useState<string | null>(null);
-  const [showPhoneModal, setShowPhoneModal] = useState<string | null>(null);
-  const [showQuizModal, setShowQuizModal] = useState<string | null>(null);
-  const [showNcvtModal, setShowNcvtModal] = useState<string | null>(null);
-  const [showFilterBar, setShowFilterBar] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTrade, setSelectedTrade] = useState<string>('all');
+  const [selectedHub, setSelectedHub] = useState<string>('all');
+  const [hostelFilter, setHostelFilter] = useState(false);
+  const [activeAudioJobId, setActiveAudioJobId] = useState<string | null>(null);
+  const [callingJob, setCallingJob] = useState<JobListing | null>(null);
+  const [expandedSalaryJobId, setExpandedSalaryJobId] = useState<string | null>(null);
+  const [expandedRelocJobId, setExpandedRelocJobId] = useState<string | null>(null);
+  const [localSavedIds, setLocalSavedIds] = useState<string[]>(activeWorker?.savedJobIds || []);
 
-  const allJobs = useMemo(() => [...SAMPLE_JOBS, ...props.postedJobs], [props.postedJobs]);
+  // M13 Timed 5-Question Shop-Floor Practice Quiz Modal State
+  const [quizOpen, setQuizOpen] = useState(false);
+  const [quizAnswers, setQuizAnswers] = useState<Record<string, number>>({});
+  const [quizSubmitted, setQuizSubmitted] = useState(false);
 
-  const hasActiveFilters = useMemo(() => {
-    return (
-      searchInput.trim() !== '' ||
-      selectedTrade !== 'all' ||
-      selectedHub !== 'all' ||
-      hostelFilter ||
-      sortBy !== 'best-match' ||
-      feedMode !== 'all'
-    );
-  }, [searchInput, selectedTrade, selectedHub, hostelFilter, sortBy, feedMode]);
-
-  const resetFilters = () => {
-    setSearchInput('');
-    setSelectedTrade('all');
-    setSelectedHub('all');
-    setHostelFilter(false);
-    setSortBy('best-match');
-    setFeedMode('all');
-  };
+  const savedSet = new Set(activeWorker?.savedJobIds || localSavedIds);
 
   const toggleSave = (jobId: string) => {
-    setSavedJobIds((prev) =>
+    if (onToggleSaveJob) {
+      onToggleSaveJob(jobId);
+    }
+    setLocalSavedIds((prev) =>
       prev.includes(jobId) ? prev.filter((id) => id !== jobId) : [...prev, jobId]
     );
   };
 
-  const handleApply = (job: JobListing) => {
-    if (!props.activeWorker) {
-      props.onStartLogin();
-      return;
-    }
-    props.onApplyJob(job.id);
-    props.onAddNotification({
-      title: '✅ Application Submitted',
-      body: `You applied for ${job.title} at ${job.company}. The employer will contact you shortly.`,
-      type: 'success',
-      targetRole: 'worker',
+  const workerOffersCount = activeWorker
+    ? offers.filter((o) => o.candidateId === activeWorker.id).length
+    : 0;
+
+  const allTrades = [
+    'all',
+    'Packing & Box Loading (No Certificate)',
+    'Factory Floor Helper (No Certificate)',
+    'Warehouse Loader / Packer',
+    'Assembly Line Helper',
+    'Press Machine Operator',
+    'CNC / VMC Operator',
+    'Fitter (Assembly & Bench)',
+    'Welder (MIG / TIG / ARC)',
+    'Machinist (Lathe / Milling)',
+    'Industrial Electrician',
+    'Quality Inspector',
+  ];
+
+  const allHubs = [
+    'all',
+    'Chakan MIDC, Pune',
+    'Sector 63, Noida',
+    'Sanand GIDC, Ahmedabad',
+    'Peenya Industrial Area, Bengaluru',
+    'Sriperumbudur, Chennai',
+    'Adityapur, Jamshedpur',
+    'Bhiwadi Industrial Zone, Rajasthan',
+  ];
+
+  const noCertJobsCount = jobs.filter(
+    (j) => j.isActive !== false && (j.noCertificateRequired || j.category !== 'skilled')
+  ).length;
+
+  const itiJobsCount = jobs.filter(
+    (j) => j.isActive !== false && j.category === 'skilled'
+  ).length;
+
+  const filteredJobs = jobs
+    .filter((job) => {
+      if (job.isActive === false) return false;
+
+      if (feedMode === 'saved' && !savedSet.has(job.id)) return false;
+      const matchesFeedMode =
+        feedMode === 'all' ||
+        feedMode === 'saved' ||
+        (feedMode === 'no-cert' &&
+          (job.noCertificateRequired || job.category !== 'skilled')) ||
+        (feedMode === 'iti' && job.category === 'skilled');
+
+      const matchesTrade = selectedTrade === 'all' || job.trade === selectedTrade;
+      const matchesHub = selectedHub === 'all' || job.industrialHub === selectedHub;
+      const matchesHostel = !hostelFilter || job.facilities.hasHostel;
+      const matchesSearch =
+        searchQuery === '' ||
+        job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        job.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        job.trade.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        job.industrialHub.toLowerCase().includes(searchQuery.toLowerCase());
+
+      return (
+        matchesFeedMode &&
+        matchesTrade &&
+        matchesHub &&
+        matchesHostel &&
+        matchesSearch
+      );
+    })
+    .sort((a, b) => {
+      if (sortBy === 'highest-pay') {
+        return b.takeHomeSalary - a.takeHomeSalary;
+      }
+      if (sortBy === 'nearest') {
+        const distA = estimateClusterDistanceKm(
+          activeWorker?.currentCity || 'Patna',
+          a.industrialHub
+        );
+        const distB = estimateClusterDistanceKm(
+          activeWorker?.currentCity || 'Patna',
+          b.industrialHub
+        );
+        return distA - distB;
+      }
+      // Default: Best Match %
+      if (activeWorker) {
+        const scoreA = calculateTransparentMatchScore(activeWorker, a).score;
+        const scoreB = calculateTransparentMatchScore(activeWorker, b).score;
+        return scoreB - scoreA;
+      }
+      return b.takeHomeSalary - a.takeHomeSalary;
     });
-  };
 
-  const filteredJobs = useMemo(() => {
-    let jobs = allJobs;
-
-    // Search
-    if (searchInput.trim()) {
-      const q = searchInput.toLowerCase();
-      jobs = jobs.filter(
-        (j) =>
-          j.title.toLowerCase().includes(q) ||
-          j.company.toLowerCase().includes(q) ||
-          j.trade.toLowerCase().includes(q)
+  const handleToggleAudio = (job: JobListing) => {
+    if (activeAudioJobId === job.id) {
+      stopJobAudio();
+      setActiveAudioJobId(null);
+    } else {
+      const script = getAudioNarrationScript(job, currentLang);
+      setActiveAudioJobId(job.id);
+      playJobAudio(
+        job.id,
+        script,
+        currentLang,
+        () => setActiveAudioJobId(job.id),
+        () => setActiveAudioJobId(null),
+        () => setActiveAudioJobId(null)
       );
     }
+  };
 
-    // Trade filter
-    if (selectedTrade !== 'all') {
-      jobs = jobs.filter((j) => j.trade === selectedTrade);
+  const handleTogglePageVoiceGuide = () => {
+    if (activeAudioJobId === 'page-voice-guide') {
+      stopJobAudio();
+      setActiveAudioJobId(null);
+    } else {
+      const script = getVoiceGuideScript('worker-feed', currentLang);
+      setActiveAudioJobId('page-voice-guide');
+      playJobAudio(
+        'page-voice-guide',
+        script,
+        currentLang,
+        () => setActiveAudioJobId('page-voice-guide'),
+        () => setActiveAudioJobId(null),
+        () => setActiveAudioJobId(null)
+      );
     }
+  };
 
-    // Hub filter
-    if (selectedHub !== 'all') {
-      jobs = jobs.filter((j) => j.hub === selectedHub);
-    }
+  const handleApplyWhatsApp = (job: JobListing) => {
+    onApplyJob(job);
+    const certNote = job.noCertificateRequired
+      ? 'I am ready for immediate joining (No Certificate Needed).'
+      : 'My trade profile is verified.';
+    const text = encodeURIComponent(
+      `Namaste, I am applying directly for the ${job.trade} position at ${job.companyName} (${job.industrialHub}) via Shramkart. ${certNote} Please let me know the walk-in / gate pass details.`
+    );
+    window.open(`https://wa.me/${job.whatsappApplyNumber}?text=${text}`, '_blank');
+  };
 
-    // Hostel filter
-    if (hostelFilter) {
-      jobs = jobs.filter((j) => j.hostelProvided);
-    }
-
-    // Feed mode
-    const matchesFeedMode =
-      feedMode === 'all' ||
-      feedMode === 'saved' ||
-      (feedMode === 'no-cert' && (j.noCertificateRequired || j.category !== 'skilled')) ||
-      (feedMode === 'iti' && j.category === 'skilled');
-
-    jobs = jobs.filter((j) => {
-      if (feedMode === 'all') return true;
-      if (feedMode === 'saved') return savedJobIds.includes(j.id);
-      if (feedMode === 'no-cert') return j.noCertificateRequired || j.category !== 'skilled';
-      if (feedMode === 'iti') return j.category === 'skilled';
-      return true;
-    });
-
-    // Sort
-    if (sortBy === 'highest-pay') {
-      jobs = [...jobs].sort((a, b) => b.salaryMax - a.salaryMax);
-    }
-
-    return jobs;
-  }, [allJobs, searchInput, selectedTrade, selectedHub, hostelFilter, sortBy, feedMode, savedJobIds]);
-
-  const trades = useMemo(() => ['all', ...Array.from(new Set(allJobs.map((j) => j.trade)))], [allJobs]);
-  const hubs = useMemo(() => ['all', ...Array.from(new Set(allJobs.map((j) => j.hub)))], [allJobs]);
-
-  const feedButtons = [
-    { key: 'all', label: 'All Jobs' },
-    { key: 'saved', label: 'Saved' },
-    { key: 'no-cert', label: 'No Certificate' },
-    { key: 'iti', label: 'ITI Skilled' },
-    { key: 'drives', label: 'ITI Drives' },
-  ] as const;
+  const quizScore = SHOP_FLOOR_PRACTICE_QUIZ.reduce((acc, q) => {
+    return acc + (quizAnswers[q.id] === q.correctIndex ? 1 : 0);
+  }, 0);
 
   return (
-    <div className="space-y-4">
-      {/* Welcome */}
-      {!props.activeWorker && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-          <h2 className="text-base font-extrabold text-amber-900">{t.landingTitle}</h2>
-          <p className="text-sm text-amber-700 mt-1">{t.workerDesc}</p>
-          <button
-            onClick={() => props.onStartLogin()}
-            className="mt-3 btn-amber"
-          >
-            {t.login}
-          </button>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-24">
+      {/* Top Worker Welcome & Profile Navigation Banner */}
+      {activeWorker ? (
+        <div className="p-6 bg-slate-900 text-white rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-lg">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-black text-lg shrink-0">
+              {activeWorker.avatarSeed}
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-amber-400 font-semibold">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <span>
+                  Logged in as {activeWorker.name} · {activeWorker.trade}
+                </span>
+                <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 text-[11px]">
+                  {activeWorker.currentCity}, {activeWorker.homeState}
+                </span>
+              </div>
+              <h2 className="text-lg sm:text-xl font-bold text-white mt-0.5">
+                Jobs Feed — Search & Apply for Suitable Factory Jobs
+              </h2>
+              <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                {(
+                  activeWorker.readinessBadges || [
+                    'Mobile OTP Verified',
+                    'Immediate Joiner',
+                  ]
+                ).map((badge) => (
+                  <span
+                    key={badge}
+                    className="px-2 py-0.5 text-[11px] font-semibold bg-slate-800 text-emerald-300 border border-slate-700 rounded-md"
+                  >
+                    ✓ {badge}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setQuizOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-bold rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 transition-colors"
+            >
+              <Award className="w-4 h-4" />
+              <span>Skill Quiz</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleTogglePageVoiceGuide}
+              aria-pressed={activeAudioJobId === 'page-voice-guide'}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-bold rounded-xl border transition-colors ${
+                activeAudioJobId === 'page-voice-guide'
+                  ? 'bg-amber-400 text-slate-950 border-amber-500'
+                  : 'bg-slate-800 text-amber-300 border-slate-700 hover:bg-slate-700'
+              }`}
+            >
+              {activeAudioJobId === 'page-voice-guide' ? (
+                <>
+                  <VolumeX className="w-4 h-4" />
+                  <span>{t.stopAudio}</span>
+                </>
+              ) : (
+                <>
+                  <Volume2 className="w-4 h-4" />
+                  <span>{t.voiceGuideBtn}</span>
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={onOpenWorkerProfile}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-extrabold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-colors"
+            >
+              <UserCheck className="w-4 h-4" />
+              <span>
+                My Profile & Edit Info ({workerOffersCount} Offers)
+              </span>
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="p-6 bg-amber-500/10 border-2 border-amber-500/30 rounded-2xl flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2 text-amber-900 text-xs font-bold">
+              <Sparkles className="w-4 h-4 text-amber-600" />
+              <span>100% Free for Workers · Direct Factory Payroll</span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+              Direct Factory Jobs — Helper, Packing & ITI Operators
+            </h2>
+            <p className="text-xs text-slate-700 max-w-2xl">
+              Search verified factory openings with clear monthly in-hand salary, shift hours, and hostel/mess facilities. Log in or register to apply and manage your profile.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <button
+              onClick={onOpenCreateProfile}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors shadow-xs"
+            >
+              <Package className="w-4 h-4" />
+              <span>Register as Worker</span>
+            </button>
+
+            <button
+              onClick={onOpenAuthModal}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-extrabold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-colors shadow-xs"
+            >
+              <UserCheck className="w-4 h-4" />
+              <span>Worker Login</span>
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Feed mode toggle */}
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-        {feedButtons.map((btn) => (
-          <button
-            key={btn.key}
-            onClick={() => setFeedMode(btn.key)}
-            aria-pressed={feedMode === btn.key}
-            className={
-              'whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-bold transition ' +
-              (feedMode === btn.key
-                ? 'bg-amber-400 text-slate-950'
-                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700')
-            }
-          >
-            {btn.label}
-          </button>
-        ))}
+      {/* DEDICATED CATEGORY SWITCHER + SAVED JOBS + WALK-IN DRIVES */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <button
+          type="button"
+          onClick={() => setFeedMode('all')}
+          aria-pressed={feedMode === 'all'}
+          className={`p-3.5 rounded-2xl border-2 text-left transition-all flex items-center gap-3 ${
+            feedMode === 'all'
+              ? 'bg-slate-900 text-white border-slate-900 shadow-md'
+              : 'bg-white text-slate-800 border-slate-200 hover:border-slate-300'
+          }`}
+        >
+          <div className="w-9 h-9 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center shrink-0">
+            <Layers className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="text-xs font-extrabold">{t.tabAllJobs}</div>
+            <div className="text-[11px] opacity-75 tabular-nums">{jobs.length} Active</div>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setFeedMode('no-cert')}
+          aria-pressed={feedMode === 'no-cert'}
+          className={`p-3.5 rounded-2xl border-2 text-left transition-all flex items-center gap-3 ${
+            feedMode === 'no-cert'
+              ? 'bg-emerald-700 text-white border-emerald-700 shadow-md'
+              : 'bg-emerald-50/70 text-emerald-950 border-emerald-300 hover:bg-emerald-100/70'
+          }`}
+        >
+          <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
+            <Package className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="text-xs font-extrabold">No-Cert / Helper</div>
+            <div className="text-[11px] opacity-80 tabular-nums">{noCertJobsCount} Jobs</div>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setFeedMode('iti')}
+          aria-pressed={feedMode === 'iti'}
+          className={`p-3.5 rounded-2xl border-2 text-left transition-all flex items-center gap-3 ${
+            feedMode === 'iti'
+              ? 'bg-blue-700 text-white border-blue-700 shadow-md'
+              : 'bg-white text-slate-800 border-slate-200 hover:border-slate-300'
+          }`}
+        >
+          <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
+            <Wrench className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="text-xs font-extrabold">ITI / CNC / Welder</div>
+            <div className="text-[11px] opacity-75 tabular-nums">{itiJobsCount} Jobs</div>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setFeedMode('saved')}
+          aria-pressed={feedMode === 'saved'}
+          className={`p-3.5 rounded-2xl border-2 text-left transition-all flex items-center gap-3 ${
+            feedMode === 'saved'
+              ? 'bg-amber-400 text-slate-950 border-amber-500 shadow-md'
+              : 'bg-white text-slate-800 border-slate-200 hover:border-slate-300'
+          }`}
+        >
+          <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+            <Bookmark className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="text-xs font-extrabold">Saved Jobs</div>
+            <div className="text-[11px] opacity-75 tabular-nums">{savedSet.size} Saved</div>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setFeedMode('drives')}
+          aria-pressed={feedMode === 'drives'}
+          className={`p-3.5 rounded-2xl border-2 text-left transition-all flex items-center gap-3 ${
+            feedMode === 'drives'
+              ? 'bg-indigo-700 text-white border-indigo-700 shadow-md'
+              : 'bg-white text-slate-800 border-slate-200 hover:border-slate-300'
+          }`}
+        >
+          <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center shrink-0">
+            <Calendar className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="text-xs font-extrabold">ITI Campus Drives</div>
+            <div className="text-[11px] opacity-75 tabular-nums">{hiringDrives.length} Drives</div>
+          </div>
+        </button>
       </div>
 
-      {/* Search & Filter Bar */}
-      {feedMode !== 'drives' && (
-        <>
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                placeholder={t.searchPlaceholder}
-                className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-              />
+      {/* M13 Walk-in & Government ITI Campus Drives View */}
+      {feedMode === 'drives' && (
+        <div className="bg-white border-2 border-indigo-200 rounded-2xl p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-indigo-700 block">
+                Walk-In Gate Pass & ITI Campus Recruitment Drives
+              </span>
+              <h3 className="text-lg font-extrabold text-slate-900">
+                Upcoming Walk-In & ITI Placement Mela Schedule
+              </h3>
             </div>
             <button
-              onClick={() => setShowFilterBar((s) => !s)}
-              aria-expanded={showFilterBar}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+              onClick={() => setFeedMode('all')}
+              className="text-xs font-bold text-indigo-700 hover:underline self-start"
             >
-              <SlidersHorizontal className="w-4 h-4" />
-              {t.moreFilters}
-              {showFilterBar ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              ← Back to All Jobs
             </button>
           </div>
 
-          {showFilterBar && (
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 space-y-3">
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">{t.filterTrade}</label>
-                  <select
-                    value={selectedTrade}
-                    onChange={(e) => setSelectedTrade(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 px-2 py-1.5 text-sm bg-transparent focus:outline-none focus:ring-2 focus:ring-amber-400"
-                  >
-                    {trades.map((t) => (
-                      <option key={t} value={t}>
-                        {t === 'all' ? t.filterAll : t}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">{t.filterHub}</label>
-                  <select
-                    value={selectedHub}
-                    onChange={(e) => setSelectedHub(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 px-2 py-1.5 text-sm bg-transparent focus:outline-none focus:ring-2 focus:ring-amber-400"
-                  >
-                    {hubs.map((t) => (
-                      <option key={t} value={t}>
-                        {t === 'all' ? t.filterAll : t}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={hostelFilter}
-                    onChange={(e) => setHostelFilter(e.target.checked)}
-                    className="w-4 h-4 text-amber-500 rounded border-slate-300 focus:ring-amber-400"
-                  />
-                  {t.hostelFilterLabel}
-                </label>
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase">{t.sortByLabel}</label>
-                <div className="flex gap-2 mt-1">
-                  {[
-                    { key: 'best-match', label: t.bestMatch },
-                    { key: 'highest-pay', label: t.highestPay },
-                    { key: 'nearest', label: t.nearest },
-                  ].map((s) => (
-                    <button
-                      key={s.key}
-                      onClick={() => setSortBy(s.key as any)}
-                      className={
-                        'px-2.5 py-1 rounded-lg text-xs font-bold transition ' +
-                        (sortBy === s.key
-                          ? 'bg-amber-100 text-amber-800'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300')
-                      }
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Active filters indicator */}
-          {hasActiveFilters && (
-            <div className="flex items-center gap-2">
+          {hiringDrives.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Calendar className="w-12 h-12 text-slate-300 mb-3" />
+              <h4 className="text-sm font-bold text-slate-700">{t.emptyStateNoDrives}</h4>
+              <p className="text-xs text-slate-500 mt-1 max-w-xs">
+                {t.emptyStateNoDrivesDesc}
+              </p>
               <button
-                onClick={resetFilters}
-                className="flex items-center gap-1 text-xs font-bold text-amber-700 hover:text-amber-800"
+                onClick={() => setFeedMode('all')}
+                className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-extrabold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-colors"
               >
-                <RotateCcw className="w-3 h-3" />
-                {t.resetFilters}
-              </button>
-            </div>
-          )}
-
-          {/* Results count */}
-          <p className="text-xs text-slate-500">
-            {filteredJobs.length} {filteredJobs.length === 1 ? t.jobFound : t.jobsFound}
-          </p>
-
-          {/* Job Cards */}
-          {filteredJobs.length === 0 ? (
-            <div className="empty-state">
-              <Search className="empty-state-icon" />
-              <h4 className="empty-state-title">{t.emptyStateNoJobs}</h4>
-              <p className="empty-state-desc">{t.emptyStateNoJobsDesc}</p>
-              <button onClick={resetFilters} className="btn-amber mt-2">
-                {t.resetFilters}
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {filteredJobs.map((job) => (
-                <JobCard
-                  key={job.id}
-                  job={job}
-                  isSaved={savedJobIds.includes(job.id)}
-                  isApplied={!!props.existingApplications[job.id]}
-                  onToggleSave={() => toggleSave(job.id)}
-                  onApply={() => handleApply(job)}
-                  onShowSalary={() => setShowSalaryModal(job.id)}
-                  onShowRelocate={() => setShowRelocateModal(job.id)}
-                  onShowPhone={() => setShowPhoneModal(job.id)}
-                  onShowQuiz={() => setShowQuizModal(job.id)}
-                  onShowNcvt={() => setShowNcvtModal(job.id)}
-                  language={props.language}
-                />
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* ITI Drives Section */}
-      {feedMode === 'drives' && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Landmark className="w-5 h-5 text-amber-600" />
-            <div>
-              <h3 className="text-base font-extrabold text-slate-950 dark:text-white">{t.drivesTitle}</h3>
-              <p className="text-xs text-slate-500">{t.drivesSubtitle}</p>
-            </div>
-          </div>
-
-          {ITI_DRIVES.length === 0 ? (
-            <div className="empty-state">
-              <Calendar className="empty-state-icon" />
-              <h4 className="empty-state-title">{t.emptyStateNoDrives}</h4>
-              <p className="empty-state-desc">{t.emptyStateNoDrivesDesc}</p>
-              <button onClick={() => setFeedMode('all')} className="btn-amber mt-2">
                 {t.backToAllJobs}
               </button>
             </div>
           ) : (
-            <div className="space-y-3">
-              {ITI_DRIVES.map((drive) => (
-                <div
-                  key={drive.id}
-                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h4 className="text-sm font-extrabold text-slate-950 dark:text-white">{drive.instituteName}</h4>
-                      <p className="text-xs text-slate-500">{drive.location}</p>
-                    </div>
-                    <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
-                      {drive.trade}
-                    </span>
-                  </div>
-                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                    <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
-                      <Calendar className="w-3.5 h-3.5" />
-                      {new Date(drive.driveDate).toLocaleDateString('en-IN')}
-                    </div>
-                    <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
-                      <Users className="w-3.5 h-3.5" />
-                      {drive.expectedHires} hires
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => {
-                      if (!props.activeWorker) {
-                        props.onStartLogin();
-                        return;
-                      }
-                      props.onAddNotification({
-                        title: '🎓 Drive Registered',
-                        body: `You are registered for the drive at ${drive.instituteName}.`,
-                        type: 'success',
-                        targetRole: 'worker',
-                      });
-                    }}
-                    className="mt-3 w-full btn-amber justify-center"
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {hiringDrives.map((drive) => {
+                const registeredList =
+                  drive.registeredWorkerIds || drive.registeredCandidateIds || [];
+                const isRegistered =
+                  activeWorker && registeredList.includes(activeWorker.id);
+                return (
+                  <div
+                    key={drive.id}
+                    className="p-5 bg-slate-50 border border-slate-200 rounded-xl space-y-3"
                   >
-                    {t.reserveGatePass}
-                  </button>
-                </div>
-              ))}
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <span className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 text-[11px] font-bold">
+                          {drive.itiInstituteName || 'Direct Plant Walk-In'}
+                        </span>
+                        <h4 className="text-base font-extrabold text-slate-900 mt-1">
+                          {drive.title}
+                        </h4>
+                        <p className="text-xs text-slate-600">{drive.companyName}</p>
+                      </div>
+                      <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-900 font-extrabold text-xs tabular-nums">
+                        ₹{(drive.inHandSalary ?? 22000).toLocaleString('en-IN')}/mo
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-600 space-y-1">
+                      <div>
+                        <strong>Date & Venue:</strong> {drive.date} · {drive.venueAddress}
+                      </div>
+                      <div>
+                        <strong>Trades:</strong> {drive.trades.join(', ')} ({drive.seatsAvailable} seats)
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onRegisterDrive && onRegisterDrive(drive.id)}
+                      className={`w-full py-2 px-4 rounded-xl text-xs font-extrabold transition-colors ${
+                        isRegistered
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-amber-400 hover:bg-amber-300 text-slate-950'
+                      }`}
+                    >
+                      {isRegistered
+                        ? '✓ Walk-In Gate Pass Reserved'
+                        : 'Reserve Free Walk-In Gate Pass'}
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
       )}
 
-      {/* Salary Modal */}
-      {showSalaryModal && (
-        <div
-          className="dialog-overlay"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="salary-modal-title"
-          onClick={(e) => { if (e.target === e.currentTarget) setShowSalaryModal(null); }}
-        >
-          <div className="dialog-panel">
-            <div className="flex items-center justify-between mb-3">
-              <h3 id="salary-modal-title" className="text-base font-extrabold text-slate-950">{t.salaryBreakdown}</h3>
-              <button
-                onClick={() => setShowSalaryModal(null)}
-                className="icon-btn"
-                aria-label={t.close}
-              >
-                <X className="w-4 h-4" />
-              </button>
+      {/* Filter, Search & Sort Bar (M5) */}
+      {feedMode !== 'drives' && (
+        <>
+          <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder={t.searchWorkerPlaceholder}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 text-xs border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-amber-500 bg-slate-50/50"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-700 whitespace-nowrap">
+                  Sort By:
+                </span>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                  className="px-3 py-2 text-xs font-bold border border-slate-300 rounded-lg bg-white text-slate-900"
+                >
+                  <option value="best-match">Best Skill & Pay Match</option>
+                  <option value="highest-pay">Highest In-Hand Pay First</option>
+                  <option value="nearest">Nearest Industrial Cluster (km)</option>
+                </select>
+              </div>
             </div>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-500">Base Salary</span>
-                <span className="font-bold">₹18,000</span>
+
+            <div>
+              <span className="text-xs font-bold text-slate-700 block mb-2">
+                {t.filterTrade}:
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {allTrades.map((trade) => (
+                  <button
+                    key={trade}
+                    onClick={() => setSelectedTrade(trade)}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap ${
+                      selectedTrade === trade
+                        ? 'bg-slate-900 text-white font-semibold shadow-xs'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    {trade === 'all' ? t.filterAllTrades : trade}
+                  </button>
+                ))}
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-500">HRA</span>
-                <span className="font-bold">₹2,500</span>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-slate-100 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-slate-700">{t.filterHub}:</span>
+                <select
+                  value={selectedHub}
+                  onChange={(e) => setSelectedHub(e.target.value)}
+                  className="px-2.5 py-1 text-xs border border-slate-200 rounded bg-white text-slate-800"
+                >
+                  {allHubs.map((hub) => (
+                    <option key={hub} value={hub}>
+                      {hub === 'all' ? t.filterAllHubs : hub}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-500">Conveyance</span>
-                <span className="font-bold">₹1,200</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-500">PF (Employee)</span>
-                <span className="font-bold text-red-600">-₹2,160</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-500">ESI</span>
-                <span className="font-bold text-red-600">-₹315</span>
-              </div>
-              <div className="flex justify-between py-2 bg-green-50 rounded-lg px-3">
-                <span className="font-extrabold text-green-800">Take Home</span>
-                <span className="font-extrabold text-green-800">₹19,225</span>
+
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-1.5 cursor-pointer text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={hostelFilter}
+                    onChange={(e) => setHostelFilter(e.target.checked)}
+                    className="rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+                  />
+                  <span className="font-medium">Free/Subsidized Hostel Only</span>
+                </label>
+
+                <span className="text-slate-400">·</span>
+                <span className="tabular-nums font-semibold text-slate-600">
+                  {filteredJobs.length} {filteredJobs.length === 1 ? 'Job Found' : 'Jobs Found'}
+                </span>
               </div>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* Relocation Modal */}
-      {showRelocateModal && (
-        <div
-          className="dialog-overlay"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="relocate-modal-title"
-          onClick={(e) => { if (e.target === e.currentTarget) setShowRelocateModal(null); }}
-        >
-          <div className="dialog-panel">
-            <div className="flex items-center justify-between mb-3">
-              <h3 id="relocate-modal-title" className="text-base font-extrabold text-slate-950">{t.relocationDetails}</h3>
-              <button
-                onClick={() => setShowRelocateModal(null)}
-                className="icon-btn"
-                aria-label={t.close}
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="space-y-3 text-sm">
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                <p className="font-bold text-amber-800">Free Bus Service</p>
-                <p className="text-xs text-amber-700">Company provides free pickup/drop within 15km radius</p>
+          {/* M5 PAY-FIRST JOB FEED CARDS */}
+          <div className="space-y-4">
+            {filteredJobs.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center bg-white border border-slate-200 rounded-xl">
+                <Search className="w-12 h-12 text-slate-300 mb-3" />
+                <h4 className="text-sm font-bold text-slate-700">{t.emptyStateNoJobs}</h4>
+                <p className="text-xs text-slate-500 mt-1 max-w-xs">
+                  {t.emptyStateNoJobsDesc}
+                </p>
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSelectedTrade('all');
+                    setSelectedHub('all');
+                    setHostelFilter(false);
+                    setSortBy('best-match');
+                    setFeedMode('all');
+                  }}
+                  className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-extrabold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-colors"
+                >
+                  {t.resetFilters}
+                </button>
               </div>
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                <p className="font-bold text-green-800">Hostel Available</p>
-                <p className="text-xs text-green-700">₹1,500/month deducted from salary. Includes meals.</p>
-              </div>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="font-bold text-blue-800">Relocation Bonus</p>
-                <p className="text-xs text-blue-700">₹5,000 one-time bonus for outstation candidates</p>
-              </div>
-            </div>
+            ) : (
+              filteredJobs.map((job) => {
+                const isAudioPlaying = activeAudioJobId === job.id;
+                const existingApp = applications.find(
+                  (a) =>
+                    a.jobId === job.id &&
+                    (activeWorker ? a.candidateId === activeWorker.id : false)
+                );
+                const isSaved = savedSet.has(job.id);
+                const distanceKm =
+                  job.clusterDistanceKm ??
+                  estimateClusterDistanceKm(
+                    activeWorker?.currentCity || 'Patna',
+                    job.industrialHub
+                  );
+                const matchResult = activeWorker
+                  ? calculateTransparentMatchScore(activeWorker, job)
+                  : null;
+                const labourBreakdown =
+                  job.labourCodeBreakdown ||
+                  computeLabourCodeBreakdown(job.takeHomeSalary, job.grossSalary);
+
+                return (
+                  <div
+                    key={job.id}
+                    className={`bg-white border-2 rounded-2xl p-5 sm:p-6 transition-all duration-150 shadow-xs space-y-4 relative ${
+                      job.noCertificateRequired
+                        ? 'border-emerald-200 hover:border-emerald-300'
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    {/* M5 PAY-FIRST HEADER: Leads with "₹18,500 in hand/mo" FIRST */}
+                    <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                      <div className="space-y-1.5">
+                        <div className="flex flex-wrap items-baseline gap-2.5">
+                          <span className="text-2xl sm:text-3xl font-extrabold text-emerald-700 tabular-nums tracking-tight">
+                            ₹{job.takeHomeSalary.toLocaleString('en-IN')} in hand/mo
+                          </span>
+                          <span className="text-xs font-bold text-slate-700 tabular-nums bg-slate-100 px-2.5 py-1 rounded-md">
+                            + ₹{job.overtimeHourlyRate}/hr OT ({job.overtimeMultiplierLabel || '2x Statutory'})
+                          </span>
+                          <span className="text-xs font-semibold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-md flex items-center gap-1 tabular-nums">
+                            <Navigation className="w-3 h-3" />
+                            {distanceKm} km from {activeWorker?.currentCity || 'your city'}
+                          </span>
+                        </div>
+
+                        {/* Role & Shift Title */}
+                        <h3 className="text-lg font-extrabold text-slate-900 tracking-tight">
+                          {job.title} · <span className="text-amber-700">{job.shiftPattern}</span>
+                        </h3>
+
+                        {/* Secondary: Company Name, GSTIN, Cluster & Promise Kept % */}
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600">
+                          <span className="font-bold text-slate-900 flex items-center gap-1">
+                            <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                            {job.companyName}
+                          </span>
+                          <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                            <ShieldCheck className="w-3.5 h-3.5" />
+                            GSTIN Verified
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                            {job.industrialHub} ({job.state})
+                          </span>
+                          {job.promiseKeptScorePct && (
+                            <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 font-bold tabular-nums">
+                              Promise Kept: {job.promiseKeptScorePct}%
+                            </span>
+                          )}
+                          <span className="text-slate-400 tabular-nums">
+                            Expires {job.expiresAt || 'in 30 days'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Right: Transparent Match Badge + Save + Audio */}
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        {matchResult && (
+                          <div className="px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-300 text-right">
+                            <div className="text-xs font-extrabold text-amber-950 tabular-nums">
+                              {matchResult.score}% Match
+                            </div>
+                            <div className="text-[10px] font-medium text-amber-800">
+                              {matchResult.reasons.slice(0, 3).join(' · ')}
+                            </div>
+                          </div>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => toggleSave(job.id)}
+                          aria-label={isSaved ? 'Unsave job' : 'Save job'}
+                          aria-pressed={isSaved}
+                          className={`p-2 rounded-xl border transition-colors ${
+                            isSaved
+                              ? 'bg-amber-400 text-slate-950 border-amber-500'
+                              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                          }`}
+                          title="Save Job"
+                        >
+                          <Bookmark className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          onClick={() => handleToggleAudio(job)}
+                          aria-pressed={isAudioPlaying}
+                          aria-label={isAudioPlaying ? 'Stop audio narration' : 'Listen to job audio'}
+                          className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl transition-colors border ${
+                            isAudioPlaying
+                              ? 'bg-amber-400 text-slate-950 border-amber-500'
+                              : 'bg-amber-50 text-amber-950 border-amber-300 hover:bg-amber-100'
+                          }`}
+                        >
+                          {isAudioPlaying ? (
+                            <>
+                              <VolumeX className="w-4 h-4" />
+                              <span>{t.stopAudio}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Volume2 className="w-4 h-4 text-amber-700" />
+                              <span>{t.listenAudio}</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Facilities & Welfare Perks Row */}
+                    <div className="flex flex-wrap items-center gap-3 pt-1 text-xs">
+                      {job.noCertificateRequired && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-900 font-bold">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                          {t.noCertBadge}
+                        </span>
+                      )}
+                      {job.facilities.hasHostel && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 text-slate-800 font-medium">
+                          <Home className="w-3.5 h-3.5 text-amber-600" />
+                          {job.roomRentDeduction || t.hostel}
+                        </span>
+                      )}
+                      {job.facilities.hasSubsidizedMess && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 text-slate-800 font-medium">
+                          <Utensils className="w-3.5 h-3.5 text-amber-600" />
+                          {job.canteenCostPerMeal || t.mess}
+                        </span>
+                      )}
+                      {job.facilities.hasBusPickup && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 text-slate-800 font-medium">
+                          <Bus className="w-3.5 h-3.5 text-blue-600" />
+                          {t.bus}
+                        </span>
+                      )}
+                      <span className="inline-flex items-center gap-1 text-blue-700 font-bold tabular-nums ml-auto">
+                        {job.vacanciesLeft} of {job.openingsCount} seats open
+                      </span>
+                    </div>
+
+                    {/* Expandable M5 New Labour Code PF/ESIC Breakdown & M14 Relocation Checklist */}
+                    <div className="flex flex-wrap items-center gap-4 pt-2 border-t border-slate-100 text-xs">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpandedSalaryJobId(
+                            expandedSalaryJobId === job.id ? null : job.id
+                          )
+                        }
+                        className="inline-flex items-center gap-1 font-bold text-slate-700 hover:text-slate-900"
+                      >
+                        <span>New Labour Code Salary & PF/ESIC Breakdown</span>
+                        {expandedSalaryJobId === job.id ? (
+                          <ChevronUp className="w-3.5 h-3.5" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+
+                      {job.relocation && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpandedRelocJobId(
+                              expandedRelocJobId === job.id ? null : job.id
+                            )
+                          }
+                          className="inline-flex items-center gap-1 font-bold text-indigo-700 hover:text-indigo-900"
+                        >
+                          <span>Relocation & Hostel Support Details</span>
+                          {expandedRelocJobId === job.id ? (
+                            <ChevronUp className="w-3.5 h-3.5" />
+                          ) : (
+                            <ChevronDown className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      )}
+                    </div>
+
+                    {expandedSalaryJobId === job.id && (
+                      <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs tabular-nums">
+                        <div>
+                          <span className="text-slate-500 block">Basic + DA (≥50%)</span>
+                          <span className="font-bold text-slate-900">
+                            ₹{labourBreakdown.basicAndDa.toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 block">Allowances / HRA</span>
+                          <span className="font-bold text-slate-900">
+                            ₹{labourBreakdown.allowances.toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 block">Employee PF (12%)</span>
+                          <span className="font-bold text-slate-700">
+                            ₹{labourBreakdown.pfEmployee.toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 block">ESIC Medical (0.75%)</span>
+                          <span className="font-bold text-slate-700">
+                            ₹{labourBreakdown.esicEmployee.toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 block">Guaranteed In-Hand</span>
+                          <span className="font-extrabold text-emerald-700">
+                            ₹{job.takeHomeSalary.toLocaleString('en-IN')}/mo
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {expandedRelocJobId === job.id && job.relocation && (
+                      <div className="p-3.5 bg-indigo-50/70 border border-indigo-200 rounded-xl grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                        <div>
+                          <span className="text-indigo-950 font-bold block">
+                            First-Month Wage Advance
+                          </span>
+                          <span className="text-slate-700 tabular-nums">
+                            {job.relocation.wageAdvanceAvailable
+                              ? `Up to ₹${job.relocation.maxAdvanceAmount.toLocaleString('en-IN')} on joining`
+                              : 'Standard monthly payout'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-indigo-950 font-bold block">
+                            Travel Ticket & Language Support
+                          </span>
+                          <span className="text-slate-700">
+                            {job.relocation.travelTicketReimbursed
+                              ? '2nd Class Train/Bus Reimbursed'
+                              : 'Self travel'}{' '}
+                            · Floor Supervisor speaks{' '}
+                            {job.relocation.supervisorLanguages.join(', ')}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-indigo-950 font-bold block">
+                            Nearest Railhead & Move Checklist
+                          </span>
+                          <span className="text-slate-700">
+                            {job.relocation.nearestRailwayStation} (Bring Bank Passbook & 2 Photos)
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Bottom Action Bar */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-3 border-t border-slate-100">
+                      <div className="flex flex-wrap items-center gap-3 text-xs">
+                        <span className="font-medium text-slate-700">
+                          Qualification: {job.minQualification}
+                        </span>
+                        <span className="text-slate-300">·</span>
+                        <button
+                          onClick={() => onOpenReport(job.companyName)}
+                          className="text-red-600 hover:text-red-700 font-medium hover:underline flex items-center gap-1"
+                        >
+                          <AlertCircle className="w-3.5 h-3.5" />
+                          {t.reportCut}
+                        </button>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                        <button
+                          onClick={() => setCallingJob(job)}
+                          className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                        >
+                          <PhoneCall className="w-3.5 h-3.5 text-slate-600" />
+                          <span>{t.directCall}</span>
+                        </button>
+
+                        {existingApp ? (
+                          <button
+                            onClick={onOpenWorkerProfile}
+                            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Applied ({existingApp.status})</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => onApplyJob(job)}
+                            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-extrabold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-lg transition-colors shadow-xs"
+                          >
+                            <Send className="w-3.5 h-3.5" />
+                            <span>1-Tap Direct Apply</span>
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => handleApplyWhatsApp(job)}
+                          className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors shadow-xs"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          <span>{t.applyWhatsapp}</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
-        </div>
+        </>
       )}
 
-      {/* Phone Modal */}
-      {showPhoneModal && (
+      {/* M13 5-Question Shop-Floor Trade Practice Quiz Modal */}
+      {quizOpen && (
         <div
-          className="dialog-overlay"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-xs"
           role="dialog"
           aria-modal="true"
-          aria-labelledby="phone-modal-title"
-          onClick={(e) => { if (e.target === e.currentTarget) setShowPhoneModal(null); }}
+          aria-labelledby="quiz-modal-title"
         >
-          <div className="dialog-panel">
-            <div className="flex items-center justify-between mb-3">
-              <h3 id="phone-modal-title" className="text-base font-extrabold text-slate-950">{t.directHrContact}</h3>
+          <div className="w-full max-w-xl bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700 block">
+                  5-Question Trade & Shop-Floor Safety Practice Quiz
+                </span>
+                <h3 id="quiz-modal-title" className="text-lg font-extrabold text-slate-900">
+                  Earn Your Shop-Floor Practice Badge
+                </h3>
+              </div>
               <button
-                onClick={() => setShowPhoneModal(null)}
-                className="icon-btn"
-                aria-label={t.close}
+                onClick={() => setQuizOpen(false)}
+                className="text-slate-400 hover:text-slate-700 text-sm font-bold"
+                aria-label="Close quiz dialog"
               >
-                <X className="w-4 h-4" />
+                ✕
               </button>
             </div>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                <Phone className="w-5 h-5 text-green-600" />
-                <div>
-                  <p className="text-sm font-bold text-slate-900 dark:text-white">+91 98765 43210</p>
-                  <p className="text-xs text-slate-500">{t.officialFactoryContact}</p>
+
+            <div className="space-y-4">
+              {SHOP_FLOOR_PRACTICE_QUIZ.map((q, idx) => (
+                <div key={q.id} className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                  <div className="text-xs font-bold text-slate-900">
+                    {idx + 1}. {currentLang === 'hi' ? q.questionHi : q.questionEn}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {q.options.map((opt, optIndex) => {
+                      const chosen = quizAnswers[q.id] === optIndex;
+                      return (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() =>
+                            setQuizAnswers((prev) => ({ ...prev, [q.id]: optIndex }))
+                          }
+                          className={`p-2 rounded-lg text-left text-xs font-semibold border transition-colors ${
+                            chosen
+                              ? 'bg-amber-400 text-slate-950 border-amber-500 font-bold'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {opt}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
+              ))}
+            </div>
+
+            {quizSubmitted && (
+              <div className="p-3.5 bg-emerald-50 border border-emerald-300 rounded-xl text-xs text-emerald-950 font-bold flex items-center justify-between">
+                <span>
+                  Score: {quizScore} / {SHOP_FLOOR_PRACTICE_QUIZ.length} Correct — Shop-Floor Safety & Trade Practice Verified!
+                </span>
+                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
               </div>
-              <a
-                href="tel:+919876543210"
-                className="w-full btn-blue justify-center"
+            )}
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setQuizOpen(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 bg-slate-100 rounded-xl"
               >
-                <Phone className="w-4 h-4" />
+                {t.close}
+              </button>
+              <button
+                type="button"
+                onClick={() => setQuizSubmitted(true)}
+                className="px-5 py-2 text-xs font-extrabold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl"
+              >
+                Submit Practice Answers
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Call HR Direct Dialog */}
+      {callingJob && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="call-hr-title"
+        >
+          <div className="w-full max-w-md bg-white border border-slate-200 rounded-xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-slate-900 font-bold text-base">
+                <PhoneCall className="w-5 h-5 text-emerald-600" />
+                <span id="call-hr-title">{t.directCall}</span>
+              </div>
+              <button
+                onClick={() => setCallingJob(null)}
+                className="text-slate-400 hover:text-slate-600"
+                aria-label="Close call dialog"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
+              <div className="text-xs text-slate-500">Official Factory Contact:</div>
+              <div className="text-sm font-bold text-slate-900">{callingJob.hrContactName}</div>
+              <div className="text-xs text-slate-600">
+                {callingJob.companyName} · {callingJob.industrialHub}
+              </div>
+              <div className="pt-2">
+                <a
+                  href={`tel:${callingJob.hrContactPhone}`}
+                  className="inline-flex items-center gap-2 text-lg tabular-nums font-bold text-blue-700 hover:underline"
+                >
+                  <PhoneCall className="w-4 h-4" />
+                  {callingJob.hrContactPhone}
+                </a>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setCallingJob(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded"
+              >
+                {t.close}
+              </button>
+              <a
+                href={`tel:${callingJob.hrContactPhone}`}
+                className="px-4 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded"
+              >
                 {t.callNow}
               </a>
             </div>
           </div>
         </div>
       )}
-
-      {/* Quiz Modal */}
-      {showQuizModal && (
-        <div
-          className="dialog-overlay"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="quiz-modal-title"
-          onClick={(e) => { if (e.target === e.currentTarget) setShowQuizModal(null); }}
-        >
-          <div className="dialog-panel">
-            <div className="flex items-center justify-between mb-3">
-              <h3 id="quiz-modal-title" className="text-base font-extrabold text-slate-950">Skill Assessment</h3>
-              <button
-                onClick={() => setShowQuizModal(null)}
-                className="icon-btn"
-                aria-label={t.close}
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <p className="text-sm text-slate-600 mb-3">Answer 3 quick questions to improve your match score.</p>
-            <div className="space-y-3">
-              {[
-                { q: 'How many years of experience do you have?', options: ['0-1', '1-3', '3-5', '5+'] },
-                { q: 'Are you comfortable with night shifts?', options: ['Yes', 'No', 'Sometimes'] },
-                { q: 'Do you have your own transportation?', options: ['Yes', 'No'] },
-              ].map((item, idx) => (
-                <div key={idx}>
-                  <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">{item.q}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {item.options.map((opt) => (
-                      <button
-                        key={opt}
-                        className="px-3 py-1 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-amber-100 hover:text-amber-800 transition"
-                      >
-                        {opt}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-              <button
-                onClick={() => {
-                  setShowQuizModal(null);
-                  props.onAddNotification({
-                    title: '✅ Assessment Complete',
-                    body: 'Your profile has been updated with new skills.',
-                    type: 'success',
-                    targetRole: 'worker',
-                  });
-                }}
-                className="w-full btn-amber justify-center"
-              >
-                Submit Answers
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* NCVT Modal */}
-      {showNcvtModal && (
-        <div
-          className="dialog-overlay"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="ncvt-modal-title"
-          onClick={(e) => { if (e.target === e.currentTarget) setShowNcvtModal(null); }}
-        >
-          <div className="dialog-panel">
-            <div className="flex items-center justify-between mb-3">
-              <h3 id="ncvt-modal-title" className="text-base font-extrabold text-slate-950">{t.ncvtCheckTitle}</h3>
-              <button
-                onClick={() => setShowNcvtModal(null)}
-                className="icon-btn"
-                aria-label={t.close}
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs font-bold text-slate-500">{t.ncvtNumber}</label>
-                <input
-                  placeholder="e.g. NCVT-2024-123456"
-                  className="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-400"
-                />
-              </div>
-              <button
-                onClick={() => {
-                  setShowNcvtModal(null);
-                  props.onAddNotification({
-                    title: '✅ NCVT Verified',
-                    body: 'Your certificate has been verified successfully.',
-                    type: 'success',
-                    targetRole: 'worker',
-                  });
-                }}
-                className="w-full btn-blue justify-center"
-              >
-                <ShieldCheck className="w-4 h-4" />
-                {t.verify}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
-}
-
-/* ── Job Card ──────────────────────────────────────────────────────────── */
-
-function JobCard({
-  job,
-  isSaved,
-  isApplied,
-  onToggleSave,
-  onApply,
-  onShowSalary,
-  onShowRelocate,
-  onShowPhone,
-  onShowQuiz,
-  onShowNcvt,
-  language,
-}: {
-  job: JobListing;
-  isSaved: boolean;
-  isApplied: boolean;
-  onToggleSave: () => void;
-  onApply: () => void;
-  onShowSalary: () => void;
-  onShowRelocate: () => void;
-  onShowPhone: () => void;
-  onShowQuiz: () => void;
-  onShowNcvt: () => void;
-  language: Language;
-}) {
-  const t = TRANSLATIONS[language];
-
-  return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden transition hover:shadow-md">
-      <div className="p-4">
-        <div className="flex items-start justify-between">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-extrabold text-slate-950 dark:text-white truncate">{job.title}</h3>
-              {job.verified && (
-                <ShieldCheck className="w-4 h-4 text-green-500 shrink-0" />
-              )}
-            </div>
-            <p className="text-xs text-slate-500 mt-0.5">{job.company}</p>
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={onToggleSave}
-              aria-label={isSaved ? 'Unsave job' : 'Save job'}
-              aria-pressed={isSaved}
-              className={
-                'p-1.5 rounded-lg transition ' +
-                (isSaved ? 'text-red-500 bg-red-50' : 'text-slate-400 hover:text-red-500 hover:bg-red-50')
-              }
-            >
-              <Heart className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
-            </button>
-            <button
-              aria-label="Share job"
-              className="p-1.5 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition"
-            >
-              <Share2 className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
-            <IndianRupee className="w-3.5 h-3.5 text-amber-500" />
-            <span className="font-bold">₹{job.salaryMin.toLocaleString('en-IN')}</span>
-            <span className="text-slate-400">- ₹{job.salaryMax.toLocaleString('en-IN')}</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
-            <MapPin className="w-3.5 h-3.5 text-blue-500" />
-            {job.location}
-          </div>
-          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
-            <Briefcase className="w-3.5 h-3.5 text-purple-500" />
-            {job.experience} yrs
-          </div>
-          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
-            <Clock className="w-3.5 h-3.5 text-green-500" />
-            {job.shift}
-          </div>
-        </div>
-
-        {job.hostelProvided && (
-          <div className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold bg-green-50 text-green-700 px-2 py-0.5 rounded-full">
-            <Building2 className="w-3 h-3" />
-            Hostel
-          </div>
-        )}
-
-        <div className="mt-3 flex gap-2">
-          <button
-            onClick={onShowSalary}
-            className="flex-1 py-2 text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition"
-          >
-            {t.salaryBreakdown}
-          </button>
-          <button
-            onClick={onShowRelocate}
-            className="flex-1 py-2 text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition"
-          >
-            {t.relocationDetails}
-          </button>
-        </div>
-
-        <div className="mt-2 flex gap-2">
-          {job.category === 'skilled' && (
-            <button
-              onClick={onShowNcvt}
-              className="flex-1 py-2 text-xs font-bold bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition"
-            >
-              {t.viewNcvt}
-            </button>
-          )}
-          {job.practicalDemo && (
-            <button
-              onClick={onShowQuiz}
-              className="flex-1 py-2 text-xs font-bold bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition"
-            >
-              {t.practicalDemo}
-            </button>
-          )}
-        </div>
-
-        <div className="mt-3 flex gap-2">
-          <button
-            onClick={onShowPhone}
-            className="flex-1 py-2.5 text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition flex items-center justify-center gap-1.5"
-          >
-            <Phone className="w-3.5 h-3.5" />
-            {t.callEmployer}
-          </button>
-          <button
-            onClick={onApply}
-            disabled={isApplied}
-            className={
-              'flex-1 py-2.5 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 ' +
-              (isApplied
-                ? 'bg-green-100 text-green-700 cursor-default'
-                : 'bg-amber-400 hover:bg-amber-300 text-slate-950')
-            }
-          >
-            {isApplied ? (
-              <>
-                <CheckCircle className="w-3.5 h-3.5" />
-                {t.applied}
-              </>
-            ) : (
-              <>
-                <Briefcase className="w-3.5 h-3.5" />
-                {t.applyNow}
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+};

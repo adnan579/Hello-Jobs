@@ -1,314 +1,250 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  UserRole,
-  Language,
-  AuthSession,
-  CandidateProfile,
-  EmployerFactoryProfile,
-} from '../types';
-import {
-  UserCheck,
-  Factory,
-  LogIn,
-  UserPlus,
-  Bell,
-  LogOut,
   Briefcase,
   Users,
-  Plus,
+  Calculator,
+  GraduationCap,
+  ShieldAlert,
+  Globe,
+  ArrowLeft,
+  Menu,
+  X,
+  Bell,
+  Moon,
+  Sun,
+  Volume2,
+  VolumeX,
+  User,
+  LogIn,
+  Factory,
 } from 'lucide-react';
-import { BrandLogo } from './BrandLogo';
+import type { Language, UserRole, JobListing, NotificationEvent } from '../types';
+import { TRANSLATIONS } from '../data/translations';
 
 interface Props {
-  currentRole: UserRole;
-  currentLang: Language;
-  authSession: AuthSession | null;
-  activeWorker?: CandidateProfile;
-  employerProfile: EmployerFactoryProfile;
-  unreadNotificationsCount?: number;
-  onRoleChange: (role: UserRole) => void;
-  onLangChange: (lang: Language) => void;
-  onOpenCalculator: () => void;
-  onOpenReport: () => void;
-  onOpenNcvtSearch: () => void;
-  onOpenAuthModal: (
-    initialTab?: 'worker' | 'employer',
-    initialMode?: 'login' | 'register'
-  ) => void;
-  onOpenPostJob?: () => void;
-  onOpenNotifications?: () => void;
-  onLogout?: () => void;
+  role: UserRole;
+  onRoleSwitch: (role: UserRole) => void;
+  language: Language;
+  onLanguageChange: (lang: Language) => void;
+  darkMode: boolean;
+  onDarkModeToggle: () => void;
+  unreadNotificationsCount: number;
+  onNotificationClick: () => void;
+  onCalculatorClick: () => void;
+  onNcvtClick: () => void;
+  onReportClick: () => void;
+  activeWorker: { id: string; name: string; phone: string; savedJobIds: string[] } | null;
+  employerProfile: { id: string; companyName: string; companyId: string; credits: number } | null;
+  onLogin: () => void;
+  onProfileClick: () => void;
+  onPostJob: (job: JobListing) => void;
 }
 
-export const Navbar: React.FC<Props> = ({
-  currentRole,
-  currentLang,
-  authSession,
-  activeWorker,
-  employerProfile,
-  unreadNotificationsCount = 0,
-  onRoleChange,
-  onLangChange,
-  onOpenCalculator,
-  onOpenAuthModal,
-  onOpenPostJob,
-  onOpenNotifications,
-  onLogout,
-}) => {
-  const languages: { code: Language; label: string; nativeName: string }[] = [
-    { code: 'en', label: 'EN', nativeName: 'English' },
-    { code: 'hi', label: 'हिं', nativeName: 'हिंदी' },
-    { code: 'mr', label: 'म', nativeName: 'मराठी' },
-    { code: 'ta', label: 'த', nativeName: 'தமிழ்' },
+export default function Navbar(props: Props) {
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const t = TRANSLATIONS[props.language];
+
+  const navItems = [
+    { id: 'jobs', label: t.navJobs, icon: Briefcase, active: props.role === 'worker' },
+    { id: 'hunt', label: t.navHunt, icon: Users, active: props.role === 'employer' },
+    { id: 'calc', label: t.navCalculator, icon: Calculator, active: false },
+    { id: 'ncvt', label: t.navNcvt, icon: GraduationCap, active: false },
+    { id: 'report', label: t.navReport, icon: ShieldAlert, active: false },
   ];
 
-  const isWorkerLoggedIn = authSession?.role === 'worker' && Boolean(activeWorker);
-  const isEmployerLoggedIn = authSession?.role === 'employer';
-
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
-      <div className="hv-stripe h-1" aria-hidden="true" />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-        {/* Zone 1: Brand Wordmark */}
-        <button
-          onClick={() => onRoleChange('landing')}
-          aria-label="Shramkart home"
-          className="shrink-0 cursor-pointer rounded-lg py-1 transition-opacity hover:opacity-80"
-        >
-          <BrandLogo showTagline />
-        </button>
+    <nav className="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur border-b border-slate-200 dark:border-slate-700">
+      <div className="max-w-5xl mx-auto px-4">
+        <div className="flex items-center justify-between h-14">
+          {/* Logo */}
+          <div className="flex items-center gap-2">
+            {props.role !== 'landing' && (
+              <button
+                onClick={() => props.onRoleSwitch('landing')}
+                className="p-2 -ml-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                aria-label={t.backToHome}
+                title={t.backToHome}
+              >
+                <ArrowLeft className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+              </button>
+            )}
+            <button
+              onClick={() => props.onRoleSwitch('landing')}
+              className="flex items-center gap-2"
+              aria-label="Shramkart home"
+            >
+              <div className="w-8 h-8 bg-amber-400 rounded-lg flex items-center justify-center">
+                <Briefcase className="w-5 h-5 text-slate-950" />
+              </div>
+              <div className="hidden sm:block">
+                <h1 className="text-sm font-extrabold text-slate-950 dark:text-white leading-tight">Shramkart</h1>
+                <p className="text-[10px] text-slate-500 leading-tight">{t.brandTagline}</p>
+              </div>
+            </button>
+          </div>
 
-        {/* Zone 2: Contextual Navigation Links */}
-        <nav className="hidden md:flex items-center gap-6 text-xs font-bold text-slate-600">
-          {isWorkerLoggedIn ? (
-            <>
+          {/* Desktop nav */}
+          <div className="hidden md:flex items-center gap-1">
+            {navItems.map((item) => (
               <button
-                onClick={() => onRoleChange('worker')}
-                className={`whitespace-nowrap shrink-0 transition-colors flex items-center gap-1.5 py-1 ${
-                  currentRole === 'worker'
-                    ? 'text-amber-600 border-b-2 border-amber-500 font-extrabold'
-                    : 'hover:text-slate-900'
-                }`}
+                key={item.id}
+                onClick={() => {
+                  if (item.id === 'jobs') props.onRoleSwitch('worker');
+                  if (item.id === 'hunt') props.onRoleSwitch('employer');
+                  if (item.id === 'calc') props.onCalculatorClick();
+                  if (item.id === 'ncvt') props.onNcvtClick();
+                  if (item.id === 'report') props.onReportClick();
+                }}
+                className={
+                  'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-bold transition ' +
+                  (item.active
+                    ? 'bg-amber-100 text-amber-800'
+                    : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800')
+                }
+                aria-current={item.active ? 'page' : undefined}
               >
-                <Briefcase className="w-3.5 h-3.5" />
-                <span>Jobs Feed</span>
-              </button>
-              <button
-                onClick={() => onRoleChange('worker-profile')}
-                className={`whitespace-nowrap shrink-0 transition-colors flex items-center gap-1.5 py-1 ${
-                  currentRole === 'worker-profile'
-                    ? 'text-amber-600 border-b-2 border-amber-500 font-extrabold'
-                    : 'hover:text-slate-900'
-                }`}
-              >
-                <UserCheck className="w-3.5 h-3.5" />
-                <span>My Profile & Applications</span>
-              </button>
-              <button
-                onClick={onOpenCalculator}
-                className="whitespace-nowrap shrink-0 transition-colors hover:text-slate-900"
-              >
-                Salary Calculator
-              </button>
-            </>
-          ) : isEmployerLoggedIn ? (
-            <>
-              <button
-                onClick={() => onRoleChange('employer-profile')}
-                className={`whitespace-nowrap shrink-0 transition-colors flex items-center gap-1.5 py-1 ${
-                  currentRole === 'employer-profile'
-                    ? 'text-blue-600 border-b-2 border-blue-600 font-extrabold'
-                    : 'hover:text-slate-900'
-                }`}
-              >
-                <Factory className="w-3.5 h-3.5" />
-                <span>Employer Dashboard</span>
-              </button>
-              <button
-                onClick={() => onRoleChange('employer')}
-                className={`whitespace-nowrap shrink-0 transition-colors flex items-center gap-1.5 py-1 ${
-                  currentRole === 'employer'
-                    ? 'text-blue-600 border-b-2 border-blue-600 font-extrabold'
-                    : 'hover:text-slate-900'
-                }`}
-              >
-                <Users className="w-3.5 h-3.5" />
-                <span>Candidate Directory</span>
-              </button>
-              {onOpenPostJob && (
-                <button
-                  onClick={onOpenPostJob}
-                  className="whitespace-nowrap shrink-0 transition-colors flex items-center gap-1 text-emerald-700 hover:text-emerald-800"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Post a Job</span>
-                </button>
-              )}
-            </>
-          ) : (
-            <>
-              <button
-                onClick={() => onRoleChange('landing')}
-                className={`whitespace-nowrap shrink-0 transition-colors ${
-                  currentRole === 'landing'
-                    ? 'text-slate-900 font-extrabold underline underline-offset-4'
-                    : 'hover:text-slate-900'
-                }`}
-              >
-                Home
-              </button>
-              <button
-                onClick={() => onRoleChange('worker')}
-                className={`whitespace-nowrap shrink-0 transition-colors ${
-                  currentRole === 'worker'
-                    ? 'text-amber-600 font-extrabold underline underline-offset-4'
-                    : 'hover:text-slate-900'
-                }`}
-              >
-                Browse Jobs
-              </button>
-              <button
-                onClick={() => onRoleChange('employer')}
-                className={`whitespace-nowrap shrink-0 transition-colors ${
-                  currentRole === 'employer'
-                    ? 'text-blue-600 font-extrabold underline underline-offset-4'
-                    : 'hover:text-slate-900'
-                }`}
-              >
-                For Employers
-              </button>
-              <button
-                onClick={onOpenCalculator}
-                className="whitespace-nowrap shrink-0 transition-colors hover:text-slate-900"
-              >
-                Salary Calculator
-              </button>
-            </>
-          )}
-        </nav>
-
-        {/* Zone 3: Language Switcher & Auth / Profile Controls */}
-        <div className="flex items-center gap-2.5 shrink-0">
-          <div className="hidden sm:flex items-center border border-slate-200 rounded-lg p-0.5 bg-slate-50 text-xs">
-            {languages.map((l) => (
-              <button
-                key={l.code}
-                onClick={() => onLangChange(l.code)}
-                title={l.nativeName}
-                className={`px-2 py-1 rounded-md font-medium transition-colors whitespace-nowrap shrink-0 ${
-                  currentLang === l.code
-                    ? 'bg-white text-slate-900 shadow-xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                {l.label}
+                <item.icon className="w-4 h-4" />
+                {item.label}
               </button>
             ))}
           </div>
 
-          {(isWorkerLoggedIn || isEmployerLoggedIn) && onOpenNotifications && (
+          {/* Right actions */}
+          <div className="flex items-center gap-1">
+            {/* Language switcher */}
+            <select
+              value={props.language}
+              onChange={(e) => props.onLanguageChange(e.target.value as Language)}
+              className="hidden sm:block text-xs font-bold bg-slate-100 dark:bg-slate-800 border-0 rounded-lg px-2 py-1.5 text-slate-700 dark:text-slate-200"
+              aria-label="Select language"
+            >
+              <option value="en">English</option>
+              <option value="hi">हिन्दी</option>
+              <option value="mr">मराठी</option>
+              <option value="ta">தமிழ்</option>
+            </select>
+
+            {/* Notifications */}
             <button
-              onClick={onOpenNotifications}
-              className="relative p-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700"
+              onClick={props.onNotificationClick}
+              className="relative p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              aria-label={`Notifications${props.unreadNotificationsCount > 0 ? `, ${props.unreadNotificationsCount} unread` : ''}`}
               title="Notifications"
             >
-              <Bell className="w-4 h-4" />
-              {unreadNotificationsCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-400 text-slate-950 font-black text-[10px] flex items-center justify-center tabular-nums">
-                  {unreadNotificationsCount}
+              <Bell className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+              {props.unreadNotificationsCount > 0 && (
+                <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {props.unreadNotificationsCount > 9 ? '9+' : props.unreadNotificationsCount}
                 </span>
               )}
             </button>
-          )}
 
-          {isWorkerLoggedIn && activeWorker ? (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() =>
-                  onRoleChange(
-                    currentRole === 'worker-profile' ? 'worker' : 'worker-profile'
-                  )
-                }
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-extrabold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-lg transition-colors whitespace-nowrap shrink-0 shadow-xs"
-              >
-                <UserCheck className="w-3.5 h-3.5" />
-                <span>
-                  {currentRole === 'worker-profile'
-                    ? 'Jobs Feed'
-                    : `${activeWorker.name.split(' ')[0]} · My Profile`}
-                </span>
-              </button>
-              {onLogout && (
-                <button
-                  onClick={onLogout}
-                  className="inline-flex items-center gap-1 px-2.5 py-2 text-xs font-semibold text-slate-600 hover:text-red-700 bg-slate-100 hover:bg-red-50 rounded-lg transition-colors whitespace-nowrap shrink-0"
-                  title="Log Out"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Log Out</span>
-                </button>
+            {/* Dark mode */}
+            <button
+              onClick={props.onDarkModeToggle}
+              className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              aria-label={props.darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              title={props.darkMode ? 'Light mode' : 'Dark mode'}
+            >
+              {props.darkMode ? (
+                <Sun className="w-5 h-5 text-amber-500" />
+              ) : (
+                <Moon className="w-5 h-5 text-slate-600" />
               )}
-            </div>
-          ) : isEmployerLoggedIn ? (
-            <div className="flex items-center gap-2">
+            </button>
+
+            {/* Profile / Login */}
+            {props.activeWorker || props.employerProfile ? (
               <button
-                onClick={() =>
-                  onRoleChange(
-                    currentRole === 'employer-profile'
-                      ? 'employer'
-                      : 'employer-profile'
-                  )
-                }
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-blue-700 hover:bg-blue-800 rounded-lg transition-colors whitespace-nowrap shrink-0 shadow-xs"
+                onClick={props.onProfileClick}
+                className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                aria-label="Open profile"
+                title="Profile"
               >
-                <Factory className="w-3.5 h-3.5" />
-                <span>
-                  {currentRole === 'employer-profile'
-                    ? 'Find Candidates'
-                    : `${employerProfile.companyName.split(' ')[0]} · Dashboard`}
-                </span>
+                <User className="w-5 h-5 text-slate-600 dark:text-slate-300" />
               </button>
-              {onLogout && (
-                <button
-                  onClick={onLogout}
-                  className="inline-flex items-center gap-1 px-2.5 py-2 text-xs font-semibold text-slate-600 hover:text-red-700 bg-slate-100 hover:bg-red-50 rounded-lg transition-colors whitespace-nowrap shrink-0"
-                  title="Log Out"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Log Out</span>
-                </button>
+            ) : (
+              <button
+                onClick={props.onLogin}
+                className="hidden sm:flex items-center gap-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-extrabold px-3 py-2 rounded-lg transition"
+              >
+                <LogIn className="w-4 h-4" />
+                Login
+              </button>
+            )}
+
+            {/* Mobile menu toggle */}
+            <button
+              onClick={() => setShowMobileMenu((s) => !s)}
+              className="md:hidden p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              aria-label="Toggle menu"
+              aria-expanded={showMobileMenu}
+            >
+              {showMobileMenu ? (
+                <X className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+              ) : (
+                <Menu className="w-5 h-5 text-slate-600 dark:text-slate-300" />
               )}
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() =>
-                  onOpenAuthModal(
-                    currentRole === 'employer' ? 'employer' : 'worker',
-                    'login'
-                  )
-                }
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors whitespace-nowrap shrink-0"
-              >
-                <LogIn className="w-3.5 h-3.5" />
-                <span>Log In</span>
-              </button>
-              <button
-                onClick={() =>
-                  onOpenAuthModal(
-                    currentRole === 'employer' ? 'employer' : 'worker',
-                    'register'
-                  )
-                }
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-extrabold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-lg transition-colors whitespace-nowrap shrink-0 shadow-xs"
-              >
-                <UserPlus className="w-3.5 h-3.5" />
-                <span>Register</span>
-              </button>
-            </div>
-          )}
+            </button>
+          </div>
         </div>
       </div>
-    </header>
+
+      {/* Mobile menu */}
+      {showMobileMenu && (
+        <div className="md:hidden border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+          <div className="px-4 py-2 space-y-1">
+            {navItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setShowMobileMenu(false);
+                  if (item.id === 'jobs') props.onRoleSwitch('worker');
+                  if (item.id === 'hunt') props.onRoleSwitch('employer');
+                  if (item.id === 'calc') props.onCalculatorClick();
+                  if (item.id === 'ncvt') props.onNcvtClick();
+                  if (item.id === 'report') props.onReportClick();
+                }}
+                className={
+                  'w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-bold transition ' +
+                  (item.active
+                    ? 'bg-amber-100 text-amber-800'
+                    : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800')
+                }
+                aria-current={item.active ? 'page' : undefined}
+              >
+                <item.icon className="w-4 h-4" />
+                {item.label}
+              </button>
+            ))}
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+              <select
+                value={props.language}
+                onChange={(e) => props.onLanguageChange(e.target.value as Language)}
+                className="w-full text-xs font-bold bg-slate-100 dark:bg-slate-800 border-0 rounded-lg px-3 py-2 text-slate-700 dark:text-slate-200"
+                aria-label="Select language"
+              >
+                <option value="en">English</option>
+                <option value="hi">हिन्दी</option>
+                <option value="mr">मराठी</option>
+                <option value="ta">தமிழ்</option>
+              </select>
+            </div>
+            {!props.activeWorker && !props.employerProfile && (
+              <button
+                onClick={() => {
+                  setShowMobileMenu(false);
+                  props.onLogin();
+                }}
+                className="w-full flex items-center justify-center gap-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 text-sm font-extrabold px-3 py-2.5 rounded-lg transition mt-2"
+              >
+                <LogIn className="w-4 h-4" />
+                Login
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </nav>
   );
-};
+}

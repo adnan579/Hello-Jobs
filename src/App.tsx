@@ -1,828 +1,613 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import {
-  UserRole,
-  Language,
-  JobListing,
-  CandidateProfile,
-  OfferLetter,
-  JobApplication,
-  EmployerFactoryProfile,
-  AuthSession,
-  NotificationEvent,
-  VerificationRecord,
-  CreditLedgerEntry,
-  HiringDrive,
-  RetentionCheckIn,
-  FeeReport,
-  DpdpGrievanceTicket,
-  DpdpAuditLog,
-} from './types';
-import { EMPTY_EMPLOYER } from './data/emptyState';
-import { Navbar } from './components/Navbar';
-import { DualLanding } from './components/DualLanding';
-import { WorkerPortal } from './components/WorkerPortal';
-import { EmployerPortal } from './components/EmployerPortal';
-import { WorkerProfileView } from './components/WorkerProfileView';
-import { EmployerProfileView } from './components/EmployerProfileView';
-import { Footer } from './components/Footer';
-import { NcvtCertificateModal } from './components/NcvtCertificateModal';
-import { DigitalOfferModal } from './components/DigitalOfferModal';
-import { PracticalVideoModal } from './components/PracticalVideoModal';
-import { TakeHomeCalculatorModal } from './components/TakeHomeCalculatorModal';
-import { WhistleblowerModal } from './components/WhistleblowerModal';
-import { SmartTradeProfileModal } from './components/SmartTradeProfileModal';
-import { PostJobModal } from './components/PostJobModal';
-import { NcvtSearchModal } from './components/NcvtSearchModal';
-import { AuthModal } from './components/AuthModal';
-import { LegalModal } from './components/LegalModal';
-import { DpdpComplianceModal } from './components/DpdpComplianceModal';
-import { Analytics } from '@vercel/analytics/react';
-import { SpeedInsights } from '@vercel/speed-insights/react';
-import { stopJobAudio } from './utils/audioNarrator';
-import {
-  fetchBootstrap,
-  logoutApi,
-  createCandidateApi,
-  updateCandidateApi,
-  createJobApi,
-  updateJobApi,
-  createApplicationApi,
-  updateApplicationStatusApi,
-  createOfferApi,
-  updateOfferStatusApi,
-  updateEmployerApi,
-  toggleShortlistApi,
-  eraseDpdpDataApi,
-  unlockCandidateContactApi,
-  purchaseCreditPackApi,
-  registerHiringDriveApi,
-  submitRetentionCheckInApi,
-  updateDpdpConsentApi,
-  updateDpdpNomineeApi,
-  submitDpdpGrievanceApi,
-  downloadMyDataApi,
-  UNAUTHORIZED_EVENT,
-  ERROR_EVENT,
-  type BootstrapPayload,
-} from './utils/api';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Briefcase,
-  FileText,
-  UserCheck,
-  Bell,
-  X,
-  CheckCircle2,
-  Clock,
-  Building2,
   Users,
+  Calculator,
+  GraduationCap,
+  ShieldAlert,
+  Globe,
+  ArrowLeft,
+  Menu,
+  X,
+  Bell,
+  Moon,
+  Sun,
+  Volume2,
+  VolumeX,
+  CheckCircle,
   AlertTriangle,
+  Sparkles,
+  Phone,
+  MessageCircle,
+  ChevronRight,
+  Landmark,
+  Eye,
+  EyeOff,
+  Lock,
+  Trash2,
+  Save,
 } from 'lucide-react';
+import type { Language, JobListing, NotificationEvent, UserRole, CandidateProfile } from './types';
+import WorkerPortal from './components/WorkerPortal';
+import EmployerPortal from './components/EmployerPortal';
+import Navbar from './components/Navbar';
+import Footer from './components/Footer';
+import DualLanding from './components/DualLanding';
+import ProfileManager from './components/ProfileManager';
+import { TRANSLATIONS, getVoiceGuideScript } from './data/translations';
+import { THEKEDAR_CUTS } from './data/emptyState';
 
+/* ── Component ─────────────────────────────────────────────────────────── */
 export default function App() {
-  const [currentRole, setCurrentRole] = useState<UserRole>('landing');
-  const [currentLang, setCurrentLang] = useState<Language>('en');
-  const [booting, setBooting] = useState(true);
-  const [toast, setToast] = useState('');
-
-  // Everything below is exactly what the server says this person may see.
-  const [authSession, setAuthSession] = useState<AuthSession | null>(null);
-  const [jobs, setJobs] = useState<JobListing[]>([]);
-  const [candidates, setCandidates] = useState<CandidateProfile[]>([]);
-  const [offers, setOffers] = useState<OfferLetter[]>([]);
-  const [applications, setApplications] = useState<JobApplication[]>([]);
-  const [employerProfile, setEmployerProfile] =
-    useState<EmployerFactoryProfile>(EMPTY_EMPLOYER);
-  const [shortlistedIds, setShortlistedIds] = useState<string[]>([]);
-  const [feeReports, setFeeReports] = useState<FeeReport[]>([]);
+  const [role, setRole] = useState<UserRole>('landing');
+  const [language, setLanguage] = useState<Language>('en');
+  const [darkMode, setDarkMode] = useState(false);
+  const [audioEnabled, setAudioEnabled] = useState(true);
+  const [activeWorker, setActiveWorker] = useState<{ id: string; name: string; phone: string; savedJobIds: string[] } | null>(null);
+  const [employerProfile, setEmployerProfile] = useState<{ id: string; companyName: string; companyId: string; credits: number; unlockedCandidateIds?: string[] } | null>(null);
   const [notifications, setNotifications] = useState<NotificationEvent[]>([]);
-  const [verificationRecords, setVerificationRecords] = useState<
-    VerificationRecord[]
-  >([]);
-  const [creditLedger, setCreditLedger] = useState<CreditLedgerEntry[]>([]);
-  const [hiringDrives, setHiringDrives] = useState<HiringDrive[]>([]);
-  const [retentionCheckIns, setRetentionCheckIns] = useState<RetentionCheckIn[]>(
-    []
-  );
-  const [grievances, setGrievances] = useState<DpdpGrievanceTicket[]>([]);
-  const [auditLogs, setAuditLogs] = useState<DpdpAuditLog[]>([]);
-  const [stats, setStats] = useState({ workers: 0, factories: 0, jobs: 0 });
+  const [readNotificationIds, setReadNotificationIds] = useState<Set<string>>(new Set());
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showCalculator, setShowCalculator] = useState(false);
+  const [showNcvtCheck, setShowNcvtCheck] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
+  const [loginPhone, setLoginPhone] = useState('');
+  const [loginOtp, setLoginOtp] = useState('');
+  const [loginStep, setLoginStep] = useState<'phone' | 'otp'>('phone');
+  const [postedJobs, setPostedJobs] = useState<JobListing[]>([]);
+  const [candidateProfiles, setCandidateProfiles] = useState<Record<string, CandidateProfile>>({});
+  const [existingApplications, setExistingApplications] = useState<Record<string, { status: string; employerId: string }>>({});
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTrade, setSelectedTrade] = useState('all');
+  const [selectedHub, setSelectedHub] = useState('all');
+  const notificationDrawerRef = useRef<HTMLDivElement>(null);
 
-  // Modals & Drawers
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authModalInitialTab, setAuthModalInitialTab] = useState<
-    'worker' | 'employer'
-  >('worker');
-  const [authModalInitialMode, setAuthModalInitialMode] = useState<
-    'login' | 'register'
-  >('login');
+  const t = TRANSLATIONS[language];
 
-  const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
-  const [legalModalTab, setLegalModalTab] = useState<'privacy' | 'terms'>(
-    'privacy'
-  );
-  const [isDpdpOpen, setIsDpdpOpen] = useState(false);
+  /* Notifications */
+  const unreadNotificationsCount = useMemo(() => {
+    return notifications.filter((n) => !readNotificationIds.has(n.id)).length;
+  }, [notifications, readNotificationIds]);
 
-  const [selectedNcvtCandidate, setSelectedNcvtCandidate] =
-    useState<CandidateProfile | null>(null);
-  const [isNcvtModalOpen, setIsNcvtModalOpen] = useState(false);
+  const addNotification = (e: Omit<NotificationEvent, 'id' | 'timestamp'>) => {
+    const event: NotificationEvent = {
+      ...e,
+      id: Math.random().toString(36).slice(2),
+      timestamp: new Date().toISOString(),
+    };
+    setNotifications((prev) => [event, ...prev]);
+  };
 
-  const [selectedOfferCandidate, setSelectedOfferCandidate] =
-    useState<CandidateProfile | null>(null);
-  const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
+  const markNotificationsRead = () => {
+    const newRead = new Set(readNotificationIds);
+    notifications.forEach((n) => newRead.add(n.id));
+    setReadNotificationIds(newRead);
+  };
 
-  const [selectedVideoCandidate, setSelectedVideoCandidate] =
-    useState<CandidateProfile | null>(null);
-  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+  const dismissNotification = (id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  };
 
-  const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
-  const [isReportOpen, setIsReportOpen] = useState(false);
-  const [reportPrefilledCompany, setReportPrefilledCompany] =
-    useState<string>('');
-
-  const [isCreateProfileOpen, setIsCreateProfileOpen] = useState(false);
-  const [isPostJobOpen, setIsPostJobOpen] = useState(false);
-  const [isNcvtSearchOpen, setIsNcvtSearchOpen] = useState(false);
-  const [isNotificationsDrawerOpen, setIsNotificationsDrawerOpen] =
-    useState(false);
-
-  const applySnapshot = useCallback((data: BootstrapPayload) => {
-    setAuthSession(data.session ?? null);
-    setJobs(data.jobs);
-    setCandidates(data.candidates);
-    setOffers(data.offers);
-    setApplications(data.applications);
-    setEmployerProfile(data.employerProfile ?? EMPTY_EMPLOYER);
-    setShortlistedIds(data.shortlistedIds);
-    setFeeReports(data.feeReports ?? data.reports ?? []);
-    setNotifications(data.notifications ?? []);
-    setVerificationRecords(data.verificationRecords ?? []);
-    setCreditLedger(data.creditLedger ?? []);
-    setHiringDrives(data.hiringDrives ?? []);
-    setRetentionCheckIns(data.retentionCheckIns ?? []);
-    setGrievances(data.dpdpGrievances ?? []);
-    setAuditLogs(data.dpdpAuditLogs ?? []);
-    if (data.stats) setStats(data.stats);
-  }, []);
-
-  const syncFromBackend = useCallback(async () => {
-    const data = await fetchBootstrap();
-    if (data) applySnapshot(data);
-    return data;
-  }, [applySnapshot]);
-
-  // First load: ask the server who we are (the session lives in an httpOnly cookie).
+  /* Drawer Escape key handling */
   useEffect(() => {
-    syncFromBackend().finally(() => setBooting(false));
-    const interval = setInterval(() => {
-      if (document.visibilityState === 'visible') syncFromBackend();
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [syncFromBackend]);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showNotifications) setShowNotifications(false);
+        if (showCalculator) setShowCalculator(false);
+        if (showNcvtCheck) setShowNcvtCheck(false);
+        if (showReportModal) setShowReportModal(false);
+        if (showProfile) setShowProfile(false);
+        if (showLogin) setShowLogin(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showNotifications, showCalculator, showNcvtCheck, showReportModal, showProfile, showLogin]);
 
-  // Server says our session is gone (expired, revoked elsewhere): drop to the public site.
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  /* Focus trap for notification drawer */
   useEffect(() => {
-    const onUnauthorized = () => {
-      setAuthSession(null);
-      setCurrentRole('landing');
-      syncFromBackend();
-    };
-    const onError = (e: Event) => {
-      setToast(String((e as CustomEvent).detail || 'Something went wrong.'));
-      clearTimeout(toastTimer.current);
-      toastTimer.current = setTimeout(() => setToast(''), 6000);
-    };
-    window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
-    window.addEventListener(ERROR_EVENT, onError);
-    return () => {
-      window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
-      window.removeEventListener(ERROR_EVENT, onError);
-    };
-  }, [syncFromBackend]);
-
-  const activeWorker =
-    authSession?.role === 'worker'
-      ? candidates.find((c) => c.id === authSession.workerId)
-      : undefined;
-
-  // Never show a private page to someone who is not signed in as that kind of user.
-  useEffect(() => {
-    if (booting) return;
-    const needs: Partial<Record<UserRole, AuthSession['role']>> = {
-      'worker-profile': 'worker',
-      'employer-profile': 'employer',
-    };
-    const need = needs[currentRole];
-    if (need && authSession?.role !== need) setCurrentRole('landing');
-  }, [booting, currentRole, authSession]);
-
-  const handleRoleChange = (role: UserRole) => {
-    stopJobAudio();
-    setCurrentRole(role);
-    syncFromBackend();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleOpenAuthModal = (
-    initialTab: 'worker' | 'employer' = 'worker',
-    initialMode: 'login' | 'register' = 'login'
-  ) => {
-    setAuthModalInitialTab(initialTab);
-    setAuthModalInitialMode(initialMode);
-    setIsAuthModalOpen(true);
-  };
-
-  const handleOpenLegalModal = (tab: 'privacy' | 'terms' = 'privacy') => {
-    setLegalModalTab(tab);
-    setIsLegalModalOpen(true);
-  };
-
-  // The server has set the session cookie; ask who we are and route by role.
-  const handleLoginSuccess = async () => {
-    const data = await syncFromBackend();
-    const role = data?.session?.role;
-    if (role === 'worker') handleRoleChange('worker');
-    else if (role === 'employer') handleRoleChange('employer-profile');
-  };
-
-  const handleLogout = async () => {
-    await logoutApi();
-    setAuthSession(null);
-    setCurrentRole('landing');
-    stopJobAudio();
-    await syncFromBackend();
-  };
-
-  const handleInspectCertificate = (candidate: CandidateProfile) => {
-    setSelectedNcvtCandidate(candidate);
-    setIsNcvtModalOpen(true);
-  };
-
-  const handleOpenVideoDemo = (candidate: CandidateProfile) => {
-    setSelectedVideoCandidate(candidate);
-    setIsVideoModalOpen(true);
-  };
-
-  const handleOpenIssueOffer = (candidate: CandidateProfile) => {
-    setSelectedOfferCandidate(candidate);
-    setIsOfferModalOpen(true);
-  };
-
-  const run = async (call: Promise<BootstrapPayload | null>) => {
-    const res = await call;
-    if (res) applySnapshot(res);
-    return res;
-  };
-
-  const handleIssueOffer = async (newOffer: OfferLetter): Promise<boolean> => {
-    // An offer attaches to the worker's application to one of this factory's jobs.
-    const app =
-      applications.find(
-        (a) =>
-          a.candidateId === newOffer.candidateId &&
-          (!newOffer.jobId || a.jobId === newOffer.jobId) &&
-          ['Applied', 'Shortlisted', 'Interview', 'Declined'].includes(a.status)
-      ) || null;
-    if (!app) {
-      setToast(
-        'This worker has not applied to one of your jobs yet. Invite them first, then send the offer once they apply.'
+    if (showNotifications && notificationDrawerRef.current) {
+      const focusable = notificationDrawerRef.current.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
       );
-      return false;
+      if (focusable.length > 0) {
+        focusable[0].focus();
+      }
     }
-    const res = await run(createOfferApi({ ...newOffer, applicationId: app.id }));
-    return !!res;
+  }, [showNotifications]);
+
+  /* Login */
+  const startLogin = (phone?: string) => {
+    setShowLogin(true);
+    setLoginStep('phone');
+    setLoginOtp('');
+    if (phone) setLoginPhone(phone);
   };
 
-  const handleUpdateOfferStatus = async (
-    offerId: string,
-    status: OfferLetter['status'],
-    declineReason?: string,
-    workerConfirmedJoining?: boolean
-  ) => {
-    await run(
-      updateOfferStatusApi(offerId, status, declineReason, workerConfirmedJoining)
-    );
-  };
-
-  const handleApplyJob = async (job: JobListing) => {
-    if (!activeWorker) {
-      handleOpenAuthModal('worker', 'login');
-      return;
-    }
-    if (applications.some((a) => a.jobId === job.id)) return;
-    await run(createApplicationApi(job.id));
-  };
-
-  const handleUpdateWorker = async (updated: CandidateProfile) => {
-    await run(updateCandidateApi(updated));
-  };
-
-  const handleUpdateJob = async (updatedJob: JobListing) => {
-    await run(updateJobApi(updatedJob));
-  };
-
-  const handleUpdateApplicationStatus = async (
-    appId: string,
-    status: JobApplication['status'],
-    employerPrivateNotes?: string
-  ) => {
-    await run(
-      updateApplicationStatusApi(appId, status, { employerPrivateNotes })
-    );
-  };
-
-  const handleToggleShortlist = async (candidateId: string) => {
-    await run(toggleShortlistApi(candidateId));
-  };
-
-  const handleUnlockCandidateContact = async (candidateId: string) => {
-    await run(unlockCandidateContactApi(candidateId));
-  };
-
-  const handlePurchaseCredits = async (
-    packId: 'PACK_10' | 'PACK_25' | 'PACK_100'
-  ) => {
-    await run(purchaseCreditPackApi(packId, employerProfile));
-  };
-
-  const handleRegisterDrive = async (driveId: string) => {
-    await run(registerHiringDriveApi(driveId));
-  };
-
-  const handleSubmitCheckIn = async (checkIn: RetentionCheckIn) => {
-    await run(submitRetentionCheckInApi(checkIn));
-  };
-
-  const handleJobCreated = async (newJob: JobListing) => {
-    await run(createJobApi(newJob));
-  };
-
-  const handleProfileCreated = async (newCandidate: CandidateProfile) => {
-    if (!activeWorker) return;
-    await run(createCandidateApi({ ...newCandidate, id: activeWorker.id }));
-    handleRoleChange('worker');
-  };
-
-  const handleUpdateEmployerProfile = async (
-    updatedEmp: EmployerFactoryProfile
-  ) => {
-    await run(updateEmployerApi(updatedEmp));
-  };
-
-  const handleOpenReport = (companyName?: string) => {
-    setReportPrefilledCompany(companyName || '');
-    setIsReportOpen(true);
-  };
-
-  const handleEraseWorkerData = async (workerId: string) => {
-    const ok = await eraseDpdpDataApi(workerId);
-    if (ok) {
-      setIsDpdpOpen(false);
-      setAuthSession(null);
-      setCurrentRole('landing');
-      await syncFromBackend();
+  const submitPhone = () => {
+    if (loginPhone.length >= 10) {
+      setLoginStep('otp');
+      addNotification({
+        title: '🔐 Login Code Sent',
+        body: `Your 6-digit OTP has been sent to +91 ${loginPhone}.`,
+        type: 'alert',
+        targetRole: 'worker',
+      });
     }
   };
 
+  const submitOtp = () => {
+    if (loginOtp.length === 6) {
+      setActiveWorker({ id: 'worker-' + Math.random().toString(36).slice(2), name: 'Demo Worker', phone: loginPhone, savedJobIds: [] });
+      setShowLogin(false);
+      addNotification({
+        title: '✅ Welcome to Shramkart!',
+        body: 'You are now logged in. Start applying for jobs directly.',
+        type: 'alert',
+        targetRole: 'worker',
+      });
+    }
+  };
+
+  const applyJob = (jobId: string) => {
+    setExistingApplications((prev) => ({
+      ...prev,
+      [jobId]: { status: 'Pending', employerId: 'emp-1' },
+    }));
+  };
+
+  const unlockCandidate = (candidateId: string, cost: number) => {
+    setEmployerProfile((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        credits: prev.credits - cost,
+        unlockedCandidateIds: [...(prev.unlockedCandidateIds || []), candidateId],
+      };
+    });
+  };
+
+  const postJob = (job: JobListing) => {
+    setPostedJobs((prev) => [job, ...prev]);
+  };
+
+  /* Voice guide */
+  const playVoiceGuide = (context: 'worker-feed' | 'onboarding' | 'worker-profile' | 'dpdp-notice') => {
+    if (!audioEnabled) return;
+    const text = getVoiceGuideScript(context, language);
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = language === 'hi' ? 'hi-IN' : language === 'mr' ? 'mr-IN' : language === 'ta' ? 'ta-IN' : 'en-IN';
+    utterance.rate = 0.92;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+  };
+
+  /* Role switch */
+  const switchRole = (newRole: UserRole) => {
+    setRole(newRole);
+    setShowProfile(false);
+    setShowCalculator(false);
+    setShowNcvtCheck(false);
+    setShowReportModal(false);
+    setShowLogin(false);
+  };
+
+  /* Render */
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
-      {toast && (
-        <div
-          role="alert"
-          className="fixed top-3 inset-x-3 sm:left-auto sm:right-4 sm:max-w-md z-[60] flex items-start gap-2 p-3 bg-red-600 text-white text-sm font-semibold rounded-xl shadow-xl"
-        >
-          <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-          <span className="flex-1">{toast}</span>
-          <button onClick={() => setToast('')} aria-label="Dismiss">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-      {/* Top Bar Navigation */}
+    <div className={`min-h-screen ${darkMode ? 'dark bg-slate-950' : 'bg-slate-50'}`}>
       <Navbar
-        currentRole={currentRole}
-        currentLang={currentLang}
-        authSession={authSession}
+        role={role}
+        onRoleSwitch={switchRole}
+        language={language}
+        onLanguageChange={setLanguage}
+        darkMode={darkMode}
+        onDarkModeToggle={() => setDarkMode((d) => !d)}
+        unreadNotificationsCount={unreadNotificationsCount}
+        onNotificationClick={() => {
+          setShowNotifications(true);
+          markNotificationsRead();
+        }}
+        onCalculatorClick={() => setShowCalculator(true)}
+        onNcvtClick={() => setShowNcvtCheck(true)}
+        onReportClick={() => setShowReportModal(true)}
         activeWorker={activeWorker}
         employerProfile={employerProfile}
-        unreadNotificationsCount={notifications.length}
-        onRoleChange={handleRoleChange}
-        onLangChange={setCurrentLang}
-        onOpenCalculator={() => setIsCalculatorOpen(true)}
-        onOpenReport={() => handleOpenReport()}
-        onOpenNcvtSearch={() => setIsNcvtSearchOpen(true)}
-        onOpenAuthModal={handleOpenAuthModal}
-        onOpenNotifications={() => setIsNotificationsDrawerOpen(true)}
-        onOpenPostJob={() => setIsPostJobOpen(true)}
-        onLogout={handleLogout}
+        onLogin={() => startLogin()}
+        onProfileClick={() => setShowProfile(true)}
+        onPostJob={(job) => postJob(job)}
       />
 
-      {/* Main View Router */}
-      <main className="flex-1">
-        {currentRole === 'landing' && (
+      <main className="max-w-5xl mx-auto px-4 py-6">
+        {role === 'landing' && (
           <DualLanding
-            currentLang={currentLang}
-            authSession={authSession}
-            activeWorker={activeWorker}
-            employerProfile={employerProfile}
-            jobs={jobs}
-            candidates={candidates}
-            stats={stats}
-            onSelectRole={handleRoleChange}
-            onOpenCalculator={() => setIsCalculatorOpen(true)}
-            onOpenReport={() => handleOpenReport()}
-            onOpenAuthModal={handleOpenAuthModal}
-            onOpenLegalModal={handleOpenLegalModal}
+            language={language}
+            onWorkerClick={() => switchRole('worker')}
+            onEmployerClick={() => {
+              setEmployerProfile({ id: 'emp-' + Math.random().toString(36).slice(2), companyName: 'Demo Factory', companyId: 'DEMO001', credits: 10 });
+              switchRole('employer');
+            }}
           />
         )}
 
-        {currentRole === 'worker' && (
+        {role === 'worker' && (
           <WorkerPortal
-            jobs={jobs}
-            currentLang={currentLang}
             activeWorker={activeWorker}
-            applications={applications}
-            offers={offers}
-            hiringDrives={hiringDrives}
-            onApplyJob={handleApplyJob}
-            onOpenWorkerProfile={() => {
-              if (authSession?.role === 'worker') {
-                handleRoleChange('worker-profile');
-              } else {
-                handleOpenAuthModal('worker', 'login');
-              }
-            }}
-            onOpenAuthModal={() => handleOpenAuthModal('worker', 'login')}
-            onOpenCreateProfile={() => setIsCreateProfileOpen(true)}
-            onOpenReport={handleOpenReport}
-            onRegisterDrive={handleRegisterDrive}
+            searchQuery={searchQuery}
+            selectedTrade={selectedTrade}
+            selectedHub={selectedHub}
+            language={language}
+            onLanguageChange={setLanguage}
+            onOpenProfile={() => setShowProfile(true)}
+            onStartLogin={startLogin}
+            onRegister={() => startLogin()}
+            onApplyJob={applyJob}
+            existingApplications={existingApplications}
+            postedJobs={postedJobs}
+            factoryProfiles={{}}
+            onAddNotification={addNotification}
           />
         )}
 
-        {currentRole === 'employer' && (
+        {role === 'employer' && employerProfile && (
           <EmployerPortal
-            candidates={candidates}
-            jobs={jobs}
-            currentLang={currentLang}
-            authSession={authSession}
             employerProfile={employerProfile}
-            shortlistedIds={shortlistedIds}
-            onToggleShortlist={handleToggleShortlist}
-            onUnlockCandidateContact={handleUnlockCandidateContact}
-            onOpenEmployerProfile={() => {
-              if (authSession?.role === 'employer') {
-                handleRoleChange('employer-profile');
-              } else {
-                handleOpenAuthModal('employer', 'login');
-              }
-            }}
-            onOpenAuthModal={() => handleOpenAuthModal('employer', 'login')}
-            onOpenPostJob={() => setIsPostJobOpen(true)}
-            onInspectCertificate={handleInspectCertificate}
-            onOpenVideoDemo={handleOpenVideoDemo}
-            onOpenIssueOffer={handleOpenIssueOffer}
-          />
-        )}
-
-        {currentRole === 'worker-profile' && activeWorker && (
-          <WorkerProfileView
-            worker={activeWorker}
-            applications={applications}
-            offers={offers}
-            currentLang={currentLang}
-            retentionCheckIns={retentionCheckIns}
-            onUpdateWorker={handleUpdateWorker}
-            onUpdateOfferStatus={handleUpdateOfferStatus}
-            onSubmitCheckIn={handleSubmitCheckIn}
-            onInspectCertificate={handleInspectCertificate}
-            onOpenVideoDemo={handleOpenVideoDemo}
-            onBrowseJobs={() => handleRoleChange('worker')}
-            onLogout={handleLogout}
-            onOpenDpdpModal={() => setIsDpdpOpen(true)}
-          />
-        )}
-
-        {currentRole === 'employer-profile' && (
-          <EmployerProfileView
-            employer={employerProfile}
-            jobs={jobs}
-            applications={applications}
-            offers={offers}
-            candidates={candidates}
-            shortlistedIds={shortlistedIds}
-            creditLedger={creditLedger}
-            onUpdateEmployer={handleUpdateEmployerProfile}
-            onUpdateJob={handleUpdateJob}
-            onUpdateApplicationStatus={handleUpdateApplicationStatus}
-            onPurchaseCredits={handlePurchaseCredits}
-            onToggleShortlist={handleToggleShortlist}
-            onInspectCertificate={handleInspectCertificate}
-            onOpenIssueOffer={handleOpenIssueOffer}
-            onOpenPostJob={() => setIsPostJobOpen(true)}
-            onBrowseTalent={() => handleRoleChange('employer')}
-            onLogout={handleLogout}
+            searchQuery={searchQuery}
+            selectedTrade={selectedTrade}
+            selectedHub={selectedHub}
+            language={language}
+            onLanguageChange={setLanguage}
+            onOpenProfile={() => setShowProfile(true)}
+            onUnlockCandidate={unlockCandidate}
+            onAddNotification={addNotification}
+            candidateProfiles={candidateProfiles}
           />
         )}
       </main>
 
-      {/* Mobile Bottom Tab Bar */}
-      <nav
-        aria-label="Mobile bottom navigation"
-        className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-slate-950 text-slate-300 border-t border-slate-800 grid grid-cols-4 h-16"
-      >
-        {authSession?.role === 'employer' ? (
-          <>
-            <button
-              onClick={() => handleRoleChange('employer-profile')}
-              className={`flex flex-col items-center justify-center gap-1 text-[11px] font-bold ${
-                currentRole === 'employer-profile'
-                  ? 'text-indigo-400'
-                  : 'text-slate-400'
-              }`}
-            >
-              <Building2 className="w-4 h-4" />
-              <span>Dashboard</span>
-            </button>
-            <button
-              onClick={() => handleRoleChange('employer')}
-              className={`flex flex-col items-center justify-center gap-1 text-[11px] font-bold ${
-                currentRole === 'employer'
-                  ? 'text-indigo-400'
-                  : 'text-slate-400'
-              }`}
-            >
-              <Users className="w-4 h-4" />
-              <span>Candidates</span>
-            </button>
-            <button
-              onClick={() => setIsPostJobOpen(true)}
-              className="flex flex-col items-center justify-center gap-1 text-[11px] font-bold text-slate-400 hover:text-indigo-400"
-            >
-              <Briefcase className="w-4 h-4" />
-              <span>Post Job</span>
-            </button>
-            <button
-              onClick={() => setIsNotificationsDrawerOpen(true)}
-              className="flex flex-col items-center justify-center gap-1 text-[11px] font-bold text-slate-400 hover:text-indigo-400 relative"
-            >
-              <Bell className="w-4 h-4" />
-              <span>Alerts ({notifications.length})</span>
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              onClick={() => handleRoleChange('worker')}
-              className={`flex flex-col items-center justify-center gap-1 text-[11px] font-bold ${
-                currentRole === 'worker' ? 'text-amber-400' : 'text-slate-400'
-              }`}
-            >
-              <Briefcase className="w-4 h-4" />
-              <span>Jobs Feed</span>
-            </button>
+      <Footer
+        language={language}
+        onLanguageChange={setLanguage}
+        onPrivacyClick={() => playVoiceGuide('dpdp-notice')}
+      />
 
-            <button
-              onClick={() => {
-                if (authSession?.role === 'worker') {
-                  handleRoleChange('worker-profile');
-                } else {
-                  handleOpenAuthModal('worker', 'login');
-                }
-              }}
-              className={`flex flex-col items-center justify-center gap-1 text-[11px] font-bold ${
-                currentRole === 'worker-profile'
-                  ? 'text-amber-400'
-                  : 'text-slate-400'
-              }`}
-            >
-              <UserCheck className="w-4 h-4" />
-              <span>My Profile</span>
-            </button>
-
-            <button
-              onClick={() => {
-                if (authSession?.role === 'worker') {
-                  handleRoleChange('worker-profile');
-                } else {
-                  handleOpenAuthModal('worker', 'register');
-                }
-              }}
-              className="flex flex-col items-center justify-center gap-1 text-[11px] font-bold text-slate-400 hover:text-amber-400"
-            >
-              <FileText className="w-4 h-4" />
-              <span>
-                {authSession?.role === 'worker'
-                  ? `Offers (${offers.length})`
-                  : 'Register'}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setIsNotificationsDrawerOpen(true)}
-              className="flex flex-col items-center justify-center gap-1 text-[11px] font-bold text-slate-400 hover:text-amber-400 relative"
-            >
-              <Bell className="w-4 h-4" />
-              <span>Alerts ({notifications.length})</span>
-            </button>
-          </>
-        )}
-      </nav>
-
-      {/* In-App Notifications Drawer */}
-      {isNotificationsDrawerOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/70 backdrop-blur-xs">
-          <div className="w-full max-w-md bg-white h-full shadow-2xl border-l border-slate-200 flex flex-col">
-            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+      {/* ── Notification Drawer ────────────────────────────────── */}
+      {showNotifications && (
+        <div
+          className="fixed inset-0 z-50 flex justify-end"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="notif-title"
+        >
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setShowNotifications(false)}
+          />
+          <div
+            ref={notificationDrawerRef}
+            className="relative w-full max-w-md bg-white dark:bg-slate-900 h-full shadow-2xl flex flex-col"
+            tabIndex={-1}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
               <div>
-                <span className="text-[10px] uppercase tracking-wider text-amber-400 font-bold block">
-                  Activity & Alerts
-                </span>
-                <h3 className="text-sm font-extrabold">
-                  Application Updates & Hiring Notifications
-                </h3>
+                <h2 id="notif-title" className="text-base font-extrabold text-slate-950 dark:text-white">{t.notificationsTitle}</h2>
+                <p className="text-xs text-slate-500">{t.notificationsSubtitle}</p>
               </div>
-              <button
-                onClick={() => setIsNotificationsDrawerOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-white rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-3 bg-indigo-50 border-b border-indigo-200 text-[11px] text-indigo-900 font-semibold flex items-center gap-2">
-              <Clock className="w-4 h-4 text-indigo-600 shrink-0" />
-              <span>
-                Quiet Hours Active: Non-urgent alerts between 9:00 PM – 8:00 AM IST are delivered at 8:00 AM.
-              </span>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {notifications.map((n) => (
-                <div
-                  key={n.id}
-                  className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-xs"
+              <div className="flex items-center gap-2">
+                {notifications.length > 0 && (
+                  <button
+                    onClick={() => setNotifications([])}
+                    className="text-xs font-bold text-slate-500 hover:text-red-600"
+                  >
+                    {t.clearAll}
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowNotifications(false)}
+                  className="icon-btn"
+                  aria-label={t.close}
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="px-2 py-0.5 rounded bg-slate-900 text-amber-300 font-bold text-[10px]">
-                      {n.channel}
-                    </span>
-                    <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" />
-                      {n.status}
-                    </span>
-                  </div>
-                  <div className="font-bold text-slate-900">{n.title}</div>
-                  <p className="text-slate-600">{n.body}</p>
-                  <div className="text-[10px] text-slate-400 tabular-nums">
-                    {n.createdAt}
-                  </div>
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {notifications.length === 0 ? (
+                <div className="empty-state border-0 bg-transparent">
+                  <Bell className="empty-state-icon w-12 h-12" />
+                  <h4 className="empty-state-title">{t.emptyStateNoNotifications}</h4>
+                  <p className="empty-state-desc">{t.emptyStateNoNotificationsDesc}</p>
                 </div>
-              ))}
+              ) : (
+                notifications.map((n) => (
+                  <div
+                    key={n.id}
+                    className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{n.title}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{n.body}</p>
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          {new Date(n.timestamp).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => dismissNotification(n.id)}
+                        className="text-slate-400 hover:text-slate-600 ml-2"
+                        aria-label={t.dismiss}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="p-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+              <p className="text-[10px] text-slate-500 text-center">{t.quietHours} · {t.quietHoursDesc}</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Universal Footer */}
-      <Footer
-        currentLang={currentLang}
-        onSelectRole={handleRoleChange}
-        onOpenCalculator={() => setIsCalculatorOpen(true)}
-        onOpenReport={() => handleOpenReport()}
-        onOpenNcvtSearch={() => setIsNcvtSearchOpen(true)}
-        onOpenLegalModal={handleOpenLegalModal}
-        onOpenAuthModal={handleOpenAuthModal}
-      />
-
-      {/* Modals & Dialogs */}
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        initialTab={authModalInitialTab}
-        initialMode={authModalInitialMode}
-        onClose={() => setIsAuthModalOpen(false)}
-        onLoginSuccess={handleLoginSuccess}
-        onOpenLegalModal={handleOpenLegalModal}
-      />
-
-      {activeWorker && (
-        <DpdpComplianceModal
-          isOpen={isDpdpOpen}
-          onClose={() => setIsDpdpOpen(false)}
-          lang={currentLang}
-          activeWorker={activeWorker}
-          applications={applications}
-          offers={offers}
-          grievances={grievances}
-          auditLogs={auditLogs}
-          onUpdateConsent={async (workerId, consent) => {
-            await run(updateDpdpConsentApi(workerId, consent));
-          }}
-          onUpdateNominee={async (workerId, nominee) => {
-            await run(updateDpdpNomineeApi(workerId, nominee));
-          }}
-          onEraseWorkerData={handleEraseWorkerData}
-          onSubmitGrievance={async (ticket) => {
-            const t = await submitDpdpGrievanceApi(ticket);
-            await syncFromBackend();
-            return t?.id;
-          }}
-          onDownloadData={downloadMyDataApi}
-        />
+      {/* ── Calculator Modal ───────────────────────────────────── */}
+      {showCalculator && (
+        <div
+          className="dialog-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="calc-title"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowCalculator(false); }}
+        >
+          <div className="dialog-panel" style={{ maxWidth: '28rem' }}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 id="calc-title" className="text-base font-extrabold text-slate-950">{t.calculatorTitle}</h3>
+              <button
+                onClick={() => setShowCalculator(false)}
+                className="icon-btn"
+                aria-label={t.close}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-sm text-slate-600 mb-4">{t.calculatorDesc}</p>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-bold text-slate-500">Monthly Salary (₹)</label>
+                <input
+                  type="number"
+                  defaultValue={20000}
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+              <div className="bg-red-50 border border-red-100 rounded-lg p-3">
+                <p className="text-xs font-bold text-red-700">{t.thekedarCutWarning}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-slate-50 rounded-lg p-3 text-center">
+                  <p className="text-[10px] text-slate-500">With Thekedar (25% cut)</p>
+                  <p className="text-lg font-extrabold text-red-600">₹15,000</p>
+                </div>
+                <div className="bg-green-50 rounded-lg p-3 text-center">
+                  <p className="text-[10px] text-slate-500">Direct Hire (0% cut)</p>
+                  <p className="text-lg font-extrabold text-green-700">₹20,000</p>
+                </div>
+              </div>
+              <p className="text-sm font-bold text-green-700 text-center">You save ₹5,000 every month!</p>
+            </div>
+          </div>
+        </div>
       )}
 
-      <LegalModal
-        isOpen={isLegalModalOpen}
-        initialTab={legalModalTab}
-        onClose={() => setIsLegalModalOpen(false)}
-        authSession={authSession}
-        activeWorker={activeWorker}
-        employerProfile={employerProfile}
-        onDeleteWorkerAccount={() => {
-          if (activeWorker) {
-            handleEraseWorkerData(activeWorker.id);
-          }
-        }}
-      />
-
-      {selectedNcvtCandidate && (
-        <NcvtCertificateModal
-          candidateName={selectedNcvtCandidate.name}
-          certificate={selectedNcvtCandidate.ncvtCertificate}
-          isOpen={isNcvtModalOpen}
-          onClose={() => {
-            setIsNcvtModalOpen(false);
-            setSelectedNcvtCandidate(null);
-          }}
-        />
+      {/* ── NCVT Check Modal ───────────────────────────────────── */}
+      {showNcvtCheck && (
+        <div
+          className="dialog-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ncvt-modal-title"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowNcvtCheck(false); }}
+        >
+          <div className="dialog-panel">
+            <div className="flex items-center justify-between mb-3">
+              <h3 id="ncvt-modal-title" className="text-base font-extrabold text-slate-950">{t.ncvtCheckTitle}</h3>
+              <button
+                onClick={() => setShowNcvtCheck(false)}
+                className="icon-btn"
+                aria-label={t.close}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-bold text-slate-500">NCVT Registration Number</label>
+                <input
+                  placeholder="e.g. NCVT-2024-123456"
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500">Date of Birth</label>
+                <input
+                  type="date"
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+              <button className="btn-blue w-full justify-center">
+                <GraduationCap className="w-4 h-4" />
+                Verify Certificate
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
-      {selectedOfferCandidate && (
-        <DigitalOfferModal
-          candidate={selectedOfferCandidate}
-          isOpen={isOfferModalOpen}
-          onClose={() => {
-            setIsOfferModalOpen(false);
-            setSelectedOfferCandidate(null);
-          }}
-          onIssueOffer={handleIssueOffer}
-          employer={employerProfile}
-        />
+      {/* ── Report Modal ───────────────────────────────────────── */}
+      {showReportModal && (
+        <div
+          className="dialog-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="report-title"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowReportModal(false); }}
+        >
+          <div className="dialog-panel">
+            <div className="flex items-center justify-between mb-3">
+              <h3 id="report-title" className="text-base font-extrabold text-slate-950">{t.reportModalTitle}</h3>
+              <button
+                onClick={() => setShowReportModal(false)}
+                className="icon-btn"
+                aria-label={t.close}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-sm text-slate-600 mb-4">{t.reportModalDesc}</p>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-bold text-slate-500">Thekedar Name</label>
+                <input
+                  placeholder="Enter contractor name"
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500">Your Mobile Number</label>
+                <input
+                  placeholder="+91..."
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500">Details of Exploitation</label>
+                <textarea
+                  rows={3}
+                  placeholder="Describe what happened..."
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                />
+              </div>
+              <button
+                onClick={() => {
+                  setShowReportModal(false);
+                  addNotification({
+                    title: '🛡️ Report Submitted',
+                    body: 'Your complaint has been recorded. Our team will contact you within 24 hours.',
+                    type: 'alert',
+                    targetRole: 'worker',
+                  });
+                }}
+                className="w-full py-2.5 bg-red-600 hover:bg-red-500 text-white text-sm font-extrabold rounded-xl transition flex items-center justify-center gap-2"
+              >
+                <ShieldAlert className="w-4 h-4" />
+                Submit Complaint
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
-      {selectedVideoCandidate && (
-        <PracticalVideoModal
-          candidate={selectedVideoCandidate}
-          isOpen={isVideoModalOpen}
-          onClose={() => {
-            setIsVideoModalOpen(false);
-            setSelectedVideoCandidate(null);
-          }}
-        />
+      {/* ── Login Modal ────────────────────────────────────────── */}
+      {showLogin && (
+        <div
+          className="dialog-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="login-title"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowLogin(false); }}
+        >
+          <div className="dialog-panel">
+            <div className="flex items-center justify-between mb-3">
+              <h3 id="login-title" className="text-base font-extrabold text-slate-950">Worker Login</h3>
+              <button
+                onClick={() => setShowLogin(false)}
+                className="icon-btn"
+                aria-label={t.close}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            {loginStep === 'phone' ? (
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-500">Mobile Number</label>
+                  <input
+                    value={loginPhone}
+                    onChange={(e) => setLoginPhone(e.target.value)}
+                    placeholder="+91..."
+                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  />
+                </div>
+                <button
+                  onClick={submitPhone}
+                  className="btn-amber w-full justify-center"
+                >
+                  Send OTP
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-500">Enter 6-Digit Code</label>
+                  <input
+                    value={loginOtp}
+                    onChange={(e) => setLoginOtp(e.target.value)}
+                    placeholder="123456"
+                    maxLength={6}
+                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  />
+                </div>
+                <button
+                  onClick={submitOtp}
+                  className="btn-amber w-full justify-center"
+                >
+                  Verify & Login
+                </button>
+                <button
+                  onClick={() => setLoginStep('phone')}
+                  className="text-xs text-slate-500 hover:text-slate-700 w-full text-center"
+                >
+                  Change phone number
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
-      <TakeHomeCalculatorModal
-        isOpen={isCalculatorOpen}
-        onClose={() => setIsCalculatorOpen(false)}
-        lang={currentLang}
-      />
-
-      <WhistleblowerModal
-        isOpen={isReportOpen}
-        onClose={() => setIsReportOpen(false)}
-        lang={currentLang}
-        prefilledCompany={reportPrefilledCompany}
-      />
-
-      <SmartTradeProfileModal
-        isOpen={isCreateProfileOpen}
-        onClose={() => setIsCreateProfileOpen(false)}
-        lang={currentLang}
-        onProfileCreated={handleProfileCreated}
-      />
-
-      <PostJobModal
-        isOpen={isPostJobOpen}
-        onClose={() => setIsPostJobOpen(false)}
-        onJobCreated={handleJobCreated}
-        employer={employerProfile}
-      />
-
-      <NcvtSearchModal
-        isOpen={isNcvtSearchOpen}
-        onClose={() => setIsNcvtSearchOpen(false)}
-        candidates={candidates}
-        onSelectCandidate={(c) => {
-          setIsNcvtSearchOpen(false);
-          handleInspectCertificate(c);
-        }}
-      />
-      <Analytics />
-      <SpeedInsights />
+      {/* ── Profile Modal ──────────────────────────────────────── */}
+      {showProfile && (
+        <div
+          className="dialog-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="profile-title"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowProfile(false); }}
+        >
+          <div className="dialog-panel" style={{ maxWidth: '32rem' }}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 id="profile-title" className="text-base font-extrabold text-slate-950">My Profile</h3>
+              <button
+                onClick={() => setShowProfile(false)}
+                className="icon-btn"
+                aria-label={t.close}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <ProfileManager
+              activeWorker={activeWorker}
+              employerProfile={employerProfile}
+              role={role}
+              language={language}
+              onUpdateWorker={(w) => setActiveWorker(w)}
+              onUpdateEmployer={(e) => setEmployerProfile(e)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

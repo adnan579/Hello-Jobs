@@ -1,593 +1,529 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  CandidateProfile,
-  JobListing,
-  Language,
-  EmployerFactoryProfile,
-  AuthSession,
-} from '../types';
-import { TRANSLATIONS } from '../data/translations';
-import {
-  Factory,
-  Search,
-  Plus,
-  ShieldCheck,
-  Video,
-  FileText,
-  Building2,
   MapPin,
-  Layers,
+  Briefcase,
+  IndianRupee,
+  Clock,
+  Building2,
+  Phone,
+  Search,
+  X,
+  Heart,
+  SlidersHorizontal,
+  ChevronDown,
+  ChevronUp,
+  RotateCcw,
+  Users,
+  Star,
+  CheckCircle,
+  GraduationCap,
+  ShieldCheck,
   Award,
-  Bookmark,
-  BookmarkCheck,
-  Package,
-  Lock,
-  Unlock,
-  Coins,
 } from 'lucide-react';
+import type { Language, JobListing, CandidateProfile, NotificationEvent } from '../types';
+import { TRANSLATIONS } from '../data/translations';
+import { SAMPLE_CANDIDATES } from '../data/sampleCandidates';
 
-interface Props {
-  candidates: CandidateProfile[];
-  jobs: JobListing[];
-  currentLang: Language;
-  authSession: AuthSession | null;
-  employerProfile: EmployerFactoryProfile;
-  shortlistedIds: string[];
-  onToggleShortlist: (candidateId: string) => void;
-  onUnlockCandidateContact?: (candidateId: string) => Promise<void>;
-  onOpenEmployerProfile: () => void;
-  onOpenAuthModal: () => void;
-  onOpenPostJob: () => void;
-  onInspectCertificate: (candidate: CandidateProfile) => void;
-  onOpenVideoDemo: (candidate: CandidateProfile) => void;
-  onOpenIssueOffer: (candidate: CandidateProfile) => void;
+interface EmployerPortalProps {
+  employerProfile: { id: string; companyName: string; companyId: string; credits: number; unlockedCandidateIds?: string[] };
+  searchQuery: string;
+  selectedTrade: string;
+  selectedHub: string;
+  language: Language;
+  onLanguageChange: (lang: Language) => void;
+  onOpenProfile: () => void;
+  onUnlockCandidate: (candidateId: string, cost: number) => void;
+  onAddNotification: (e: Omit<NotificationEvent, 'id' | 'timestamp'>) => void;
+  candidateProfiles: Record<string, CandidateProfile>;
 }
 
-export const EmployerPortal: React.FC<Props> = ({
-  candidates,
-  jobs,
-  currentLang,
-  authSession,
-  employerProfile,
-  shortlistedIds,
-  onToggleShortlist,
-  onUnlockCandidateContact,
-  onOpenEmployerProfile,
-  onOpenAuthModal,
-  onOpenPostJob,
-  onInspectCertificate,
-  onOpenVideoDemo,
-  onOpenIssueOffer,
-}) => {
-  const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
+export default function EmployerPortal(props: EmployerPortalProps) {
+  const t = TRANSLATIONS[props.language];
+  const [searchInput, setSearchInput] = useState(props.searchQuery);
+  const [selectedTrade, setSelectedTrade] = useState(props.selectedTrade);
+  const [selectedHub, setSelectedHub] = useState(props.selectedHub);
+  const [experienceFilter, setExperienceFilter] = useState<'all' | '0-2' | '2-5' | '5+'>('all');
+  const [sortBy, setSortBy] = useState<'best-match' | 'experience' | 'rating'>('best-match');
+  const [showFilterBar, setShowFilterBar] = useState(false);
+  const [shortlistedIds, setShortlistedIds] = useState<string[]>([]);
+  const [showPhoneModal, setShowPhoneModal] = useState<string | null>(null);
+  const [showOfferModal, setShowOfferModal] = useState<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'hunt' | 'inbound'>('hunt');
-  const [skillFilter, setSkillFilter] = useState<'all' | 'helper' | 'iti'>('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTrade, setSelectedTrade] = useState<string>('all');
-  const [ncvtOnly, setNcvtOnly] = useState(false);
-  const [relocationOnly, setRelocationOnly] = useState(false);
-  const [maxExpectedSalary, setMaxExpectedSalary] = useState(32000);
-  const [unlockingId, setUnlockingId] = useState<string | null>(null);
+  const unlockedIds = useMemo(
+    () => new Set(props.employerProfile.unlockedCandidateIds || []),
+    [props.employerProfile.unlockedCandidateIds]
+  );
 
-  const unlockedSet = new Set(employerProfile.unlockedCandidateIds || ['cand-1', 'cand-2']);
-
-  const allTrades = [
-    'all',
-    'Packing & Box Loading (No Certificate)',
-    'Factory Floor Helper (No Certificate)',
-    'Assembly Line Helper',
-    'CNC / VMC Operator',
-    'Fitter (Assembly & Bench)',
-    'Welder (MIG / TIG / ARC)',
-    'Machinist (Lathe / Milling)',
-    'Industrial Electrician',
-  ];
-
-  const filteredCandidates = candidates.filter((c) => {
-    if (c.dpdpConsent?.isWithdrawn || c.dpdpConsent?.directoryDiscovery === false) {
-      return false;
-    }
-
-    const matchesSkillFilter =
-      skillFilter === 'all' ||
-      (skillFilter === 'helper' && c.category !== 'skilled') ||
-      (skillFilter === 'iti' && c.category === 'skilled');
-
-    const matchesTrade = selectedTrade === 'all' || c.trade === selectedTrade;
-    const matchesNcvt = !ncvtOnly || c.ncvtCertificate.isVerified;
-    const matchesReloc = !relocationOnly || c.willingToRelocate;
-    const matchesSalary = c.expectedSalary <= maxExpectedSalary;
-    const matchesSearch =
-      searchQuery === '' ||
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.trade.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.currentCity.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.homeState.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.machinesOperated.some((m) =>
-        m.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-
+  const hasActiveFilters = useMemo(() => {
     return (
-      matchesSkillFilter &&
-      matchesTrade &&
-      matchesNcvt &&
-      matchesReloc &&
-      matchesSalary &&
-      matchesSearch
+      searchInput.trim() !== '' ||
+      selectedTrade !== 'all' ||
+      selectedHub !== 'all' ||
+      experienceFilter !== 'all' ||
+      sortBy !== 'best-match'
     );
-  });
+  }, [searchInput, selectedTrade, selectedHub, experienceFilter, sortBy]);
 
-  const handleUnlockClick = async (candidateId: string) => {
-    if (!onUnlockCandidateContact) return;
-    setUnlockingId(candidateId);
-    try {
-      await onUnlockCandidateContact(candidateId);
-    } finally {
-      setUnlockingId(null);
+  const resetFilters = () => {
+    setSearchInput('');
+    setSelectedTrade('all');
+    setSelectedHub('all');
+    setExperienceFilter('all');
+    setSortBy('best-match');
+  };
+
+  const toggleShortlist = (id: string) => {
+    setShortlistedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const filteredCandidates = useMemo(() => {
+    let candidates = SAMPLE_CANDIDATES;
+
+    if (searchInput.trim()) {
+      const q = searchInput.toLowerCase();
+      candidates = candidates.filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) ||
+          c.skills.some((s) => s.toLowerCase().includes(q)) ||
+          c.trade.toLowerCase().includes(q)
+      );
     }
+
+    if (selectedTrade !== 'all') {
+      candidates = candidates.filter((c) => c.trade === selectedTrade);
+    }
+
+    if (selectedHub !== 'all') {
+      candidates = candidates.filter((c) => c.preferredHub === selectedHub);
+    }
+
+    if (experienceFilter !== 'all') {
+      candidates = candidates.filter((c) => {
+        if (experienceFilter === '0-2') return c.experience <= 2;
+        if (experienceFilter === '2-5') return c.experience > 2 && c.experience <= 5;
+        if (experienceFilter === '5+') return c.experience > 5;
+        return true;
+      });
+    }
+
+    if (sortBy === 'experience') {
+      candidates = [...candidates].sort((a, b) => b.experience - a.experience);
+    } else if (sortBy === 'rating') {
+      candidates = [...candidates].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    }
+
+    return candidates;
+  }, [searchInput, selectedTrade, selectedHub, experienceFilter, sortBy]);
+
+  const trades = useMemo(() => ['all', ...Array.from(new Set(SAMPLE_CANDIDATES.map((c) => c.trade)))], []);
+  const hubs = useMemo(() => ['all', ...Array.from(new Set(SAMPLE_CANDIDATES.map((c) => c.preferredHub)))], []);
+
+  const handleUnlock = (candidate: CandidateProfile) => {
+    if (unlockedIds.has(candidate.id)) return;
+    if (props.employerProfile.credits < 1) {
+      props.onAddNotification({
+        title: '⚠️ Low Credits',
+        body: 'You need more credits to unlock candidate details. Top up now.',
+        type: 'alert',
+        targetRole: 'employer',
+      });
+      return;
+    }
+    props.onUnlockCandidate(candidate.id, 1);
+    props.onAddNotification({
+      title: '🔓 Candidate Unlocked',
+      body: `You can now contact ${candidate.name} directly.`,
+      type: 'success',
+      targetRole: 'employer',
+    });
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-24">
-      {/* Employer Top Header */}
-      <div className="p-6 bg-slate-900 text-white rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-xl">
-        <div className="space-y-1.5 max-w-2xl">
-          <div className="flex flex-wrap items-center gap-2 text-blue-300 text-xs font-semibold">
-            <Factory className="w-3.5 h-3.5 text-blue-400" />
-            <span>
-              {employerProfile.companyName} · GSTIN: {employerProfile.gstin}
-            </span>
-            <span className="px-2.5 py-0.5 rounded-md bg-amber-400 text-slate-950 font-extrabold tabular-nums flex items-center gap-1">
-              <Coins className="w-3.5 h-3.5" />
-              {employerProfile.huntCredits ?? 0} Contact Credits Available
-            </span>
-          </div>
-          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
-            Candidate Directory — Search, Shortlist & Invite Workers
-          </h2>
-          <p className="text-xs text-slate-300">
-            Search verified helpers, packers, and ITI machine operators. Candidate phone numbers remain masked (<span className="tabular-nums">+91 98•••••210</span>) until they apply or you unlock & invite them.
-          </p>
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-base font-extrabold text-slate-950 dark:text-white">{t.candidatePoolTitle}</h2>
+          <p className="text-xs text-slate-500">{t.candidatePoolSubtitle}</p>
         </div>
-
-        <div className="flex flex-wrap items-center gap-3 shrink-0">
-          {authSession?.role === 'employer' ? (
-            <button
-              onClick={onOpenEmployerProfile}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-white bg-blue-700 hover:bg-blue-600 rounded-xl transition-colors"
-            >
-              <Building2 className="w-4 h-4" />
-              <span>
-                Employer Dashboard ({shortlistedIds.length} Shortlisted)
-              </span>
-            </button>
-          ) : (
-            <button
-              onClick={onOpenAuthModal}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-white bg-blue-700 hover:bg-blue-600 rounded-xl transition-colors"
-            >
-              <Building2 className="w-4 h-4" />
-              <span>Employer Login / Register</span>
-            </button>
-          )}
-
-          <button
-            onClick={onOpenPostJob}
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-extrabold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-colors shadow-xs"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{t.postRequirement}</span>
-          </button>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold bg-amber-100 text-amber-800 px-2 py-1 rounded-full">
+            {props.employerProfile.credits} credits
+          </span>
         </div>
       </div>
 
-      {/* Dual Mode Tab Selector */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-2">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setActiveTab('hunt')}
-            className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-colors ${
-              activeTab === 'hunt'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <Search className="w-3.5 h-3.5" />
-            <span>
-              {t.candidateDirectory} ({filteredCandidates.length})
-            </span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('inbound')}
-            className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-colors ${
-              activeTab === 'inbound'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span>Active Plant Job Postings ({jobs.length})</span>
-          </button>
+      {/* Search & Filter Bar */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder={t.searchPlaceholder}
+            className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+          />
         </div>
-
         <button
-          onClick={onOpenEmployerProfile}
-          className="text-xs font-bold text-blue-700 hover:text-blue-800 flex items-center gap-1"
+          onClick={() => setShowFilterBar((s) => !s)}
+          aria-expanded={showFilterBar}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
         >
-          <BookmarkCheck className="w-4 h-4" />
-          <span>Go to Employer Dashboard & Shortlist →</span>
+          <SlidersHorizontal className="w-4 h-4" />
+          {t.moreFilters}
+          {showFilterBar ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
         </button>
       </div>
 
-      {activeTab === 'hunt' ? (
-        <div className="space-y-6">
-          {/* Quick Workforce Category Toggle */}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setSkillFilter('all')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
-                skillFilter === 'all'
-                  ? 'bg-slate-900 text-white border-slate-900'
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-              }`}
-            >
-              All Workers ({candidates.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setSkillFilter('helper');
-                setNcvtOnly(false);
-              }}
-              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
-                skillFilter === 'helper'
-                  ? 'bg-emerald-700 text-white border-emerald-700'
-                  : 'bg-emerald-50 text-emerald-900 border-emerald-200 hover:bg-emerald-100'
-              }`}
-            >
-              <Package className="w-3.5 h-3.5" />
-              <span>Helpers, Packers & Loaders (Work-Readiness Verified)</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setSkillFilter('iti')}
-              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
-                skillFilter === 'iti'
-                  ? 'bg-blue-700 text-white border-blue-700'
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-              }`}
-            >
-              <Award className="w-3.5 h-3.5 text-amber-500" />
-              <span>ITI & Skilled Machine Operators</span>
-            </button>
-          </div>
-
-          {/* Outbound Industrial Filter Panel */}
-          <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-xs space-y-4">
-            <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder={t.searchCandidatePlaceholder}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 text-xs border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-600 bg-slate-50/50"
-              />
-            </div>
-
+      {showFilterBar && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 space-y-3">
+          <div className="grid grid-cols-2 gap-2">
             <div>
-              <span className="text-xs font-bold text-slate-700 block mb-2">
-                {t.filterTrade}:
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                {allTrades.map((trade) => (
-                  <button
-                    key={trade}
-                    onClick={() => setSelectedTrade(trade)}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap ${
-                      selectedTrade === trade
-                        ? 'bg-blue-700 text-white font-semibold shadow-xs'
-                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                    }`}
-                  >
-                    {trade === 'all' ? t.filterAllTrades : trade}
-                  </button>
+              <label className="text-[10px] font-bold text-slate-500 uppercase">{t.filterTrade}</label>
+              <select
+                value={selectedTrade}
+                onChange={(e) => setSelectedTrade(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 px-2 py-1.5 text-sm bg-transparent focus:outline-none focus:ring-2 focus:ring-amber-400"
+              >
+                {trades.map((t) => (
+                  <option key={t} value={t}>
+                    {t === 'all' ? 'All Trades' : t}
+                  </option>
                 ))}
-              </div>
+              </select>
             </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-slate-100 text-xs">
-              <div className="flex flex-wrap items-center gap-4">
-                <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 font-medium">
-                  <input
-                    type="checkbox"
-                    checked={ncvtOnly}
-                    onChange={(e) => setNcvtOnly(e.target.checked)}
-                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <Award className="w-3.5 h-3.5 text-amber-600" />
-                  <span>NCVT / SCVT Verified Only</span>
-                </label>
-
-                <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 font-medium">
-                  <input
-                    type="checkbox"
-                    checked={relocationOnly}
-                    onChange={(e) => setRelocationOnly(e.target.checked)}
-                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span>Willing to Relocate Inter-State</span>
-                </label>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <span className="text-slate-500">Max Wage:</span>
-                <span className="font-bold text-slate-900 tabular-nums">
-                  ₹{maxExpectedSalary.toLocaleString('en-IN')}/mo
-                </span>
-                <input
-                  type="range"
-                  min={15000}
-                  max={35000}
-                  step={1000}
-                  value={maxExpectedSalary}
-                  onChange={(e) => setMaxExpectedSalary(Number(e.target.value))}
-                  className="w-28 accent-blue-600 cursor-pointer"
-                />
-                <span className="text-slate-400">·</span>
-                <span className="tabular-nums text-slate-500">
-                  {filteredCandidates.length} Candidates
-                </span>
-              </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase">{t.filterHub}</label>
+              <select
+                value={selectedHub}
+                onChange={(e) => setSelectedHub(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 px-2 py-1.5 text-sm bg-transparent focus:outline-none focus:ring-2 focus:ring-amber-400"
+              >
+                {hubs.map((t) => (
+                  <option key={t} value={t}>
+                    {t === 'all' ? 'All Hubs' : t}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
-
-          {/* Candidates Grid with M2 Masked Phone & M7/M12 1-Credit Contact Unlock */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredCandidates.map((candidate) => {
-              const isShortlisted = shortlistedIds.includes(candidate.id);
-              const isUnlocked = unlockedSet.has(candidate.id);
-              const rawDigits = candidate.phone.replace(/\D/g, '').slice(-10);
-              const maskedPhone = `+91 ${rawDigits.slice(0, 2)}•••••${rawDigits.slice(-3)}`;
-
-              return (
-                <div
-                  key={candidate.id}
-                  className="bg-white border border-slate-200 hover:border-slate-300 rounded-xl p-5 shadow-xs flex flex-col justify-between space-y-4 transition-all duration-150"
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase">Experience</label>
+            <div className="flex gap-2 mt-1">
+              {[
+                { key: 'all', label: 'All' },
+                { key: '0-2', label: '0-2 yrs' },
+                { key: '2-5', label: '2-5 yrs' },
+                { key: '5+', label: '5+ yrs' },
+              ].map((s) => (
+                <button
+                  key={s.key}
+                  onClick={() => setExperienceFilter(s.key as any)}
+                  className={
+                    'px-2.5 py-1 rounded-lg text-xs font-bold transition ' +
+                    (experienceFilter === s.key
+                      ? 'bg-amber-100 text-amber-800'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300')
+                  }
                 >
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-slate-900 text-amber-400 flex items-center justify-center font-bold text-sm shrink-0">
-                          {candidate.avatarSeed}
-                        </div>
-                        <div>
-                          <h4 className="text-base font-bold text-slate-900 tracking-tight">
-                            {candidate.name}
-                          </h4>
-                          <div className="text-xs text-slate-500 flex items-center gap-1.5">
-                            <span className="font-medium text-slate-700">
-                              {candidate.trade}
-                            </span>
-                            <span aria-hidden="true">·</span>
-                            <span className="tabular-nums">{candidate.experienceYears} Yrs Exp</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => onToggleShortlist(candidate.id)}
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-colors border ${
-                            isShortlisted
-                              ? 'bg-blue-50 text-blue-700 border-blue-200'
-                              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                          }`}
-                        >
-                          {isShortlisted ? (
-                            <>
-                              <BookmarkCheck className="w-3.5 h-3.5 text-blue-600" />
-                              <span>Shortlisted</span>
-                            </>
-                          ) : (
-                            <>
-                              <Bookmark className="w-3.5 h-3.5" />
-                              <span>Shortlist</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Location, Pay Range & Masked/Unlocked Phone Row */}
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
-                      {candidate.ncvtCertificate.isVerified ? (
-                        <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                          <ShieldCheck className="w-3.5 h-3.5" />
-                          NCVT Grade {candidate.ncvtCertificate.grade}
-                        </span>
-                      ) : (
-                        <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                          <ShieldCheck className="w-3.5 h-3.5" />
-                          Work-Readiness Verified
-                        </span>
-                      )}
-                      <span aria-hidden="true">·</span>
-                      <span className="flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                        {candidate.currentCity} ({candidate.homeState})
-                      </span>
-                      <span aria-hidden="true">·</span>
-                      <span className="font-bold text-emerald-700 tabular-nums">
-                        ₹{(candidate.expectedPayMin || candidate.expectedSalary).toLocaleString('en-IN')}–₹{(candidate.expectedPayMax || candidate.expectedSalary + 2000).toLocaleString('en-IN')}/mo
-                      </span>
-                    </div>
-
-                    {/* M2 & M7 Phone Number Masking Bar */}
-                    <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        {isUnlocked ? (
-                          <>
-                            <Unlock className="w-3.5 h-3.5 text-emerald-600" />
-                            <span className="font-bold text-emerald-800 tabular-nums">
-                              Direct Mobile: {candidate.phone}
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <Lock className="w-3.5 h-3.5 text-amber-600" />
-                            <span className="font-semibold text-slate-700 tabular-nums">
-                              Phone Masked: {maskedPhone}
-                            </span>
-                          </>
-                        )}
-                      </div>
-
-                      {!isUnlocked && onUnlockCandidateContact && (
-                        <button
-                          type="button"
-                          disabled={unlockingId === candidate.id}
-                          onClick={() => handleUnlockClick(candidate.id)}
-                          className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-[11px] flex items-center gap-1"
-                        >
-                          <Coins className="w-3 h-3" />
-                          <span>
-                            {unlockingId === candidate.id
-                              ? 'Unlocking...'
-                              : 'Unlock & Invite (1 Credit)'}
-                          </span>
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Machines / Tasks Handled */}
-                    <div className="space-y-1">
-                      <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
-                        {t.machinesHandled}:
-                      </span>
-                      <div className="flex flex-wrap gap-1">
-                        {candidate.machinesOperated.map((machine, idx) => (
-                          <span
-                            key={idx}
-                            className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded text-xs"
-                          >
-                            {machine}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Candidate Action Buttons */}
-                  <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      {candidate.ncvtCertificate.isVerified && (
-                        <button
-                          onClick={() => onInspectCertificate(candidate)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded transition-colors"
-                        >
-                          <Award className="w-3.5 h-3.5 text-amber-600" />
-                          <span>View NCVT Card</span>
-                        </button>
-                      )}
-
-                      {candidate.hasVideoDemo && (
-                        <button
-                          onClick={() => onOpenVideoDemo(candidate)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded transition-colors"
-                        >
-                          <Video className="w-3.5 h-3.5 text-slate-500" />
-                          <span>30s Practical Demo</span>
-                        </button>
-                      )}
-                    </div>
-
-                    <button
-                      onClick={() => onOpenIssueOffer(candidate)}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-extrabold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-lg transition-colors shadow-xs"
-                    >
-                      <FileText className="w-3.5 h-3.5" />
-                      <span>Issue Locked-Pay Offer</span>
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase">{t.sortByLabel}</label>
+            <div className="flex gap-2 mt-1">
+              {[
+                { key: 'best-match', label: t.bestMatch },
+                { key: 'experience', label: 'Experience' },
+                { key: 'rating', label: 'Rating' },
+              ].map((s) => (
+                <button
+                  key={s.key}
+                  onClick={() => setSortBy(s.key as any)}
+                  className={
+                    'px-2.5 py-1 rounded-lg text-xs font-bold transition ' +
+                    (sortBy === s.key
+                      ? 'bg-amber-100 text-amber-800'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300')
+                  }
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
+      )}
+
+      {/* Active filters indicator */}
+      {hasActiveFilters && (
+        <div className="flex items-center gap-2">
+          <button
+            onClick={resetFilters}
+            className="flex items-center gap-1 text-xs font-bold text-amber-700 hover:text-amber-800"
+          >
+            <RotateCcw className="w-3 h-3" />
+            {t.resetFilters}
+          </button>
+        </div>
+      )}
+
+      {/* Results count */}
+      <p className="text-xs text-slate-500">
+        {filteredCandidates.length} {filteredCandidates.length === 1 ? 'candidate' : 'candidates'} found
+      </p>
+
+      {/* Candidate Cards */}
+      {filteredCandidates.length === 0 ? (
+        <div className="empty-state">
+          <Search className="empty-state-icon" />
+          <h4 className="empty-state-title">{t.emptyStateNoCandidates}</h4>
+          <p className="empty-state-desc">{t.emptyStateNoCandidatesDesc}</p>
+          <button onClick={resetFilters} className="btn-amber mt-2">
+            {t.resetFilters}
+          </button>
+        </div>
       ) : (
-        /* Inbound Postings Overview */
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-              Active Production Line Postings ({jobs.length})
-            </h3>
-            <div className="flex items-center gap-2">
+        <div className="space-y-3">
+          {filteredCandidates.map((candidate) => (
+            <CandidateCard
+              key={candidate.id}
+              candidate={candidate}
+              isUnlocked={unlockedIds.has(candidate.id)}
+              isShortlisted={shortlistedIds.includes(candidate.id)}
+              onToggleShortlist={() => toggleShortlist(candidate.id)}
+              onUnlock={() => handleUnlock(candidate)}
+              onShowPhone={() => setShowPhoneModal(candidate.id)}
+              onShowOffer={() => setShowOfferModal(candidate.id)}
+              language={props.language}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Phone Modal */}
+      {showPhoneModal && (
+        <div
+          className="dialog-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="emp-phone-title"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowPhoneModal(null); }}
+        >
+          <div className="dialog-panel">
+            <div className="flex items-center justify-between mb-3">
+              <h3 id="emp-phone-title" className="text-base font-extrabold text-slate-950">{t.directHrContact}</h3>
               <button
-                onClick={onOpenEmployerProfile}
-                className="px-3.5 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg"
+                onClick={() => setShowPhoneModal(null)}
+                className="icon-btn"
+                aria-label={t.close}
               >
-                Manage Applicants in Factory Workspace
+                <X className="w-4 h-4" />
               </button>
-              <button
-                onClick={onOpenPostJob}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-extrabold text-slate-950 bg-amber-400 rounded-lg hover:bg-amber-300"
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                <Phone className="w-5 h-5 text-green-600" />
+                <div>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white">+91 98765 43210</p>
+                  <p className="text-xs text-slate-500">{t.officialFactoryContact}</p>
+                </div>
+              </div>
+              <a
+                href="tel:+919876543210"
+                className="w-full btn-blue justify-center"
               >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Create New Opening</span>
-              </button>
+                <Phone className="w-4 h-4" />
+                {t.callNow}
+              </a>
             </div>
           </div>
+        </div>
+      )}
 
-          <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-xs">
-            <div className="grid grid-cols-12 bg-slate-100 p-3 text-xs font-semibold text-slate-700 border-b border-slate-200">
-              <span className="col-span-4">Job Designation & Plant</span>
-              <span className="col-span-3">Industrial Trade</span>
-              <span className="col-span-2 text-right">In-Hand Salary</span>
-              <span className="col-span-3 text-right">Vacancies / Status</span>
+      {/* Offer Modal */}
+      {showOfferModal && (
+        <div
+          className="dialog-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="offer-title"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowOfferModal(null); }}
+        >
+          <div className="dialog-panel">
+            <div className="flex items-center justify-between mb-3">
+              <h3 id="offer-title" className="text-base font-extrabold text-slate-950">{t.issueOffer}</h3>
+              <button
+                onClick={() => setShowOfferModal(null)}
+                className="icon-btn"
+                aria-label={t.close}
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-
-            <div className="divide-y divide-slate-100 text-xs">
-              {jobs.map((job) => (
-                <div
-                  key={job.id}
-                  className="grid grid-cols-12 p-3 items-center hover:bg-slate-50 transition-colors"
-                >
-                  <div className="col-span-4 space-y-0.5">
-                    <div className="font-bold text-slate-900">{job.title}</div>
-                    <div className="text-slate-500 text-[11px] flex items-center gap-1">
-                      <Building2 className="w-3 h-3" />
-                      {job.companyName} · {job.industrialHub}
-                    </div>
-                  </div>
-
-                  <div className="col-span-3 font-medium text-slate-800">
-                    {job.trade}
-                  </div>
-
-                  <div className="col-span-2 text-right font-bold text-emerald-700 tabular-nums">
-                    ₹{job.takeHomeSalary.toLocaleString('en-IN')}/mo
-                  </div>
-
-                  <div className="col-span-3 text-right tabular-nums">
-                    <span className="font-bold text-blue-700">
-                      {job.vacanciesLeft} left
-                    </span>{' '}
-                    of {job.openingsCount} ·{' '}
-                    <span className="text-emerald-700 font-semibold">
-                      {job.isActive === false ? 'Closed' : 'Active'}
-                    </span>
-                  </div>
-                </div>
-              ))}
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-bold text-slate-500">Monthly Salary (₹)</label>
+                <input
+                  type="number"
+                  defaultValue={20000}
+                  className="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500">Joining Date</label>
+                <input
+                  type="date"
+                  className="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+              <button
+                onClick={() => {
+                  setShowOfferModal(null);
+                  props.onAddNotification({
+                    title: '✅ Offer Issued',
+                    body: 'Your offer has been sent to the candidate.',
+                    type: 'success',
+                    targetRole: 'employer',
+                  });
+                }}
+                className="w-full btn-amber justify-center"
+              >
+                <CheckCircle className="w-4 h-4" />
+                {t.issueOffer}
+              </button>
             </div>
           </div>
         </div>
       )}
     </div>
   );
-};
+}
+
+/* ── Candidate Card ────────────────────────────────────────────────────── */
+
+function CandidateCard({
+  candidate,
+  isUnlocked,
+  isShortlisted,
+  onToggleShortlist,
+  onUnlock,
+  onShowPhone,
+  onShowOffer,
+  language,
+}: {
+  candidate: CandidateProfile;
+  isUnlocked: boolean;
+  isShortlisted: boolean;
+  onToggleShortlist: () => void;
+  onUnlock: () => void;
+  onShowPhone: () => void;
+  onShowOffer: () => void;
+  language: Language;
+}) {
+  const t = TRANSLATIONS[language];
+
+  return (
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden transition hover:shadow-md">
+      <div className="p-4">
+        <div className="flex items-start justify-between">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-extrabold text-slate-950 dark:text-white">{candidate.name}</h3>
+              {candidate.verified && (
+                <ShieldCheck className="w-4 h-4 text-green-500 shrink-0" />
+              )}
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">{candidate.trade}</p>
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={onToggleShortlist}
+              aria-label={isShortlisted ? 'Remove from shortlist' : 'Add to shortlist'}
+              aria-pressed={isShortlisted}
+              className={
+                'p-1.5 rounded-lg transition ' +
+                (isShortlisted ? 'text-amber-500 bg-amber-50' : 'text-slate-400 hover:text-amber-500 hover:bg-amber-50')
+              }
+            >
+              <Heart className={`w-4 h-4 ${isShortlisted ? 'fill-current' : ''}`} />
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
+            <Briefcase className="w-3.5 h-3.5 text-purple-500" />
+            {candidate.experience} yrs
+          </div>
+          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
+            <MapPin className="w-3.5 h-3.5 text-blue-500" />
+            {candidate.preferredHub}
+          </div>
+          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
+            <IndianRupee className="w-3.5 h-3.5 text-amber-500" />
+            ₹{candidate.expectedSalary.toLocaleString('en-IN')}
+          </div>
+          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
+            <Star className="w-3.5 h-3.5 text-yellow-500" />
+            {candidate.rating || 'New'}
+          </div>
+        </div>
+
+        <div className="mt-2 flex flex-wrap gap-1">
+          {candidate.skills.slice(0, 3).map((skill) => (
+            <span
+              key={skill}
+              className="text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full"
+            >
+              {skill}
+            </span>
+          ))}
+          {candidate.skills.length > 3 && (
+            <span className="text-[10px] text-slate-400 px-1">+{candidate.skills.length - 3}</span>
+          )}
+        </div>
+
+        {candidate.ncvtCertified && (
+          <div className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+            <GraduationCap className="w-3 h-3" />
+            NCVT Certified
+          </div>
+        )}
+
+        <div className="mt-3 flex gap-2">
+          {!isUnlocked ? (
+            <button
+              onClick={onUnlock}
+              className="flex-1 py-2.5 text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-lg transition flex items-center justify-center gap-1.5"
+            >
+              <Award className="w-3.5 h-3.5" />
+              {t.unlockInvite}
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={onShowPhone}
+                className="flex-1 py-2.5 text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition flex items-center justify-center gap-1.5"
+              >
+                <Phone className="w-3.5 h-3.5" />
+                {t.callNow}
+              </button>
+              <button
+                onClick={onShowOffer}
+                className="flex-1 py-2.5 text-xs font-bold bg-green-500 hover:bg-green-400 text-white rounded-lg transition flex items-center justify-center gap-1.5"
+              >
+                <CheckCircle className="w-3.5 h-3.5" />
+                {t.issueOffer}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -3,6 +3,7 @@ import {
   AlertCircle,
   Bookmark,
   BookmarkCheck,
+  Lock,
   Building2,
   Bus,
   CheckCircle2,
@@ -39,6 +40,8 @@ interface Props {
   workerCity?: string;
   /** Only true when the worker is signed in, so the distance is measured from a real city. */
   showDistance: boolean;
+  /** True for visitors: Call HR and WhatsApp ask them to log in first. */
+  contactLocked?: boolean;
   isAudioPlaying: boolean;
   listenLabel: string;
   stopLabel: string;
@@ -67,6 +70,7 @@ export const JobCard: React.FC<Props> = ({
   distanceKm,
   workerCity,
   showDistance,
+  contactLocked = false,
   isAudioPlaying,
   listenLabel,
   stopLabel,
@@ -201,7 +205,12 @@ export const JobCard: React.FC<Props> = ({
         )}
 
         <div className="grid grid-cols-2 gap-2 sm:flex">
-          <button type="button" onClick={onCallHr} className="btn btn-secondary">
+          <button
+            type="button"
+            onClick={onCallHr}
+            aria-label={contactLocked ? t('contactLockedAria') : undefined}
+            className="btn btn-secondary"
+          >
             <PhoneCall className="h-4 w-4" aria-hidden="true" />
             <span>{t('directCall')}</span>
           </button>
@@ -225,6 +234,13 @@ export const JobCard: React.FC<Props> = ({
           <span>{isAudioPlaying ? stopLabel : listenLabel}</span>
         </button>
       </div>
+
+      {contactLocked && (
+        <p className="flex items-center gap-1.5 text-meta text-slate-700">
+          <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+          {t('contactLockedHint')}
+        </p>
+      )}
 
       <Disclosure label={t('jobDetails')} openLabel={t('hideJobDetails')}>
         <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-4">

@@ -34,6 +34,7 @@ import { EmployerPortal } from './components/EmployerPortal';
 import { WorkerProfileView } from './components/WorkerProfileView';
 import { EmployerProfileView } from './components/EmployerProfileView';
 import { Footer } from './components/Footer';
+import { AboutPage } from './components/AboutPage';
 import { NcvtCertificateModal } from './components/NcvtCertificateModal';
 import { DigitalOfferModal } from './components/DigitalOfferModal';
 import { PracticalVideoModal } from './components/PracticalVideoModal';
@@ -77,7 +78,9 @@ import {
 import { Bell, X, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
 
 export default function App() {
-  const [currentRole, setCurrentRole] = useState<UserRole>('landing');
+  const [currentRole, setCurrentRole] = useState<UserRole>(() =>
+    typeof window !== 'undefined' && window.location.hash === '#/about' ? 'about' : 'landing'
+  );
   const [currentLang, setCurrentLang] = useState<Language>('en');
   const [booting, setBooting] = useState(true);
   const [toast, setToast] = useState('');
@@ -406,6 +409,18 @@ export default function App() {
     markNotificationsRead();
   };
 
+  // Only a signed-in factory can post a job. Everyone else is sent to the right door first,
+  // instead of filling in a form that the server would refuse at the end.
+  const requestPostJob = () => {
+    if (authSession?.role === 'employer') setIsPostJobOpen(true);
+    else if (authSession?.role === 'worker') {
+      setToast(t('postJobFactoryOnly'));
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+      toastTimer.current = setTimeout(() => setToast(''), 6000);
+    }
+    else handleOpenAuthModal('employer', 'login');
+  };
+
   const openWorkerTab = (tab: WorkerTab) => {
     setWorkerTab(tab);
     handleRoleChange('worker-profile');
@@ -417,6 +432,23 @@ export default function App() {
     const current = [...savedJobIdSet(activeWorker)];
     await run(updateCandidateApi({ ...activeWorker, savedJobIds: toggleId(current, jobId) }));
   };
+
+  // The About page has its own address (#/about) so it can be linked and bookmarked.
+  useEffect(() => {
+    if (currentRole === 'about') {
+      if (window.location.hash !== '#/about') window.history.replaceState(null, '', '#/about');
+    } else if (window.location.hash === '#/about') {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+  }, [currentRole]);
+
+  useEffect(() => {
+    const onHash = () => {
+      if (window.location.hash === '#/about') setCurrentRole('about');
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
 
   // Screen readers and browser translation need the page language.
   useEffect(() => {
@@ -490,7 +522,7 @@ export default function App() {
         onOpenNcvtSearch={() => setIsNcvtSearchOpen(true)}
         onOpenAuthModal={handleOpenAuthModal}
         onOpenNotifications={openNotifications}
-        onOpenPostJob={() => setIsPostJobOpen(true)}
+        onOpenPostJob={requestPostJob}
         onLogout={handleLogout}
       />
 
@@ -510,6 +542,18 @@ export default function App() {
             onOpenReport={() => handleOpenReport()}
             onOpenAuthModal={handleOpenAuthModal}
             onOpenLegalModal={handleOpenLegalModal}
+          />
+        )}
+
+        {currentRole === 'about' && (
+          <AboutPage
+            t={t}
+            jobs={jobs}
+            isSignedIn={Boolean(authSession)}
+            onBrowseJobs={() => handleRoleChange('worker')}
+            onRegisterWorker={() => handleOpenAuthModal('worker', 'register')}
+            onRegisterFactory={() => handleOpenAuthModal('employer', 'register')}
+            onLogin={() => handleOpenAuthModal('worker', 'login')}
           />
         )}
 
@@ -555,7 +599,9 @@ export default function App() {
               }
             }}
             onOpenAuthModal={() => handleOpenAuthModal('employer', 'login')}
-            onOpenPostJob={() => setIsPostJobOpen(true)}
+            onRegisterFactory={() => handleOpenAuthModal('employer', 'register')}
+            onSeeHow={() => handleRoleChange('about')}
+            onOpenPostJob={requestPostJob}
             onInspectCertificate={handleInspectCertificate}
             onOpenVideoDemo={handleOpenVideoDemo}
             onOpenIssueOffer={handleOpenIssueOffer}
@@ -598,7 +644,7 @@ export default function App() {
             onToggleShortlist={handleToggleShortlist}
             onInspectCertificate={handleInspectCertificate}
             onOpenIssueOffer={handleOpenIssueOffer}
-            onOpenPostJob={() => setIsPostJobOpen(true)}
+            onOpenPostJob={requestPostJob}
             onBrowseTalent={() => handleRoleChange('employer')}
             onLogout={handleLogout}
           />
@@ -621,7 +667,7 @@ export default function App() {
         onRoleChange={handleRoleChange}
         onOpenWorkerTab={openWorkerTab}
         onOpenNotifications={openNotifications}
-        onOpenPostJob={() => setIsPostJobOpen(true)}
+        onOpenPostJob={requestPostJob}
         onOpenAuthModal={handleOpenAuthModal}
       />
 

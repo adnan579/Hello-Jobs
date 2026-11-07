@@ -2,6 +2,7 @@ export type Language = 'en' | 'hi' | 'mr' | 'ta';
 
 export type UserRole =
   | 'landing'
+  | 'about'
   | 'worker'
   | 'employer'
   | 'worker-profile'

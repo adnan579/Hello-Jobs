@@ -198,6 +198,11 @@ export const WorkerPortal: React.FC<Props> = ({
   };
 
   const applyViaWhatsApp = (job: JobListing) => {
+    // Visitors log in first. The server also withholds the number from them.
+    if (!activeWorker || !job.whatsappApplyNumber) {
+      if (!activeWorker) onOpenAuthModal();
+      return;
+    }
     onApplyJob(job);
     // This text is sent to the factory's HR, so it stays in plain English.
     const certNote = job.noCertificateRequired
@@ -509,7 +514,8 @@ export const WorkerPortal: React.FC<Props> = ({
                       onToggleSave={() => toggleSave(job.id)}
                       onApply={() => onApplyJob(job)}
                       onOpenApplication={onOpenWorkerProfile}
-                      onCallHr={() => setCallingJob(job)}
+                      onCallHr={() => (activeWorker ? setCallingJob(job) : onOpenAuthModal())}
+                      contactLocked={!activeWorker}
                       onWhatsApp={() => applyViaWhatsApp(job)}
                       onToggleAudio={() => playAudio(job.id, getAudioNarrationScript(job, currentLang))}
                       onReport={() => onOpenReport(job.companyName)}

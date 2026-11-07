@@ -3,6 +3,7 @@ import { CONTACT } from '../config/contact';
 import { UserRole, Language } from '../types';
 import { ShieldCheck } from 'lucide-react';
 import { BrandLogo } from './BrandLogo';
+import { makeT } from '../data/translations';
 
 interface Props {
   currentLang: Language;
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export const Footer: React.FC<Props> = ({
+  currentLang,
   onSelectRole,
   onOpenCalculator,
   onOpenReport,
@@ -25,6 +27,7 @@ export const Footer: React.FC<Props> = ({
   onOpenLegalModal,
   onOpenAuthModal,
 }) => {
+  const t = makeT(currentLang);
   return (
     <footer className="bg-slate-950 text-slate-400 text-xs border-t border-slate-800 pb-20 md:pb-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-8">
@@ -49,6 +52,14 @@ export const Footer: React.FC<Props> = ({
               For Workers & Employers
             </h4>
             <ul className="space-y-1.5">
+              <li>
+                <button
+                  onClick={() => onSelectRole('about')}
+                  className="hover:text-white transition-colors text-left"
+                >
+                  {t('navAbout')}
+                </button>
+              </li>
               <li>
                 <button
                   onClick={() => onSelectRole('worker')}

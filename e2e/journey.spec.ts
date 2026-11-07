@@ -5,24 +5,44 @@ const GSTIN = '27AAPFU0939F1ZV'; // valid format + checksum
 
 async function otpLogin(p: Page, phone: string) {
   await p.locator('input[type=tel]').fill(phone);
-  await p.getByRole('button', { name: /Send WhatsApp OTP/ }).click();
+  await p.getByTestId('auth-send-otp').click();
   await p.waitForSelector('text=Enter 6-Digit');
   const chip = await p.locator('button:has-text("Code:")').innerText();
   await p.locator('input[autocomplete=one-time-code]').fill(chip.match(/\d{6}/)![0]);
-  await p.locator('form button[type=submit]').last().click();
+  // Wait for the server to answer: it sets the session cookie, which a following page load needs.
+  const [verified] = await Promise.all([
+    p.waitForResponse((r) => r.url().includes('/api/auth/verify')),
+    p.getByTestId('auth-verify-otp').click(),
+  ]);
+  expect(verified.ok()).toBe(true);
 }
 
 async function openAuth(p: Page, role: 'worker' | 'employer', mode: 'register' | 'login') {
   await p.goto('/');
-  await p.getByRole('button', { name: mode === 'register' ? (role === 'worker' ? 'Register as Worker' : 'Register as Employer') : 'Log In' }).first().click();
+  await ready(p);
+  await p.getByTestId(mode === 'register' ? `auth-register-${role}` : `auth-login-${role}`).first().click();
   await p.waitForSelector('text=10-Digit Mobile');
-  await p.getByRole('button', { name: role === 'worker' ? /I am a Worker/ : /I am an Employer/ }).click();
-  if (mode === 'register') await p.getByRole('button', { name: role === 'worker' ? /New Worker Registration/ : /New Employer Registration/ }).click();
+  await p.getByTestId(`auth-select-${role}`).click();
+  if (mode === 'register') await p.getByTestId(`auth-register-mode-${role}`).click();
+}
+
+/** Waits until React has attached to the server-rendered page, so a click is never lost to a half-loaded page. */
+async function ready(p: Page) {
+  await p.waitForSelector('html[data-hydrated="true"]');
 }
 
 async function checkConsents(p: Page) {
   for (const cb of await p.locator('input[type=checkbox]').all()) await cb.check();
 }
+
+// `next dev` compiles each route the first time it is requested and then refreshes every open page.
+// Request them all once up front so that refresh cannot land in the middle of the journey.
+test.beforeAll(async ({ request }) => {
+  test.setTimeout(180_000);
+  for (const path of ['/', '/about', '/jobs', '/jobs/warm-up', '/employers', '/employers/dashboard', '/me', '/admin', '/sitemap.xml', '/robots.txt', '/api/health', '/api/bootstrap']) {
+    await request.get(path, { maxRedirects: 0 });
+  }
+});
 
 test('factory -> admin approval -> job -> worker applies -> offer -> accept -> both confirm joining', async ({ browser }) => {
   const mk = async () => (await browser.newContext()).newPage();
@@ -70,15 +90,25 @@ test('factory -> admin approval -> job -> worker applies -> offer -> accept -> b
 
   // 3. Factory posts a job (3 welcome credits were granted on verification).
   await emp.reload();
+  await ready(emp);
   await emp.getByRole('button', { name: /Post (a )?(New )?Job|Post Requirement/i }).first().click();
   await emp.waitForSelector('text=Transparent Compensation');
   await emp.getByPlaceholder('e.g. Maharashtra').fill('Maharashtra');
-  const nums = emp.locator('input[type=number]');
-  await nums.nth(1).fill('16000');
-  await nums.nth(2).fill('19000');
+  // The dashboard behind the dialog has number inputs of its own, so address the dialog's fields by their labels.
+  await emp.locator('label:has-text("Net Monthly In-Hand") + input').fill('16000');
+  await emp.locator('label:has-text("Gross Monthly Salary") + input').fill('19000');
   await emp.getByRole('button', { name: /Publish Requirement/ }).click();
   await expect.poll(async () => (await bootstrap(emp)).jobs.length).toBe(1);
+  const job = (await bootstrap(emp)).jobs[0];
   expect((await bootstrap(emp)).employerProfile.huntCredits).toBe(3);
+  const publicJobPage = await emp.request.get(`/jobs/${job.id}`);
+  const publicJobHtml = await publicJobPage.text();
+  expect(publicJobPage.status()).toBe(200);
+  expect(publicJobHtml).toContain(job.title);
+  if (job.hrContactPhone) expect(publicJobHtml).not.toContain(job.hrContactPhone);
+  const sitemap = await emp.request.get('/sitemap.xml');
+  expect(sitemap.status()).toBe(200);
+  expect(await sitemap.text()).toContain(`/jobs/${job.id}`);
 
   // 4. Worker registers and applies.
   await openAuth(wk, 'worker', 'register');
@@ -87,11 +117,13 @@ test('factory -> admin approval -> job -> worker applies -> offer -> accept -> b
   await wk.locator('label:has-text("Home State") + input').fill('Uttar Pradesh');
   await checkConsents(wk);
   await otpLogin(wk, '9811122233');
-  await wk.getByRole('button', { name: /Apply now/ }).first().click();
+  await wk.goto(`/jobs/${job.id}`);
+  await wk.locator('[data-testid="job-apply"][data-ready="true"]').click();
   await expect.poll(async () => (await bootstrap(wk)).applications.length).toBe(1);
 
   // 5. Factory sees the applicant with a usable phone number and issues an offer.
   await emp.reload();
+  await ready(emp);
   await emp.getByRole('button', { name: /Dashboard/ }).last().click();
   await emp.getByRole('button', { name: /Job Postings & Applicants/ }).click();
   await expect(emp.getByText('+91 98111 22233')).toBeVisible();
@@ -107,15 +139,15 @@ test('factory -> admin approval -> job -> worker applies -> offer -> accept -> b
   expect(issued.gstin).toBe(GSTIN);
 
   // 6. Worker accepts and says they reported for work. That alone does not fill the vacancy.
-  await wk.reload();
-  // The header has a direct "Applications & offers" link, which opens that tab of the profile page.
-  await wk.getByRole('button', { name: /Applications & offers/ }).first().click();
+  await wk.goto('/me/applications');
+  await ready(wk);
   await wk.getByRole('button', { name: /Accept Direct Offer/ }).click();
   await wk.getByRole('button', { name: /Confirm I Joined/ }).click();
   await expect.poll(async () => (await bootstrap(wk)).applications.map((a: any) => a.status)).toEqual(['Accepted']);
 
   // 7. The factory marks the worker as joined; now the offer is fully confirmed.
   await emp.reload();
+  await ready(emp);
   await emp.getByRole('button', { name: /Dashboard/ }).last().click();
   await emp.getByRole('button', { name: /Job Postings & Applicants/ }).click();
   // (The header also has a language select, so look only inside the page content.)

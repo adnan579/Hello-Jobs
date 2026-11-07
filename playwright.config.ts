@@ -17,7 +17,7 @@ export default defineConfig({
     launchOptions: process.env.PW_CHROMIUM_PATH ? { executablePath: process.env.PW_CHROMIUM_PATH } : {},
   },
   webServer: {
-    command: 'node e2e/reset-db.mjs && npx tsx server.ts',
+    command: 'node e2e/reset-db.mjs && npm run dev',
     url: `http://localhost:${PORT}/api/health`,
     reuseExistingServer: false,
     timeout: 120_000,
@@ -25,6 +25,7 @@ export default defineConfig({
       NODE_ENV: 'development',
       PORT: String(PORT),
       DATABASE_URL,
+      APP_URL: `http://localhost:${PORT}`,
       SESSION_SECRET: 'e2e-secret-e2e-secret-e2e-secret-e2e-secret',
       ADMIN_BOOTSTRAP_EMAIL: 'owner@hellojobs.test',
       ADMIN_BOOTSTRAP_PASSWORD: 'E2e-Owner-Password-9',

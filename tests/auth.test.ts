@@ -21,6 +21,9 @@ describe('OTP + sessions', () => {
     expect(cookie).toContain('hj_session=');
     expect(cookie).toContain('HttpOnly');
     expect(cookie).toContain('SameSite=Lax');
+    expect(cookie).toContain('Path=/');
+    expect(cookie).toContain('Max-Age=2592000');
+    expect(cookie).not.toContain('Secure');
 
     const me = await a.get('/api/auth/me');
     expect(me.body.session.role).toBe('worker');

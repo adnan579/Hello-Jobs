@@ -24,7 +24,7 @@ const NAV: { id: string; label: string; perm: string }[] = [
 export function AdminApp() {
   const [me, setMe] = useState<Me | null | undefined>(undefined);
   const [notice, setNotice] = useState('');
-  const [page, setPage] = useState(() => location.hash.slice(1) || 'overview');
+  const [page, setPage] = useState(() => typeof window === 'undefined' ? 'overview' : window.location.hash.slice(1) || 'overview');
   const [menu, setMenu] = useState(false);
   const last = useRef(Date.now());
 

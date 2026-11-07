@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import App from '../../src/App';
-import { languageForCookie, roleForPath, workerTabForPath } from '../../src/utils/routes';
-import { COOKIE_NAME, loadAuth } from '../../server/auth/session';
-import { publicBootstrap } from '../../server/services/publicJobs';
-import { getServerContext } from '../../server/runtime';
+import App from '../../../src/App';
+import { languageForCookie, roleForPath, workerTabForPath } from '../../../src/utils/routes';
+import { COOKIE_NAME, loadAuth } from '../../../server/auth/session';
+import { publicBootstrap } from '../../../server/services/publicJobs';
+import { getServerContext } from '../../../server/runtime';
 
 export const dynamic = 'force-dynamic';
 

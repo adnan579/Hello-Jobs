@@ -1,7 +1,7 @@
 import express from 'express';
 import { createApp } from './app.ts';
 import { ensureBootstrapAdmin } from './services/adminAccounts.ts';
-import { getServerContext } from './runtime.ts';
+import { describeStartupFailure, getServerContext } from './runtime.ts';
 
 /**
  * Builds the real app lazily: configuration errors and database problems become a clear
@@ -21,13 +21,7 @@ export function createServerApp(): express.Express {
     return createApp(ctx);
   };
 
-  // Which step failed (never secrets). Open /api/health to read it.
-  const describe = (err: any) => ({
-    stage: err?.startupStage ?? stage,
-    code: typeof err?.code === 'string' ? err.code : undefined,
-    // Only schema/migration problems carry a readable detail; connection errors may name the database user.
-    detail: (err?.startupStage ?? stage) === 'migrations' || (err?.startupStage ?? stage) === 'config' ? String(err?.message ?? '').replace(/postgres(ql)?:\/\/\S+/gi, '[url]').slice(0, 240) : undefined,
-  });
+  const describe = (err: any) => describeStartupFailure(err, stage);
 
   outer.get('/api/health', (req, res, next) => {
     inner ??= init().catch((e) => { failure = describe(e); throw e; });

@@ -3,9 +3,9 @@ import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
-import { COOKIE_NAME, loadAuth } from '../../../server/auth/session';
-import { publicJobPage } from '../../../server/services/publicJobs';
-import { getServerContext } from '../../../server/runtime';
+import { COOKIE_NAME, loadAuth } from '../../../../server/auth/session';
+import { publicJobPage } from '../../../../server/services/publicJobs';
+import { getServerContext } from '../../../../server/runtime';
 import { JobApplyButton } from './JobApplyButton';
 
 export const dynamic = 'force-dynamic';

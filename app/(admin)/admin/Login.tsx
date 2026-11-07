@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { api, ApiError, type Me } from './api.ts';
 import { Btn, Field, inputCls } from './ui.tsx';
-import { BrandLogo } from '../components/BrandLogo.tsx';
+import { BrandLogo } from './BrandLogo';
 
 type Step = { kind: 'password' } | { kind: 'code'; challenge: string } | { kind: 'enroll'; challenge: string; secret: string; qr: string };
 

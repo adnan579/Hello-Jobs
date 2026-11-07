@@ -36,3 +36,14 @@ export function getServerContext(): Promise<AppContext> {
   });
   return contextPromise;
 }
+
+/** Which start-up step failed, safe to show (never secrets). Open /api/health to read it. */
+export function describeStartupFailure(err: any, fallbackStage = 'config') {
+  const stage: string = err?.startupStage ?? fallbackStage;
+  return {
+    stage,
+    code: typeof err?.code === 'string' ? err.code : undefined,
+    // Only schema/migration/config problems carry a readable detail; connection errors may name the database user.
+    detail: stage === 'migrations' || stage === 'config' ? String(err?.message ?? '').replace(/postgres(ql)?:\/\/\S+/gi, '[url]').slice(0, 240) : undefined,
+  };
+}

@@ -10,6 +10,18 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
+      // Same list as API_SECURITY_HEADERS in server/lib/security-headers.ts (tests/security-headers.test.ts keeps them in step).
+      {
+        source: '/api/:path*',
+        headers: [
+          { key: 'Content-Security-Policy', value: "default-src 'none'; frame-ancestors 'none'" },
+          { key: 'Cross-Origin-Resource-Policy', value: 'same-origin' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=(self)' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'X-Frame-Options', value: 'DENY' },
+        ],
+      },
       {
         source: '/admin',
         headers: [

@@ -1,8 +1,10 @@
-import express, { type ErrorRequestHandler, type Request } from 'express';
-import helmet from 'helmet';
+import express, { type ErrorRequestHandler } from 'express';
 import { ZodError } from 'zod';
 import type { AppContext } from './types.ts';
 import { HttpError } from './lib/errors.ts';
+import { apiHeaders, isSameOrigin, MUTATING_METHODS } from './lib/security-headers.ts';
+import { overApiLimit, TOO_MANY } from './lib/api-limit.ts';
+import { clientIp } from './lib/http.ts';
 import { attachAuth } from './auth/session.ts';
 import { authRouter } from './routes/auth.ts';
 import { bootstrapRouter } from './routes/bootstrap.ts';
@@ -18,65 +20,15 @@ import { communityRouter } from './routes/community.ts';
 import { dpdpRouter } from './routes/dpdp.ts';
 import { cronRouter } from './routes/cron.ts';
 
-const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
-
-function sameOrigin(req: Request, appUrl?: string): boolean {
-  const origin = req.headers.origin;
-  if (!origin) return true; // non-browser clients, same-origin GET navigations
-  try {
-    const o = new URL(origin);
-    if (appUrl && o.origin === new URL(appUrl).origin) return true;
-    return o.host === req.headers.host;
-  } catch {
-    return false;
-  }
-}
-
-/** Small in-process limiter: a cheap first line of defence. Sensitive routes also use DB-backed throttles. */
-function apiLimiter(limit: number, windowMs: number) {
-  const hits = new Map<string, { n: number; reset: number }>();
-  return (req: Request, res: express.Response, next: express.NextFunction) => {
-    const now = Date.now();
-    const key = req.ip || 'unknown';
-    const cur = hits.get(key);
-    if (!cur || cur.reset < now) hits.set(key, { n: 1, reset: now + windowMs });
-    else if (++cur.n > limit) return res.status(429).json({ error: 'Too many requests. Please slow down.' });
-    if (hits.size > 10_000) for (const [k, v] of hits) if (v.reset < now) hits.delete(k);
-    next();
-  };
-}
-
 export function createApp(ctx: AppContext): express.Express {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', 1);
 
-  app.use(
-    helmet({
-      // The dev server (Vite) needs inline scripts and websockets; production keeps the strict policy.
-      contentSecurityPolicy: !ctx.config.isProd ? false : {
-        useDefaults: false,
-        directives: {
-          'default-src': ["'self'"],
-          'script-src': ["'self'", 'https://checkout.razorpay.com'],
-          'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
-          'font-src': ["'self'", 'https://fonts.gstatic.com', 'data:'],
-          'img-src': ["'self'", 'data:', 'blob:'],
-          'connect-src': ["'self'", 'https://lumberjack.razorpay.com'],
-          'frame-src': ["'self'", 'https://api.razorpay.com', 'https://checkout.razorpay.com'],
-          'object-src': ["'none'"],
-          'base-uri': ["'self'"],
-          'form-action': ["'self'"],
-          'frame-ancestors': ["'none'"],
-          ...(ctx.config.isProd ? { 'upgrade-insecure-requests': [] } : {}),
-        },
-      },
-      strictTransportSecurity: ctx.config.isProd ? { maxAge: 31_536_000, includeSubDomains: true } : false,
-      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
-    })
-  );
+  // API responses never render, so they get the "load nothing" headers (pages get theirs from proxy.ts).
+  const securityHeaders = apiHeaders(ctx.config.isProd);
   app.use((_req, res, next) => {
-    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(self)');
+    for (const [name, value] of Object.entries(securityHeaders)) res.setHeader(name, value);
     next();
   });
 
@@ -101,9 +53,11 @@ export function createApp(ctx: AppContext): express.Express {
     });
   }
 
-  app.use('/api', apiLimiter(600, 60_000));
   app.use('/api', (req, res, next) => {
-    if (MUTATING.has(req.method) && !sameOrigin(req, ctx.config.appUrl)) {
+    overApiLimit(ctx.db, clientIp(req)).then((blocked) => (blocked ? res.status(429).json(TOO_MANY) : next()), next);
+  });
+  app.use('/api', (req, res, next) => {
+    if (MUTATING_METHODS.has(req.method) && !isSameOrigin(req.headers.origin, req.headers.host, ctx.config.appUrl)) {
       return res.status(403).json({ error: 'Cross-site request blocked.' });
     }
     next();

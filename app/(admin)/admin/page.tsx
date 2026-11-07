@@ -1,6 +1,6 @@
 'use client';
 
-import { AdminApp } from '../../src/admin/AdminApp';
+import { AdminApp } from './AdminApp';
 
 export default function AdminPage() {
   return <AdminApp />;

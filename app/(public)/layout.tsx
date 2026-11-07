@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { cookies } from 'next/headers';
-import '../src/index.css';
-import { languageForCookie } from '../src/utils/routes';
+import '../../src/index.css';
+import { languageForCookie } from '../../src/utils/routes';
 
 const title = 'Shramkart — Direct Hands for Indian Industry';
 const description = 'Direct Hands for Indian Industry. Zero Middlemen. 100% Fair Pay. Two-way blue and grey-collar workforce marketplace connecting manufacturing units with verified ITI technicians.';
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = { themeColor: '#F5A524' };
 
-export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function PublicLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const lang = languageForCookie((await cookies()).get('hj_language')?.value);
   return (
     <html lang={lang} suppressHydrationWarning>

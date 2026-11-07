@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { EmployerPitchClient } from './EmployerPitchClient';
-import { languageForCookie } from '../../src/utils/routes';
+import { languageForCookie } from '../../../src/utils/routes';
 
 export const metadata: Metadata = {
   title: 'Hire verified factory talent | Shramkart',

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { createApplicationApi } from '../../../src/utils/api';
+import { createApplicationApi } from '../../../../src/utils/api';
 
 export function JobApplyButton({ jobId }: { jobId: string }) {
   const [message, setMessage] = useState('');

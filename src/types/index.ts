@@ -6,8 +6,7 @@ export type UserRole =
   | 'worker'
   | 'employer'
   | 'worker-profile'
-  | 'employer-profile'
-  | 'admin';
+  | 'employer-profile';
 
 export type WorkerSkillCategory = 'unskilled' | 'semi-skilled' | 'skilled';
 

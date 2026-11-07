@@ -19,7 +19,7 @@
     "doctor": "tsx scripts/doctor.ts"
   },
   "dependencies": {
-    "@tailwindcss/postcss": "4.3.3",
+    "@tailwindcss/postcss": "4.3.5",
     "@tailwindcss/vite": "^4.3.3",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
@@ -50,7 +50,7 @@
     "embedded-postgres": "^18.4.0-beta.17",
     "esbuild": "^0.28.0",
     "supertest": "^7.3.1",
-    "tailwindcss": "^4.3.3",
+    "tailwindcss": "^4.3.5",
     "tsx": "^4.21.0",
     "typescript": "^7.0.2",
     "vitest": "^5.0.5"

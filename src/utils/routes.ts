@@ -8,7 +8,6 @@ export const APP_ROLE_PATHS: Partial<Record<UserRole, string>> = {
   employer: '/employers/talent',
   'worker-profile': '/me',
   'employer-profile': '/employers/dashboard',
-  admin: '/admin',
 };
 
 export function roleForPath(pathname: string, hash = ''): UserRole {
@@ -17,7 +16,6 @@ export function roleForPath(pathname: string, hash = ''): UserRole {
   if (pathname === '/employers/talent' || pathname.startsWith('/employers/talent/')) return 'employer';
   if (pathname === '/me' || pathname.startsWith('/me/')) return 'worker-profile';
   if (pathname === '/employers/dashboard' || pathname.startsWith('/employers/dashboard/')) return 'employer-profile';
-  if (pathname === '/admin' || pathname.startsWith('/admin/')) return 'admin';
   return 'landing';
 }
 

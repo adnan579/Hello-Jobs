@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import './admin/admin.css';
 
 export const metadata: Metadata = {
   title: 'Shramkart Staff Console',
@@ -6,5 +7,9 @@ export const metadata: Metadata = {
 };
 
 export default function AdminLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <div className="min-h-screen bg-slate-100">{children}</div>;
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  );
 }

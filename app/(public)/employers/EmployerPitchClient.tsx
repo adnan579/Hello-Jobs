@@ -1,9 +1,9 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { EmployerPitch } from '../../src/components/EmployerPitch';
-import { makeT } from '../../src/data/translations';
-import type { Language } from '../../src/types';
+import { EmployerPitch } from '../../../src/components/EmployerPitch';
+import { makeT } from '../../../src/data/translations';
+import type { Language } from '../../../src/types';
 
 export function EmployerPitchClient({ language }: { language: Language }) {
   const router = useRouter();

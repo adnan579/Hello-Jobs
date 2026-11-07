@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { cookies } from 'next/headers';
-import App from '../../src/App';
-import { COOKIE_NAME, loadAuth } from '../../server/auth/session';
-import { languageForCookie } from '../../src/utils/routes';
-import { buildBootstrap } from '../../server/services/bootstrap';
-import { publicBootstrap, publicJobList } from '../../server/services/publicJobs';
-import { getServerContext } from '../../server/runtime';
+import App from '../../../src/App';
+import { COOKIE_NAME, loadAuth } from '../../../server/auth/session';
+import { languageForCookie } from '../../../src/utils/routes';
+import { buildBootstrap } from '../../../server/services/bootstrap';
+import { publicBootstrap, publicJobList } from '../../../server/services/publicJobs';
+import { getServerContext } from '../../../server/runtime';
 
 export const dynamic = 'force-dynamic';
 

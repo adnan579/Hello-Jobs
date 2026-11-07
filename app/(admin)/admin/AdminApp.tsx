@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, setUnauthorizedHandler, type Me } from './api.ts';
 import { ChangePassword, Login } from './Login.tsx';
 import { Account, Audit, Factories, Grievances, Jobs, Notifications, Overview, Payments, Reports, Staff, System, Verification, Workers } from './pages.tsx';
-import { BrandLogo } from '../components/BrandLogo.tsx';
+import { BrandLogo } from './BrandLogo';
 
 const IDLE_MS = 30 * 60_000;
 

@@ -1,5 +1,6 @@
 import { Language, JobListing } from '../types';
 import { UX_STRINGS } from './translations.ux';
+import { ABOUT_STRINGS } from './translations.about';
 
 const BASE_TRANSLATIONS: Record<Language, Record<string, string>> = {
   en: {
@@ -457,8 +458,10 @@ export const TRANSLATIONS = Object.fromEntries(
     {
       ...BASE_TRANSLATIONS.en,
       ...UX_STRINGS.en,
+      ...ABOUT_STRINGS.en,
       ...BASE_TRANSLATIONS[lang],
       ...UX_STRINGS[lang],
+      ...ABOUT_STRINGS[lang],
     },
   ])
 ) as Record<Language, Record<string, string>>;

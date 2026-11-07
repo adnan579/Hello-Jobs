@@ -22,6 +22,7 @@ import {
 } from '../modules/discovery';
 import { CandidateCard } from './CandidateCard';
 import { Disclosure } from './ui/Disclosure';
+import { EmployerPitch } from './EmployerPitch';
 import { EmptyState } from './ui/EmptyState';
 import { ActiveFilters, type ActiveFilterItem } from './ui/ActiveFilters';
 
@@ -39,6 +40,9 @@ interface Props {
   onOpenEmployerProfile: () => void;
   onOpenAuthModal: () => void;
   onOpenPostJob: () => void;
+  /** Visitors can register a factory, and read how the platform works. */
+  onRegisterFactory?: () => void;
+  onSeeHow?: () => void;
   onInspectCertificate: (candidate: CandidateProfile) => void;
   onOpenVideoDemo: (candidate: CandidateProfile) => void;
   onOpenIssueOffer: (candidate: CandidateProfile) => void;
@@ -69,6 +73,8 @@ export const EmployerPortal: React.FC<Props> = ({
   onOpenEmployerProfile,
   onOpenAuthModal,
   onOpenPostJob,
+  onRegisterFactory,
+  onSeeHow,
   onInspectCertificate,
   onOpenVideoDemo,
   onOpenIssueOffer,
@@ -126,6 +132,18 @@ export const EmployerPortal: React.FC<Props> = ({
   };
 
   const isEmployer = authSession?.role === 'employer';
+  // The directory and the posting form belong to a signed-in factory.
+  if (!isEmployer) {
+    return (
+      <EmployerPitch
+        t={t}
+        onRegister={onRegisterFactory ?? onOpenAuthModal}
+        onLogin={onOpenAuthModal}
+        onSeeHow={onSeeHow ?? onOpenAuthModal}
+      />
+    );
+  }
+
   const skillTabs: { id: SkillFilter; label: string }[] = [
     { id: 'all', label: t('skillAll') },
     { id: 'helper', label: t('skillHelper') },
@@ -143,20 +161,17 @@ export const EmployerPortal: React.FC<Props> = ({
                 {employerProfile.companyName}
               </span>
             )}
-            {isEmployer && (
-              <span className="badge badge-worker tabular-nums">
-                <Coins className="h-3.5 w-3.5" aria-hidden="true" />
-                {t('efCredits', { n: employerProfile.huntCredits ?? 0 })}
-              </span>
-            )}
+            <span className="badge badge-worker tabular-nums">
+              <Coins className="h-3.5 w-3.5" aria-hidden="true" />
+              {t('efCredits', { n: employerProfile.huntCredits ?? 0 })}
+            </span>
           </p>
           <h1 className="text-2xl font-extrabold leading-tight text-slate-900">{t('efTitle')}</h1>
           <p className="text-body text-slate-700">{t('efDesc')}</p>
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row md:shrink-0">
-          {isEmployer ? (
-            <>
+          {/* A signed-in factory's actions. Visitors never reach this view (see EmployerPitch). */}
               <button type="button" onClick={onOpenPostJob} className="btn btn-employer">
                 <Plus className="h-4 w-4" aria-hidden="true" />
                 <span>{t('postRequirement')}</span>
@@ -165,19 +180,6 @@ export const EmployerPortal: React.FC<Props> = ({
                 <Building2 className="h-4 w-4" aria-hidden="true" />
                 <span>{t('efDashboard', { n: shortlistedIds.length })}</span>
               </button>
-            </>
-          ) : (
-            <>
-              <button type="button" onClick={onOpenAuthModal} className="btn btn-employer">
-                <Building2 className="h-4 w-4" aria-hidden="true" />
-                <span>{t('efLogin')}</span>
-              </button>
-              <button type="button" onClick={onOpenPostJob} className="btn btn-secondary">
-                <Plus className="h-4 w-4" aria-hidden="true" />
-                <span>{t('postRequirement')}</span>
-              </button>
-            </>
-          )}
         </div>
       </header>
 

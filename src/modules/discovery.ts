@@ -5,6 +5,7 @@
  * Rule of thumb for this file: every "saved", "unlocked" or "unread" answer is derived
  * from data the server sent for the signed-in person. Nothing here invents an id.
  */
+import type { SampleListing } from '../data/sampleListings';
 import type {
   CandidateProfile,
   EmployerFactoryProfile,
@@ -207,4 +208,33 @@ export const isUnread = (n: NotificationEvent): boolean => n.read !== true;
 
 export function countUnread(notifications: NotificationEvent[]): number {
   return notifications.filter(isUnread).length;
+}
+
+/** How many example/real listings the About page shows. */
+export const ABOUT_LISTING_SLOTS = 3;
+
+export type AboutListing =
+  | { source: 'live'; job: JobListing }
+  | { source: 'sample'; sample: SampleListing };
+
+/**
+ * Real jobs first. When there are fewer than `slots` real ones, labelled samples fill the gap so
+ * the page is never empty. With enough real jobs no sample is shown at all.
+ */
+export function aboutListings(
+  live: JobListing[],
+  samples: SampleListing[],
+  slots: number = ABOUT_LISTING_SLOTS
+): AboutListing[] {
+  const real: AboutListing[] = live.filter(isLiveJob).slice(0, slots).map((job) => ({ source: 'live', job }));
+  const fill: AboutListing[] = samples
+    .slice(0, Math.max(0, slots - real.length))
+    .map((sample) => ({ source: 'sample', sample }));
+  return [...real, ...fill];
+}
+
+export type AboutListingsMode = 'live' | 'mixed' | 'sample';
+export function aboutListingsMode(items: AboutListing[]): AboutListingsMode {
+  const samples = items.filter((i) => i.source === 'sample').length;
+  return samples === 0 ? 'live' : samples === items.length ? 'sample' : 'mixed';
 }

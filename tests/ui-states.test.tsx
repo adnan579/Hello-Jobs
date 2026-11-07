@@ -5,6 +5,7 @@ import type { CandidateProfile, EmployerFactoryProfile, HiringDrive, JobListing 
 import { WorkerPortal } from '../src/components/WorkerPortal';
 import { EmployerPortal } from '../src/components/EmployerPortal';
 import { BottomNav } from '../src/components/BottomNav';
+import { AboutPage } from '../src/components/AboutPage';
 import { makeT } from '../src/data/translations';
 
 const noop = () => {};
@@ -97,13 +98,14 @@ const renderEmployer = (props: Partial<React.ComponentProps<typeof EmployerPorta
 
 describe('employer screens', () => {
   it('shows an empty talent directory state with no candidates', () => {
-    const html = renderEmployer();
+    const html = renderEmployer({ authSession: { role: 'employer', employerId: 'e1' } as any });
     expect(html).not.toContain('cand-1');
     expect(html).not.toContain('cand-2');
   });
 
   it('does not mark placeholder candidates as unlocked', () => {
     const html = renderEmployer({
+      authSession: { role: 'employer', employerId: 'e1' } as any,
       candidates: [worker({ id: 'cand-1', name: 'Seeded Sam', phone: '+91 98XXXXX210' } as Partial<CandidateProfile>)],
     });
     // Nothing unlocked: the contact stays locked, so no call link is rendered.
@@ -136,5 +138,67 @@ describe('mobile bottom navigation', () => {
     expect(html).toContain(t('navApplicationsShort'));
     expect(html).toContain(t('navMyProfile'));
     expect((html.match(/aria-current="page"/g) ?? []).length).toBe(1);
+  });
+});
+
+describe('visitor and employer gating', () => {
+  const t = makeT('en');
+
+  it('employer page for a visitor is a pitch with no directory and no Post-job button', () => {
+    const html = renderEmployer();
+    expect(html).toContain(t('pitchTitle'));
+    expect(html).toContain(t('pitchRegister'));
+    expect(html).not.toContain(t('postRequirement'));
+    expect(html).not.toContain('<form');
+  });
+
+  it('a signed-in factory still gets its Post-job button', () => {
+    const html = renderEmployer({ authSession: { role: 'employer', employerId: 'e1' } as any });
+    expect(html).toContain(t('postRequirement'));
+    expect(html).not.toContain(t('pitchTitle'));
+  });
+
+  it('job cards tell a visitor to log in for HR contact, and not a signed-in worker', () => {
+    expect(renderWorker()).toContain(t('contactLockedHint'));
+    expect(renderWorker({ activeWorker: worker() })).not.toContain(t('contactLockedHint'));
+  });
+});
+
+describe('About page', () => {
+  const t = makeT('en');
+  const aboutProps = {
+    t, isSignedIn: false, onBrowseJobs: noop, onRegisterWorker: noop, onRegisterFactory: noop, onLogin: noop,
+  };
+
+  it('with no real jobs shows three labelled samples and nothing to apply to', () => {
+    const html = renderToStaticMarkup(<AboutPage {...aboutProps} jobs={[]} />);
+    expect((html.match(/data-listing="sample"/g) ?? []).length).toBe(3);
+    expect(html).not.toContain('data-listing="live"');
+    expect(html).toContain(t('aboutListingsSample'));
+    expect(html).toContain(t('aboutSampleTag'));
+    expect(html).not.toContain(t('aboutViewJob'));
+    expect(html).not.toMatch(/tel:|wa\.me/);
+  });
+
+  it('with one real job mixes it with two samples, each labelled', () => {
+    const html = renderToStaticMarkup(<AboutPage {...aboutProps} jobs={[JOB]} />);
+    expect((html.match(/data-listing="live"/g) ?? []).length).toBe(1);
+    expect((html.match(/data-listing="sample"/g) ?? []).length).toBe(2);
+    // Quotes are escaped in rendered HTML.
+    expect(html).toContain(t('aboutListingsMixed').replace(/"/g, '&quot;'));
+    expect(html).toContain(t('aboutLiveTag'));
+  });
+
+  it('with enough real jobs shows no sample', () => {
+    const many = [1, 2, 3, 4].map((n) => ({ ...JOB, id: `job_${n}`, title: `Real job ${n}` }) as JobListing);
+    const html = renderToStaticMarkup(<AboutPage {...aboutProps} jobs={many} />);
+    expect(html).not.toContain('data-listing="sample"');
+    expect(html).toContain(t('aboutListingsLive'));
+  });
+
+  it('renders in Tamil with its own text', () => {
+    const ta = makeT('ta');
+    const html = renderToStaticMarkup(<AboutPage {...aboutProps} t={ta} jobs={[]} />);
+    expect(html).toContain(ta('aboutTitle'));
   });
 });

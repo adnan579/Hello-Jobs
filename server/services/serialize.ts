@@ -145,7 +145,10 @@ export function employerView(row: Row, extra: { unlockedIds: string[]; members: 
 }
 
 /** Public/owner/admin job card. Owner-only moderation detail is added by the caller via `owner`. */
-export function jobView(row: Row, opts: { owner?: boolean; now?: Date } = {}): JobListing {
+/** HR contact fields a visitor must not see: only a signed-in worker or the owning factory gets them. */
+const CONTACT_FIELDS = ['hrContactName', 'hrContactPhone', 'whatsappApplyNumber'] as const;
+
+export function jobView(row: Row, opts: { owner?: boolean; contact?: boolean; now?: Date } = {}): JobListing {
   const d = (row.data ?? {}) as Partial<JobListing>;
   const now = opts.now ?? new Date();
   const kybOk = row.kyb_status === 'VERIFIED';
@@ -173,6 +176,9 @@ export function jobView(row: Row, opts: { owner?: boolean; now?: Date } = {}): J
   } else {
     delete job.moderationReason;
     delete job.flaggedKeywords;
+  }
+  if (!opts.owner && !opts.contact) {
+    for (const f of CONTACT_FIELDS) delete (job as unknown as Record<string, unknown>)[f];
   }
   return job;
 }

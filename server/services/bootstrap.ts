@@ -51,8 +51,9 @@ export async function buildBootstrap(ctx: AppContext, auth: AuthContext | undefi
     paymentsMode: ctx.config.payments.mode,
   };
 
-  const publicJobs = async () =>
-    (await db.query(`${JOB_SELECT} WHERE ${PUBLIC_JOB_WHERE} ORDER BY j.created_at DESC LIMIT 500`)).rows.map((r) => jobView(r));
+  // `contact` is true only for a signed-in worker: visitors and other factories never get HR numbers.
+  const publicJobs = async (contact = false) =>
+    (await db.query(`${JOB_SELECT} WHERE ${PUBLIC_JOB_WHERE} ORDER BY j.created_at DESC LIMIT 500`)).rows.map((r) => jobView(r, { contact }));
 
   const drivesFor = async (where: string, params: unknown[], viewer: { ownerEmployerId?: string; workerId?: string }) => {
     const { rows } = await db.query(
@@ -82,7 +83,7 @@ export async function buildBootstrap(ctx: AppContext, auth: AuthContext | undefi
   if (auth.role === 'worker' && auth.workerId) {
     const wid = auth.workerId;
     const [jobs, me, apps, offers, notes, drives, checkins, vr, audits] = await Promise.all([
-      publicJobs(),
+      publicJobs(true),
       db.query(`${WORKER_SELECT} WHERE w.id = $1`, [wid]),
       db.query(`${APPLICATION_SELECT} WHERE a.worker_id = $1 ORDER BY a.created_at DESC`, [wid]),
       db.query(`${OFFER_SELECT} WHERE o.worker_id = $1 ORDER BY o.created_at DESC`, [wid]),

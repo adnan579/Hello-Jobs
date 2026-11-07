@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { CandidateProfile, HiringDrive, JobListing, NotificationEvent } from '../src/types';
+import { SAMPLE_LISTINGS } from '../src/data/sampleListings';
 import {
+  ABOUT_LISTING_SLOTS,
   ALL,
   DEFAULT_CANDIDATE_FILTERS,
   DEFAULT_JOB_FILTERS,
+  aboutListings,
+  aboutListingsMode,
   countActiveCandidateFilters,
   countActiveJobFilters,
   countUnread,
@@ -123,6 +127,40 @@ describe('employer talent directory', () => {
     const none = unlockedCandidateIdSet({ unlockedCandidateIds: [] } as any);
     expect(none.has('cand-1') || none.has('cand-2')).toBe(false);
     expect(unlockedCandidateIdSet({ unlockedCandidateIds: ['c2'] } as any).has('c2')).toBe(true);
+  });
+});
+
+describe('About page listings', () => {
+  const samples = SAMPLE_LISTINGS;
+  const liveJobs = (n: number) => Array.from({ length: n }, (_, i) => job({ id: `live${i}` }));
+
+  it('shows only labelled samples when there are no real jobs', () => {
+    const items = aboutListings([], samples);
+    expect(items).toHaveLength(ABOUT_LISTING_SLOTS);
+    expect(items.every((i) => i.source === 'sample')).toBe(true);
+    expect(aboutListingsMode(items)).toBe('sample');
+  });
+
+  it('fills the gap with samples when there are some real jobs', () => {
+    const items = aboutListings(liveJobs(1), samples);
+    expect(items.map((i) => i.source)).toEqual(['live', 'sample', 'sample']);
+    expect(aboutListingsMode(items)).toBe('mixed');
+  });
+
+  it('shows no sample at all once there are enough real jobs', () => {
+    const items = aboutListings(liveJobs(5), samples);
+    expect(items).toHaveLength(ABOUT_LISTING_SLOTS);
+    expect(items.every((i) => i.source === 'live')).toBe(true);
+    expect(aboutListingsMode(items)).toBe('live');
+  });
+
+  it('ignores closed jobs and never turns a sample into a job', () => {
+    const items = aboutListings([job({ id: 'closed', isActive: false })], samples);
+    expect(items.every((i) => i.source === 'sample')).toBe(true);
+    for (const s of samples) {
+      expect(s.id.startsWith('sample-')).toBe(true);
+      expect(s).not.toHaveProperty('hrContactPhone');
+    }
   });
 });
 

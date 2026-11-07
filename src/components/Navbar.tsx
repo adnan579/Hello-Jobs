@@ -188,6 +188,9 @@ export const Navbar: React.FC<Props> = ({
               <NavLink tone="neutral" active={false} onClick={onOpenCalculator}>
                 {t('navSalaryCalc')}
               </NavLink>
+              <NavLink tone="neutral" active={currentRole === 'about'} onClick={() => onRoleChange('about')}>
+                {t('navAbout')}
+              </NavLink>
             </>
           )}
         </nav>

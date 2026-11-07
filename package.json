@@ -16,7 +16,8 @@
     "db:local": "node scripts/dev-postgres.mjs",
     "admin:create": "tsx scripts/create-admin.ts",
     "e2e": "playwright test",
-    "doctor": "tsx scripts/doctor.ts"
+    "doctor": "tsx scripts/doctor.ts",
+    "preview:check": "node scripts/preview-check.mjs"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.3.5",

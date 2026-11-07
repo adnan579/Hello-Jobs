@@ -68,7 +68,7 @@ export const DualLanding: React.FC<Props> = ({
       <Briefcase className="w-4 h-4" /> Open jobs feed
     </button>
   ) : (
-    <button onClick={() => onOpenAuthModal('worker', 'register')} className="btn-amber">
+    <button data-testid="auth-register-worker" onClick={() => onOpenAuthModal('worker', 'register')} className="btn-amber">
       <UserPlus className="w-4 h-4" /> I am looking for a job
     </button>
   );
@@ -77,7 +77,7 @@ export const DualLanding: React.FC<Props> = ({
       <Factory className="w-4 h-4" /> Open factory dashboard
     </button>
   ) : (
-    <button onClick={() => onOpenAuthModal('employer', 'register')} className="btn-blue">
+    <button data-testid="auth-register-employer" onClick={() => onOpenAuthModal('employer', 'register')} className="btn-blue">
       <Factory className="w-4 h-4" /> I am hiring for a factory
     </button>
   );
@@ -133,9 +133,9 @@ export const DualLanding: React.FC<Props> = ({
             {!authSession && (
               <p className="mt-4 text-sm text-slate-500">
                 Already registered?{' '}
-                <button onClick={() => onOpenAuthModal('worker', 'login')} className="font-bold text-slate-900 underline underline-offset-2">Worker login</button>
+                <button data-testid="auth-login-worker" onClick={() => onOpenAuthModal('worker', 'login')} className="font-bold text-slate-900 underline underline-offset-2">Worker login</button>
                 {' · '}
-                <button onClick={() => onOpenAuthModal('employer', 'login')} className="font-bold text-slate-900 underline underline-offset-2">Factory login</button>
+                <button data-testid="auth-login-employer" onClick={() => onOpenAuthModal('employer', 'login')} className="font-bold text-slate-900 underline underline-offset-2">Factory login</button>
               </p>
             )}
             <dl className="mt-10 flex flex-wrap gap-x-10 gap-y-4 border-t border-slate-200 pt-6 tabular-nums">

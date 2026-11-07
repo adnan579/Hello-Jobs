@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -75,19 +77,30 @@ import {
   ERROR_EVENT,
   type BootstrapPayload,
 } from './utils/api';
+import { APP_ROLE_PATHS, roleForPath, workerTabForPath } from './utils/routes';
 import { Bell, X, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
 
-export default function App() {
-  const [currentRole, setCurrentRole] = useState<UserRole>(() =>
-    typeof window !== 'undefined' && window.location.hash === '#/about' ? 'about' : 'landing'
-  );
-  const [currentLang, setCurrentLang] = useState<Language>('en');
+interface AppProps {
+  initialRole?: UserRole;
+  initialData?: Pick<BootstrapPayload, 'jobs' | 'stats' | 'hiringDrives'>;
+  initialAuth?: { role: 'worker' | 'employer'; mode: 'login' | 'register' };
+  initialLegalTab?: 'privacy' | 'terms';
+  initialNextPath?: string;
+  initialWorkerTab?: WorkerTab;
+  initialLanguage?: Language;
+}
+
+export default function App({ initialRole, initialData, initialAuth, initialLegalTab, initialNextPath, initialWorkerTab, initialLanguage }: AppProps = {}) {
+  const [currentRole, setCurrentRole] = useState<UserRole>(() => initialRole ?? (
+    typeof window !== 'undefined' ? roleForPath(window.location.pathname, window.location.hash) : 'landing'
+  ));
+  const [currentLang, setCurrentLang] = useState<Language>(initialLanguage ?? 'en');
   const [booting, setBooting] = useState(true);
   const [toast, setToast] = useState('');
 
   // Everything below is exactly what the server says this person may see.
   const [authSession, setAuthSession] = useState<AuthSession | null>(null);
-  const [jobs, setJobs] = useState<JobListing[]>([]);
+  const [jobs, setJobs] = useState<JobListing[]>(initialData?.jobs ?? []);
   const [candidates, setCandidates] = useState<CandidateProfile[]>([]);
   const [offers, setOffers] = useState<OfferLetter[]>([]);
   const [applications, setApplications] = useState<JobApplication[]>([]);
@@ -99,33 +112,27 @@ export default function App() {
   // Notifications the person has opened the list for in this visit. The server's own `read` flag
   // still counts: a notification is unread only if neither says it was read.
   const [readNotificationIds, setReadNotificationIds] = useState<Set<string>>(new Set());
-  const [workerTab, setWorkerTab] = useState<WorkerTab>('profile');
+  const [workerTab, setWorkerTab] = useState<WorkerTab>(initialWorkerTab ?? 'profile');
   const [verificationRecords, setVerificationRecords] = useState<
     VerificationRecord[]
   >([]);
   const [creditLedger, setCreditLedger] = useState<CreditLedgerEntry[]>([]);
-  const [hiringDrives, setHiringDrives] = useState<HiringDrive[]>([]);
+  const [hiringDrives, setHiringDrives] = useState<HiringDrive[]>(initialData?.hiringDrives ?? []);
   const [retentionCheckIns, setRetentionCheckIns] = useState<RetentionCheckIn[]>(
     []
   );
   const [grievances, setGrievances] = useState<DpdpGrievanceTicket[]>([]);
   const [auditLogs, setAuditLogs] = useState<DpdpAuditLog[]>([]);
-  const [stats, setStats] = useState({ workers: 0, factories: 0, jobs: 0 });
+  const [stats, setStats] = useState(initialData?.stats ?? { workers: 0, factories: 0, jobs: 0 });
   const t = useMemo(() => makeT(currentLang), [currentLang]);
 
   // Modals & Drawers
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authModalInitialTab, setAuthModalInitialTab] = useState<
-    'worker' | 'employer'
-  >('worker');
-  const [authModalInitialMode, setAuthModalInitialMode] = useState<
-    'login' | 'register'
-  >('login');
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(Boolean(initialAuth));
+  const [authModalInitialTab, setAuthModalInitialTab] = useState<'worker' | 'employer'>(initialAuth?.role ?? 'worker');
+  const [authModalInitialMode, setAuthModalInitialMode] = useState<'login' | 'register'>(initialAuth?.mode ?? 'login');
 
-  const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
-  const [legalModalTab, setLegalModalTab] = useState<'privacy' | 'terms'>(
-    'privacy'
-  );
+  const [isLegalModalOpen, setIsLegalModalOpen] = useState(Boolean(initialLegalTab));
+  const [legalModalTab, setLegalModalTab] = useState<'privacy' | 'terms'>(initialLegalTab ?? 'privacy');
   const [isDpdpOpen, setIsDpdpOpen] = useState(false);
 
   const [selectedNcvtCandidate, setSelectedNcvtCandidate] =
@@ -191,6 +198,7 @@ export default function App() {
     const onUnauthorized = () => {
       setAuthSession(null);
       setCurrentRole('landing');
+      if (window.location.pathname !== '/') window.history.replaceState(null, '', '/');
       syncFromBackend();
     };
     const onError = (e: Event) => {
@@ -216,17 +224,32 @@ export default function App() {
     if (booting) return;
     const needs: Partial<Record<UserRole, AuthSession['role']>> = {
       'worker-profile': 'worker',
+      employer: 'employer',
       'employer-profile': 'employer',
     };
     const need = needs[currentRole];
-    if (need && authSession?.role !== need) setCurrentRole('landing');
+    if (need && authSession?.role !== need) {
+      setCurrentRole('landing');
+      window.history.replaceState(null, '', '/');
+    }
   }, [booting, currentRole, authSession]);
 
   const handleRoleChange = (role: UserRole) => {
+    if (role === 'employer' && authSession?.role !== 'employer') {
+      window.location.assign('/employers');
+      return;
+    }
     stopJobAudio();
+    const path = APP_ROLE_PATHS[role];
+    if (path && window.location.pathname !== path) window.history.pushState(null, '', path);
     setCurrentRole(role);
     syncFromBackend();
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleLanguageChange = (language: Language) => {
+    setCurrentLang(language);
+    document.cookie = `hj_language=${language}; Path=/; Max-Age=31536000; SameSite=Lax${window.location.protocol === 'https:' ? '; Secure' : ''}`;
   };
 
   const handleOpenAuthModal = (
@@ -247,6 +270,13 @@ export default function App() {
   const handleLoginSuccess = async () => {
     const data = await syncFromBackend();
     const role = data?.session?.role;
+    if (initialNextPath) {
+      const next = new URL(initialNextPath, window.location.origin);
+      if (next.origin === window.location.origin) {
+        window.location.assign(`${next.pathname}${next.search}${next.hash}`);
+        return;
+      }
+    }
     if (role === 'worker') handleRoleChange('worker');
     else if (role === 'employer') handleRoleChange('employer-profile');
   };
@@ -255,6 +285,7 @@ export default function App() {
     await logoutApi();
     setAuthSession(null);
     setCurrentRole('landing');
+    if (window.location.pathname !== '/') window.history.replaceState(null, '', '/');
     stopJobAudio();
     await syncFromBackend();
   };
@@ -386,6 +417,7 @@ export default function App() {
       setIsDpdpOpen(false);
       setAuthSession(null);
       setCurrentRole('landing');
+      if (window.location.pathname !== '/') window.history.replaceState(null, '', '/');
       await syncFromBackend();
     }
   };
@@ -422,8 +454,10 @@ export default function App() {
   };
 
   const openWorkerTab = (tab: WorkerTab) => {
-    setWorkerTab(tab);
     handleRoleChange('worker-profile');
+    const path = tab === 'inbox' ? '/me/applications' : tab === 'idcard' ? '/me/id-card' : '/me';
+    if (window.location.pathname !== path) window.history.pushState(null, '', path);
+    setWorkerTab(tab);
   };
 
   /** Saves or un-saves a job on the signed-in worker's profile (stored on the server). */
@@ -433,21 +467,17 @@ export default function App() {
     await run(updateCandidateApi({ ...activeWorker, savedJobIds: toggleId(current, jobId) }));
   };
 
-  // The About page has its own address (#/about) so it can be linked and bookmarked.
   useEffect(() => {
-    if (currentRole === 'about') {
-      if (window.location.hash !== '#/about') window.history.replaceState(null, '', '#/about');
-    } else if (window.location.hash === '#/about') {
-      window.history.replaceState(null, '', window.location.pathname + window.location.search);
-    }
-  }, [currentRole]);
-
-  useEffect(() => {
-    const onHash = () => {
-      if (window.location.hash === '#/about') setCurrentRole('about');
+    const onLocationChange = () => {
+      setCurrentRole(roleForPath(window.location.pathname, window.location.hash));
+      setWorkerTab(workerTabForPath(window.location.pathname));
     };
-    window.addEventListener('hashchange', onHash);
-    return () => window.removeEventListener('hashchange', onHash);
+    window.addEventListener('popstate', onLocationChange);
+    window.addEventListener('hashchange', onLocationChange);
+    return () => {
+      window.removeEventListener('popstate', onLocationChange);
+      window.removeEventListener('hashchange', onLocationChange);
+    };
   }, []);
 
   // Screen readers and browser translation need the page language.
@@ -516,7 +546,7 @@ export default function App() {
         workerTab={workerTab}
         onOpenWorkerTab={openWorkerTab}
         onRoleChange={handleRoleChange}
-        onLangChange={setCurrentLang}
+        onLangChange={handleLanguageChange}
         onOpenCalculator={() => setIsCalculatorOpen(true)}
         onOpenReport={() => handleOpenReport()}
         onOpenNcvtSearch={() => setIsNcvtSearchOpen(true)}

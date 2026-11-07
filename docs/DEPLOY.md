@@ -11,7 +11,7 @@ Make a long random text for `SESSION_SECRET`: open any password generator in you
 
 ## 3. Hosting (Vercel)
 1. Go to vercel.com, sign up with GitHub, press **Add New → Project**, pick `adnan579/Hello-Jobs`.
-2. Branch: `main` (merge the pull request first). Framework: Vite (already set in `vercel.json`).
+2. Branch: `main` (merge the pull request first). Framework: Next.js. The `/api/*` App Router handler adapts requests to the existing Express app during the migration.
 3. Open **Environment Variables** and add:
    - `DATABASE_URL` — from step 1
    - `SESSION_SECRET` — from step 2

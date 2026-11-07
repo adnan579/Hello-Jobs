@@ -17,10 +17,10 @@ A two-way marketplace for blue and grey-collar manufacturing work in India. Veri
 
 ## How it is built
 
-- **Front end:** React 19, Vite, Tailwind. The session is an httpOnly cookie. The browser only holds what the server sends for that person's role (`/api/bootstrap`).
+- **Front end:** React 19, Next.js App Router, and Tailwind. The existing screen UI remains a client component while public routes are moved incrementally. The session is an httpOnly cookie; the browser only holds what the server sends for that person's role (`/api/bootstrap`).
 - **Back end:** Express and PostgreSQL (`server/`). Every input is checked with zod. Ownership and role checks are in SQL. Credits and payments are atomic and run once.
 - **Security:** hashed login codes with attempt limits, hashed session tokens, origin check on writes, strict content security policy in production, rate limits, append-only audit log.
-- **Hosting:** one Express app. `server.ts` runs it on a normal Node host. `api/index.ts` runs the same app as a Vercel function.
+- **Hosting:** one Vercel deployment. Next.js serves pages and its Node API route adapts requests to the existing Express app during the migration. `server.ts` remains available for the Vite rollback build.
 
 Folder map: `server/` (API), `src/` (UI), `server/migrations/` (SQL), `tests/` (API tests), `e2e/` (browser test), `scripts/` (migrate, create admin, local Postgres), `docs/` (guides).
 
@@ -31,7 +31,7 @@ npm install
 npm run db:local          # starts a throwaway PostgreSQL on port 54329 (leave it running)
 cp .env.example .env      # then set DATABASE_URL=postgres://hj:hj@localhost:54329/hellojobs_test
                           # and SESSION_SECRET to any 32+ characters, ADMIN_BOOTSTRAP_EMAIL and ADMIN_BOOTSTRAP_PASSWORD for your first admin
-npm run dev               # http://localhost:3000
+npm run dev               # Next.js pages and API on http://localhost:3000
 ```
 
 In development the login code is shown on screen. In production it is never shown (see `docs/DEPLOY.md` for the pilot switch).
@@ -40,7 +40,8 @@ In development the login code is shown on screen. In production it is never show
 
 ```bash
 npm run lint                         # TypeScript
-npm run build                        # production build
+npm run build                        # Next.js production build
+npm run build:vite                   # rollback Vite build
 TEST_DATABASE_URL=postgres://... npm test        # API and security tests (starts its own Postgres if unset)
 npx playwright install chromium && npm run e2e   # full browser journey
 ```

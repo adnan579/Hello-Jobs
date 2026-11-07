@@ -1,10 +1,7 @@
 import express from 'express';
-import { loadConfig } from './config.ts';
-import { formatFindings, reviewConfig } from './lib/doctor.ts';
-import { createDb, migrate, type Db } from './db.ts';
 import { createApp } from './app.ts';
 import { ensureBootstrapAdmin } from './services/adminAccounts.ts';
-import type { AppContext } from './types.ts';
+import { getServerContext } from './runtime.ts';
 
 /**
  * Builds the real app lazily: configuration errors and database problems become a clear
@@ -13,40 +10,23 @@ import type { AppContext } from './types.ts';
 export function createServerApp(): express.Express {
   const outer = express();
   let inner: Promise<express.Express> | undefined;
-  let db: Db | undefined;
   let stage = 'config';
   let failure: { stage: string; code?: string; detail?: string } | undefined;
 
   const init = async () => {
-    stage = 'config';
-    const config = loadConfig();
-    if (config.isProd) {
-      const notes = reviewConfig(config).filter((x) => x.level !== 'ok');
-      if (notes.length) console.warn('[config]\n' + formatFindings(notes));
-    }
-    stage = 'config';
-    if (!config.databaseUrl) throw new Error('DATABASE_URL is not set. Add your Postgres connection string to the environment variables.');
-    stage = 'database';
-    db = createDb(config.databaseUrl);
-    await db.query('SELECT 1');
-    stage = 'migrations';
-    if (process.env.AUTO_MIGRATE !== 'false') {
-      const applied = await migrate(db);
-      if (applied.length) console.log(`[db] applied migrations: ${applied.join(', ')}`);
-    }
+    const ctx = await getServerContext();
     stage = 'admin-bootstrap';
-    await ensureBootstrapAdmin(db, config);
+    await ensureBootstrapAdmin(ctx.db, ctx.config);
     failure = undefined;
-    const ctx: AppContext = { db, config, deps: { fetch: globalThis.fetch, now: () => new Date() } };
     return createApp(ctx);
   };
 
   // Which step failed (never secrets). Open /api/health to read it.
   const describe = (err: any) => ({
-    stage,
+    stage: err?.startupStage ?? stage,
     code: typeof err?.code === 'string' ? err.code : undefined,
     // Only schema/migration problems carry a readable detail; connection errors may name the database user.
-    detail: stage === 'migrations' || stage === 'config' ? String(err?.message ?? '').replace(/postgres(ql)?:\/\/\S+/gi, '[url]').slice(0, 240) : undefined,
+    detail: (err?.startupStage ?? stage) === 'migrations' || (err?.startupStage ?? stage) === 'config' ? String(err?.message ?? '').replace(/postgres(ql)?:\/\/\S+/gi, '[url]').slice(0, 240) : undefined,
   });
 
   outer.get('/api/health', (req, res, next) => {

@@ -5,19 +5,19 @@ const GSTIN = '27AAPFU0939F1ZV'; // valid format + checksum
 
 async function otpLogin(p: Page, phone: string) {
   await p.locator('input[type=tel]').fill(phone);
-  await p.getByRole('button', { name: /Send WhatsApp OTP/ }).click();
+  await p.getByTestId('auth-send-otp').click();
   await p.waitForSelector('text=Enter 6-Digit');
   const chip = await p.locator('button:has-text("Code:")').innerText();
   await p.locator('input[autocomplete=one-time-code]').fill(chip.match(/\d{6}/)![0]);
-  await p.locator('form button[type=submit]').last().click();
+  await p.getByTestId('auth-verify-otp').click();
 }
 
 async function openAuth(p: Page, role: 'worker' | 'employer', mode: 'register' | 'login') {
   await p.goto('/');
-  await p.getByRole('button', { name: mode === 'register' ? (role === 'worker' ? 'Register as Worker' : 'Register as Employer') : 'Log In' }).first().click();
+  await p.getByTestId(mode === 'register' ? `auth-register-${role}` : `auth-login-${role}`).first().click();
   await p.waitForSelector('text=10-Digit Mobile');
-  await p.getByRole('button', { name: role === 'worker' ? /I am a Worker/ : /I am an Employer/ }).click();
-  if (mode === 'register') await p.getByRole('button', { name: role === 'worker' ? /New Worker Registration/ : /New Employer Registration/ }).click();
+  await p.getByTestId(`auth-select-${role}`).click();
+  if (mode === 'register') await p.getByTestId(`auth-register-mode-${role}`).click();
 }
 
 async function checkConsents(p: Page) {
@@ -78,7 +78,16 @@ test('factory -> admin approval -> job -> worker applies -> offer -> accept -> b
   await nums.nth(2).fill('19000');
   await emp.getByRole('button', { name: /Publish Requirement/ }).click();
   await expect.poll(async () => (await bootstrap(emp)).jobs.length).toBe(1);
+  const job = (await bootstrap(emp)).jobs[0];
   expect((await bootstrap(emp)).employerProfile.huntCredits).toBe(3);
+  const publicJobPage = await emp.request.get(`/jobs/${job.id}`);
+  const publicJobHtml = await publicJobPage.text();
+  expect(publicJobPage.status()).toBe(200);
+  expect(publicJobHtml).toContain(job.title);
+  if (job.hrContactPhone) expect(publicJobHtml).not.toContain(job.hrContactPhone);
+  const sitemap = await emp.request.get('/sitemap.xml');
+  expect(sitemap.status()).toBe(200);
+  expect(await sitemap.text()).toContain(`/jobs/${job.id}`);
 
   // 4. Worker registers and applies.
   await openAuth(wk, 'worker', 'register');
@@ -87,7 +96,8 @@ test('factory -> admin approval -> job -> worker applies -> offer -> accept -> b
   await wk.locator('label:has-text("Home State") + input').fill('Uttar Pradesh');
   await checkConsents(wk);
   await otpLogin(wk, '9811122233');
-  await wk.getByRole('button', { name: /Apply now/ }).first().click();
+  await wk.goto(`/jobs/${job.id}`);
+  await wk.getByRole('button', { name: 'Apply now' }).click();
   await expect.poll(async () => (await bootstrap(wk)).applications.length).toBe(1);
 
   // 5. Factory sees the applicant with a usable phone number and issues an offer.

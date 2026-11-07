@@ -1,4 +1,6 @@
 node_modules/
+.next/
+out/
 build/
 dist/
 coverage/
@@ -10,5 +12,6 @@ coverage/
 public/assets/aistudio/
 bun.lock
 .local-pg/
+tsconfig.tsbuildinfo
 test-results/
 playwright-report/

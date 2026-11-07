@@ -1,6 +1,5 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 
 // bigint (count(*), bigserial) -> number. Safe for our volumes.
@@ -52,9 +51,8 @@ export function createDb(databaseUrl: string): Db {
 
 /** Applies server/migrations/*.sql in order, once each. Safe to run concurrently. */
 export async function migrate(db: Db, dir?: string): Promise<string[]> {
-  const here = path.dirname(fileURLToPath(import.meta.url));
-  const migrationsDir = dir ?? path.join(here, 'migrations');
-  const files = fs.readdirSync(migrationsDir).filter((f) => f.endsWith('.sql')).sort();
+  const migrationsDir = dir ?? path.join(process.cwd(), 'server', 'migrations');
+  const files = fs.readdirSync(/*turbopackIgnore: true*/ migrationsDir).filter((file) => file.endsWith('.sql')).sort();
   const applied: string[] = [];
 
   const client = await db.pool.connect();
@@ -66,7 +64,7 @@ export async function migrate(db: Db, dir?: string): Promise<string[]> {
     const done = new Set((await client.query('SELECT name FROM schema_migrations')).rows.map((r) => r.name));
     for (const file of files) {
       if (done.has(file)) continue;
-      const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
+      const sql = fs.readFileSync(/*turbopackIgnore: true*/ path.join(/*turbopackIgnore: true*/ migrationsDir, file), 'utf8');
       try {
         await client.query('BEGIN');
         await client.query(sql);

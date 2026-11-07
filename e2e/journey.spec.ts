@@ -87,7 +87,7 @@ test('factory -> admin approval -> job -> worker applies -> offer -> accept -> b
   await wk.locator('label:has-text("Home State") + input').fill('Uttar Pradesh');
   await checkConsents(wk);
   await otpLogin(wk, '9811122233');
-  await wk.getByRole('button', { name: /1-Tap Direct Apply/ }).first().click();
+  await wk.getByRole('button', { name: /Apply now/ }).first().click();
   await expect.poll(async () => (await bootstrap(wk)).applications.length).toBe(1);
 
   // 5. Factory sees the applicant with a usable phone number and issues an offer.
@@ -108,8 +108,8 @@ test('factory -> admin approval -> job -> worker applies -> offer -> accept -> b
 
   // 6. Worker accepts and says they reported for work. That alone does not fill the vacancy.
   await wk.reload();
-  await wk.getByRole('button', { name: /My Profile/ }).first().click();
-  await wk.getByRole('button', { name: /My Applications/ }).first().click();
+  // The header has a direct "Applications & offers" link, which opens that tab of the profile page.
+  await wk.getByRole('button', { name: /Applications & offers/ }).first().click();
   await wk.getByRole('button', { name: /Accept Direct Offer/ }).click();
   await wk.getByRole('button', { name: /Confirm I Joined/ }).click();
   await expect.poll(async () => (await bootstrap(wk)).applications.map((a: any) => a.status)).toEqual(['Accepted']);
@@ -118,7 +118,8 @@ test('factory -> admin approval -> job -> worker applies -> offer -> accept -> b
   await emp.reload();
   await emp.getByRole('button', { name: /Dashboard/ }).last().click();
   await emp.getByRole('button', { name: /Job Postings & Applicants/ }).click();
-  await emp.locator('select').first().selectOption('Joined');
+  // (The header also has a language select, so look only inside the page content.)
+  await emp.locator('main select').first().selectOption('Joined');
   await expect.poll(async () => (await bootstrap(emp)).offers.map((o: any) => o.status)).toEqual(['Joined Confirmed']);
 
   expect(apiErrors).toEqual([]);

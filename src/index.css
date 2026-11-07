@@ -27,7 +27,6 @@
    The hi-vis stripe is the one memorable device, taken from factory signage. */
 @layer base {
   body { background-color: #f5f6f8; }
-  :focus-visible { outline: 3px solid #1f4fd8; outline-offset: 2px; border-radius: 6px; }
   ::selection { background: #fde68a; color: #101828; }
 }
 
@@ -46,6 +45,146 @@
   .btn-amber:hover { background: #ffb91f; }
   .btn-blue { background: #1f4fd8; color: #fff; }
   .btn-blue:hover { background: #2f5fe6; }
+}
+
+
+/* ---- Design tokens ---------------------------------------------------------
+   One place for the values every screen shares. Contrast notes are against white.
+   Amber is the WORKER accent, blue is the EMPLOYER accent, green means VERIFIED.
+   Status is always text + icon as well as colour. */
+:root {
+  --sk-ink: #101828;            /* headings, body (16:1) */
+  --sk-body: #344054;           /* paragraph text (9.2:1) */
+  --sk-muted: #475467;          /* secondary text (7.1:1) */
+  --sk-border: #d0d5dd;
+  --sk-border-soft: #eaecf0;
+  --sk-surface: #ffffff;
+  --sk-canvas: #f5f6f8;
+
+  --sk-amber: #f5a800;          /* worker action fill (ink text on it: 9:1) */
+  --sk-amber-hover: #ffb91f;
+  --sk-amber-text: #92400e;     /* amber used as text (7.1:1) */
+  --sk-amber-soft: #fffbeb;
+
+  --sk-blue: #1f4fd8;           /* employer action fill (white text on it: 6.9:1) */
+  --sk-blue-hover: #1a43b8;
+  --sk-blue-text: #1d4ed8;      /* blue used as text (6.7:1) */
+  --sk-blue-soft: #eff4ff;
+
+  --sk-green-text: #067647;     /* verified / pay text (5.9:1) */
+  --sk-green-soft: #ecfdf3;
+  --sk-red-text: #b42318;       /* errors, destructive (6.5:1) */
+  --sk-red-soft: #fef3f2;
+
+  --sk-focus: #1f4fd8;
+  --sk-focus-on-dark: #fbbf24;
+
+  --sk-radius-sm: 0.5rem;
+  --sk-radius-md: 0.75rem;
+  --sk-radius-lg: 1rem;
+
+  --sk-shadow-card: 0 1px 2px rgb(16 24 40 / 0.06), 0 1px 3px rgb(16 24 40 / 0.04);
+  --sk-shadow-pop: 0 12px 32px rgb(16 24 40 / 0.18);
+
+  --sk-tap: 2.75rem;            /* minimum comfortable touch target (44px) */
+  --sk-bottom-nav-h: 4rem;      /* height of the mobile bottom bar */
+}
+
+@theme {
+  /* Type scale: body 15px, metadata 13px. Nothing readable is smaller than 12px. */
+  --text-meta: 0.8125rem;
+  --text-meta--line-height: 1.45;
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.55;
+}
+
+@layer base {
+  body { color: var(--sk-ink); background-color: var(--sk-canvas); line-height: 1.55; }
+  :focus-visible { outline: 3px solid var(--sk-focus); outline-offset: 2px; border-radius: 6px; }
+  .on-dark :focus-visible, [data-on-dark] :focus-visible { outline-color: var(--sk-focus-on-dark); }
+  button, [role='tab'], select, summary { touch-action: manipulation; }
+}
+
+@layer components {
+  /* Buttons: one base, role variants, and a clear primary / secondary / tertiary order. */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+    min-height: var(--sk-tap); padding: 0.5rem 1rem;
+    border-radius: var(--sk-radius-md); border: 1px solid transparent;
+    font-size: 0.9375rem; font-weight: 700; line-height: 1.2; text-align: center;
+    cursor: pointer; transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .btn:disabled, .btn[aria-disabled='true'] { opacity: 0.6; cursor: not-allowed; }
+  .btn-sm { min-height: 2.5rem; padding: 0.375rem 0.75rem; font-size: 0.875rem; }
+  .btn-worker   { background: var(--sk-amber); color: var(--sk-ink); }
+  .btn-worker:hover:not(:disabled)   { background: var(--sk-amber-hover); }
+  .btn-employer { background: var(--sk-blue); color: #fff; }
+  .btn-employer:hover:not(:disabled) { background: var(--sk-blue-hover); }
+  .btn-secondary { background: var(--sk-surface); color: var(--sk-ink); border-color: var(--sk-border); }
+  .btn-secondary:hover:not(:disabled) { background: #f9fafb; border-color: #98a2b3; }
+  .btn-ghost { background: transparent; color: var(--sk-body); }
+  .btn-ghost:hover:not(:disabled) { background: var(--sk-border-soft); color: var(--sk-ink); }
+  .btn-on-dark { background: rgb(255 255 255 / 0.1); color: #fff; border-color: rgb(255 255 255 / 0.25); }
+  .btn-on-dark:hover:not(:disabled) { background: rgb(255 255 255 / 0.18); }
+
+  /* Surfaces */
+  .card { background: var(--sk-surface); border: 1px solid var(--sk-border); border-radius: var(--sk-radius-lg); box-shadow: var(--sk-shadow-card); }
+  .panel { background: var(--sk-surface); border: 1px solid var(--sk-border-soft); border-radius: var(--sk-radius-lg); }
+
+  /* Badges always carry text (and usually an icon): colour is never the only signal. */
+  .badge {
+    display: inline-flex; align-items: center; gap: 0.25rem;
+    padding: 0.125rem 0.5rem; border-radius: 999px;
+    font-size: var(--text-meta); line-height: 1.4; font-weight: 600;
+    background: var(--sk-border-soft); color: var(--sk-body);
+  }
+  .badge-verified { background: var(--sk-green-soft); color: var(--sk-green-text); }
+  .badge-worker   { background: var(--sk-amber-soft); color: var(--sk-amber-text); }
+  .badge-employer { background: var(--sk-blue-soft);  color: var(--sk-blue-text); }
+  .badge-alert    { background: var(--sk-red-soft);   color: var(--sk-red-text); }
+
+  /* Form controls */
+  .field {
+    width: 100%; min-height: var(--sk-tap); padding: 0.5rem 0.75rem;
+    border: 1px solid #98a2b3; border-radius: var(--sk-radius-md);
+    background: var(--sk-surface); color: var(--sk-ink); font-size: 1rem; /* 16px stops iOS zoom */
+  }
+  .field::placeholder { color: #667085; }
+  .field-label { display: block; margin-bottom: 0.25rem; font-size: var(--text-meta); font-weight: 700; color: var(--sk-body); }
+
+  /* Segmented tabs (job categories, employer sections) */
+  .tab {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.375rem;
+    min-height: var(--sk-tap); padding: 0.375rem 0.75rem;
+    border-radius: var(--sk-radius-md); border: 1px solid var(--sk-border);
+    background: var(--sk-surface); color: var(--sk-body);
+    font-size: 0.875rem; font-weight: 700; line-height: 1.2; text-align: center; cursor: pointer;
+  }
+  .tab:hover { background: #f9fafb; }
+  .tab[aria-selected='true'], .tab[aria-pressed='true'] { background: var(--sk-ink); color: #fff; border-color: var(--sk-ink); box-shadow: inset 0 -3px 0 var(--sk-amber); }
+  [data-role='employer'] .tab[aria-selected='true'], [data-role='employer'] .tab[aria-pressed='true'] { box-shadow: inset 0 -3px 0 var(--sk-blue); }
+  .tab-count { font-size: var(--text-meta); font-weight: 600; opacity: 0.85; font-variant-numeric: tabular-nums; }
+
+  /* Removable "active filter" chip */
+  .chip {
+    display: inline-flex; align-items: center; gap: 0.25rem; min-height: 2rem;
+    padding: 0.125rem 0.25rem 0.125rem 0.625rem; border-radius: 999px;
+    background: var(--sk-border-soft); color: var(--sk-ink); font-size: var(--text-meta); font-weight: 600;
+  }
+  .chip button { display: inline-flex; align-items: center; justify-content: center; width: 1.75rem; height: 1.75rem; border-radius: 999px; }
+  .chip button:hover { background: #d0d5dd; }
+
+  .eyebrow { font-size: var(--text-meta); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--sk-muted); }
+  .sr-only-live { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+
+/* Keyboard users can jump past the header. */
+.skip-link { position: absolute; left: 0.5rem; top: -4rem; z-index: 70; padding: 0.625rem 1rem; border-radius: 0.5rem; background: var(--sk-ink); color: #fff; font-weight: 700; }
+.skip-link:focus { top: 0.5rem; }
+
+/* On phones the fixed bottom bar must never hide the end of a page or the footer. */
+@media (max-width: 1023px) {
+  .pb-nav { padding-bottom: calc(var(--sk-bottom-nav-h) + env(safe-area-inset-bottom)); }
 }
 
 @media (prefers-reduced-motion: reduce) {

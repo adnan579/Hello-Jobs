@@ -1,30 +1,29 @@
-import React, { useState } from 'react';
-import {
+import React, { useMemo, useState } from 'react';
+import { Building2, Coins, Factory, Layers, Plus, Search, Users } from 'lucide-react';
+import type {
+  AuthSession,
   CandidateProfile,
+  EmployerFactoryProfile,
   JobListing,
   Language,
-  EmployerFactoryProfile,
-  AuthSession,
 } from '../types';
-import { TRANSLATIONS } from '../data/translations';
+import { makeT } from '../data/translations';
 import {
-  Factory,
-  Search,
-  Plus,
-  ShieldCheck,
-  Video,
-  FileText,
-  Building2,
-  MapPin,
-  Layers,
-  Award,
-  Bookmark,
-  BookmarkCheck,
-  Package,
-  Lock,
-  Unlock,
-  Coins,
-} from 'lucide-react';
+  ALL,
+  DEFAULT_CANDIDATE_FILTERS,
+  MAX_WAGE_CEILING,
+  MIN_WAGE_FLOOR,
+  countActiveCandidateFilters,
+  directoryCandidates,
+  selectCandidates,
+  unlockedCandidateIdSet,
+  type CandidateFilters,
+  type SkillFilter,
+} from '../modules/discovery';
+import { CandidateCard } from './CandidateCard';
+import { Disclosure } from './ui/Disclosure';
+import { EmptyState } from './ui/EmptyState';
+import { ActiveFilters, type ActiveFilterItem } from './ui/ActiveFilters';
 
 interface Props {
   candidates: CandidateProfile[];
@@ -33,6 +32,8 @@ interface Props {
   authSession: AuthSession | null;
   employerProfile: EmployerFactoryProfile;
   shortlistedIds: string[];
+  /** Which section to open on. The app uses the default; tests and deep links can set it. */
+  initialTab?: 'hunt' | 'inbound';
   onToggleShortlist: (candidateId: string) => void;
   onUnlockCandidateContact?: (candidateId: string) => Promise<void>;
   onOpenEmployerProfile: () => void;
@@ -43,6 +44,18 @@ interface Props {
   onOpenIssueOffer: (candidate: CandidateProfile) => void;
 }
 
+// Trade vocabulary for the filter. These are data values, not UI copy.
+const TRADES = [
+  'Packing & Box Loading (No Certificate)',
+  'Factory Floor Helper (No Certificate)',
+  'Assembly Line Helper',
+  'CNC / VMC Operator',
+  'Fitter (Assembly & Bench)',
+  'Welder (MIG / TIG / ARC)',
+  'Machinist (Lathe / Milling)',
+  'Industrial Electrician',
+];
+
 export const EmployerPortal: React.FC<Props> = ({
   candidates,
   jobs,
@@ -50,6 +63,7 @@ export const EmployerPortal: React.FC<Props> = ({
   authSession,
   employerProfile,
   shortlistedIds,
+  initialTab = 'hunt',
   onToggleShortlist,
   onUnlockCandidateContact,
   onOpenEmployerProfile,
@@ -59,66 +73,49 @@ export const EmployerPortal: React.FC<Props> = ({
   onOpenVideoDemo,
   onOpenIssueOffer,
 }) => {
-  const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
+  const t = useMemo(() => makeT(currentLang), [currentLang]);
 
-  const [activeTab, setActiveTab] = useState<'hunt' | 'inbound'>('hunt');
-  const [skillFilter, setSkillFilter] = useState<'all' | 'helper' | 'iti'>('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTrade, setSelectedTrade] = useState<string>('all');
-  const [ncvtOnly, setNcvtOnly] = useState(false);
-  const [relocationOnly, setRelocationOnly] = useState(false);
-  const [maxExpectedSalary, setMaxExpectedSalary] = useState(32000);
+  const [activeTab, setActiveTab] = useState<'hunt' | 'inbound'>(initialTab);
+  const [filters, setFilters] = useState<CandidateFilters>(DEFAULT_CANDIDATE_FILTERS);
   const [unlockingId, setUnlockingId] = useState<string | null>(null);
 
-  const unlockedSet = new Set(employerProfile.unlockedCandidateIds || ['cand-1', 'cand-2']);
+  // Unlocked contacts are whatever the server says this factory unlocked. Nothing is pre-filled.
+  const unlockedIds = useMemo(() => unlockedCandidateIdSet(employerProfile), [employerProfile]);
+  const directoryTotal = useMemo(() => directoryCandidates(candidates).length, [candidates]);
+  const visible = useMemo(() => selectCandidates(candidates, filters), [candidates, filters]);
 
-  const allTrades = [
-    'all',
-    'Packing & Box Loading (No Certificate)',
-    'Factory Floor Helper (No Certificate)',
-    'Assembly Line Helper',
-    'CNC / VMC Operator',
-    'Fitter (Assembly & Bench)',
-    'Welder (MIG / TIG / ARC)',
-    'Machinist (Lathe / Milling)',
-    'Industrial Electrician',
+  const activeFilterCount = countActiveCandidateFilters(filters);
+  const wageChanged = filters.maxExpectedSalary !== DEFAULT_CANDIDATE_FILTERS.maxExpectedSalary;
+  const hiddenFilterCount = (filters.ncvtOnly ? 1 : 0) + (filters.relocationOnly ? 1 : 0) + (wageChanged ? 1 : 0);
+
+  const filterItems: ActiveFilterItem[] = [
+    ...(filters.query.trim() ? [{ key: 'query', label: `“${filters.query.trim()}”` }] : []),
+    ...(filters.trade !== ALL ? [{ key: 'trade', label: filters.trade }] : []),
+    ...(filters.ncvtOnly ? [{ key: 'ncvt', label: t('ncvtOnly') }] : []),
+    ...(filters.relocationOnly ? [{ key: 'reloc', label: t('relocOnly') }] : []),
+    ...(wageChanged
+      ? [{ key: 'wage', label: `${t('maxWage')}: ₹${filters.maxExpectedSalary.toLocaleString('en-IN')}${t('perMonthShort')}` }]
+      : []),
   ];
 
-  const filteredCandidates = candidates.filter((c) => {
-    if (c.dpdpConsent?.isWithdrawn || c.dpdpConsent?.directoryDiscovery === false) {
-      return false;
-    }
+  const removeFilter = (key: string) =>
+    setFilters((f) => {
+      switch (key) {
+        case 'query':
+          return { ...f, query: '' };
+        case 'trade':
+          return { ...f, trade: ALL };
+        case 'ncvt':
+          return { ...f, ncvtOnly: false };
+        case 'reloc':
+          return { ...f, relocationOnly: false };
+        default:
+          return { ...f, maxExpectedSalary: DEFAULT_CANDIDATE_FILTERS.maxExpectedSalary };
+      }
+    });
+  const resetFilters = () => setFilters(DEFAULT_CANDIDATE_FILTERS);
 
-    const matchesSkillFilter =
-      skillFilter === 'all' ||
-      (skillFilter === 'helper' && c.category !== 'skilled') ||
-      (skillFilter === 'iti' && c.category === 'skilled');
-
-    const matchesTrade = selectedTrade === 'all' || c.trade === selectedTrade;
-    const matchesNcvt = !ncvtOnly || c.ncvtCertificate.isVerified;
-    const matchesReloc = !relocationOnly || c.willingToRelocate;
-    const matchesSalary = c.expectedSalary <= maxExpectedSalary;
-    const matchesSearch =
-      searchQuery === '' ||
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.trade.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.currentCity.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.homeState.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.machinesOperated.some((m) =>
-        m.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-
-    return (
-      matchesSkillFilter &&
-      matchesTrade &&
-      matchesNcvt &&
-      matchesReloc &&
-      matchesSalary &&
-      matchesSearch
-    );
-  });
-
-  const handleUnlockClick = async (candidateId: string) => {
+  const unlock = async (candidateId: string) => {
     if (!onUnlockCandidateContact) return;
     setUnlockingId(candidateId);
     try {
@@ -128,465 +125,333 @@ export const EmployerPortal: React.FC<Props> = ({
     }
   };
 
+  const isEmployer = authSession?.role === 'employer';
+  const skillTabs: { id: SkillFilter; label: string }[] = [
+    { id: 'all', label: t('skillAll') },
+    { id: 'helper', label: t('skillHelper') },
+    { id: 'iti', label: t('skillIti') },
+  ];
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-24">
-      {/* Employer Top Header */}
-      <div className="p-6 bg-slate-900 text-white rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-xl">
-        <div className="space-y-1.5 max-w-2xl">
-          <div className="flex flex-wrap items-center gap-2 text-blue-300 text-xs font-semibold">
-            <Factory className="w-3.5 h-3.5 text-blue-400" />
-            <span>
-              {employerProfile.companyName} · GSTIN: {employerProfile.gstin}
-            </span>
-            <span className="px-2.5 py-0.5 rounded-md bg-amber-400 text-slate-950 font-extrabold tabular-nums flex items-center gap-1">
-              <Coins className="w-3.5 h-3.5" />
-              {employerProfile.huntCredits ?? 0} Contact Credits Available
-            </span>
-          </div>
-          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
-            Candidate Directory — Search, Shortlist & Invite Workers
-          </h2>
-          <p className="text-xs text-slate-300">
-            Search verified helpers, packers, and ITI machine operators. Candidate phone numbers remain masked (<span className="tabular-nums">+91 98•••••210</span>) until they apply or you unlock & invite them.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3 shrink-0">
-          {authSession?.role === 'employer' ? (
-            <button
-              onClick={onOpenEmployerProfile}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-white bg-blue-700 hover:bg-blue-600 rounded-xl transition-colors"
-            >
-              <Building2 className="w-4 h-4" />
-              <span>
-                Employer Dashboard ({shortlistedIds.length} Shortlisted)
+    <div data-role="employer" className="mx-auto max-w-7xl space-y-5 px-4 py-5 sm:px-6 lg:px-8">
+      <header className="card flex flex-col gap-4 border-l-4 border-l-[var(--sk-blue)] p-5 md:flex-row md:items-center md:justify-between">
+        <div className="max-w-2xl space-y-1.5">
+          <p className="flex flex-wrap items-center gap-2">
+            {employerProfile.companyName && (
+              <span className="badge badge-employer">
+                <Factory className="h-3.5 w-3.5" aria-hidden="true" />
+                {employerProfile.companyName}
               </span>
-            </button>
+            )}
+            {isEmployer && (
+              <span className="badge badge-worker tabular-nums">
+                <Coins className="h-3.5 w-3.5" aria-hidden="true" />
+                {t('efCredits', { n: employerProfile.huntCredits ?? 0 })}
+              </span>
+            )}
+          </p>
+          <h1 className="text-2xl font-extrabold leading-tight text-slate-900">{t('efTitle')}</h1>
+          <p className="text-body text-slate-700">{t('efDesc')}</p>
+        </div>
+
+        <div className="flex flex-col gap-2 sm:flex-row md:shrink-0">
+          {isEmployer ? (
+            <>
+              <button type="button" onClick={onOpenPostJob} className="btn btn-employer">
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                <span>{t('postRequirement')}</span>
+              </button>
+              <button type="button" onClick={onOpenEmployerProfile} className="btn btn-secondary">
+                <Building2 className="h-4 w-4" aria-hidden="true" />
+                <span>{t('efDashboard', { n: shortlistedIds.length })}</span>
+              </button>
+            </>
           ) : (
-            <button
-              onClick={onOpenAuthModal}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-white bg-blue-700 hover:bg-blue-600 rounded-xl transition-colors"
-            >
-              <Building2 className="w-4 h-4" />
-              <span>Employer Login / Register</span>
-            </button>
+            <>
+              <button type="button" onClick={onOpenAuthModal} className="btn btn-employer">
+                <Building2 className="h-4 w-4" aria-hidden="true" />
+                <span>{t('efLogin')}</span>
+              </button>
+              <button type="button" onClick={onOpenPostJob} className="btn btn-secondary">
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                <span>{t('postRequirement')}</span>
+              </button>
+            </>
           )}
-
-          <button
-            onClick={onOpenPostJob}
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-extrabold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-colors shadow-xs"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{t.postRequirement}</span>
-          </button>
         </div>
-      </div>
+      </header>
 
-      {/* Dual Mode Tab Selector */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-2">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setActiveTab('hunt')}
-            className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-colors ${
-              activeTab === 'hunt'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <Search className="w-3.5 h-3.5" />
-            <span>
-              {t.candidateDirectory} ({filteredCandidates.length})
-            </span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('inbound')}
-            className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-colors ${
-              activeTab === 'inbound'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span>Active Plant Job Postings ({jobs.length})</span>
-          </button>
-        </div>
-
-        <button
-          onClick={onOpenEmployerProfile}
-          className="text-xs font-bold text-blue-700 hover:text-blue-800 flex items-center gap-1"
-        >
-          <BookmarkCheck className="w-4 h-4" />
-          <span>Go to Employer Dashboard & Shortlist →</span>
+      <div role="group" aria-label={t('employerTabsAria')} className="grid grid-cols-2 gap-2 sm:max-w-lg">
+        <button type="button" className="tab" aria-pressed={activeTab === 'hunt'} onClick={() => setActiveTab('hunt')}>
+          <Users className="h-4 w-4" aria-hidden="true" />
+          <span>{t('tabCandidates', { n: directoryTotal })}</span>
+        </button>
+        <button type="button" className="tab" aria-pressed={activeTab === 'inbound'} onClick={() => setActiveTab('inbound')}>
+          <Layers className="h-4 w-4" aria-hidden="true" />
+          <span>{t('tabJobs', { n: jobs.length })}</span>
         </button>
       </div>
 
       {activeTab === 'hunt' ? (
-        <div className="space-y-6">
-          {/* Quick Workforce Category Toggle */}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setSkillFilter('all')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
-                skillFilter === 'all'
-                  ? 'bg-slate-900 text-white border-slate-900'
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-              }`}
-            >
-              All Workers ({candidates.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setSkillFilter('helper');
-                setNcvtOnly(false);
-              }}
-              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
-                skillFilter === 'helper'
-                  ? 'bg-emerald-700 text-white border-emerald-700'
-                  : 'bg-emerald-50 text-emerald-900 border-emerald-200 hover:bg-emerald-100'
-              }`}
-            >
-              <Package className="w-3.5 h-3.5" />
-              <span>Helpers, Packers & Loaders (Work-Readiness Verified)</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setSkillFilter('iti')}
-              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
-                skillFilter === 'iti'
-                  ? 'bg-blue-700 text-white border-blue-700'
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-              }`}
-            >
-              <Award className="w-3.5 h-3.5 text-amber-500" />
-              <span>ITI & Skilled Machine Operators</span>
-            </button>
+        <div className="space-y-4">
+          <div role="group" aria-label={t('skillTabsAria')} className="grid gap-2 sm:grid-cols-3 sm:max-w-3xl">
+            {skillTabs.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                className="tab"
+                aria-pressed={filters.skill === s.id}
+                onClick={() => setFilters((f) => ({ ...f, skill: s.id }))}
+              >
+                {s.label}
+              </button>
+            ))}
           </div>
 
-          {/* Outbound Industrial Filter Panel */}
-          <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-xs space-y-4">
-            <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder={t.searchCandidatePlaceholder}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 text-xs border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-600 bg-slate-50/50"
-              />
-            </div>
-
-            <div>
-              <span className="text-xs font-bold text-slate-700 block mb-2">
-                {t.filterTrade}:
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                {allTrades.map((trade) => (
-                  <button
-                    key={trade}
-                    onClick={() => setSelectedTrade(trade)}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap ${
-                      selectedTrade === trade
-                        ? 'bg-blue-700 text-white font-semibold shadow-xs'
-                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                    }`}
-                  >
-                    {trade === 'all' ? t.filterAllTrades : trade}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-slate-100 text-xs">
-              <div className="flex flex-wrap items-center gap-4">
-                <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 font-medium">
-                  <input
-                    type="checkbox"
-                    checked={ncvtOnly}
-                    onChange={(e) => setNcvtOnly(e.target.checked)}
-                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <Award className="w-3.5 h-3.5 text-amber-600" />
-                  <span>NCVT / SCVT Verified Only</span>
+          <section aria-label={t('filterRegionLabel')} className="card space-y-3 p-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label htmlFor="cand-search" className="field-label">
+                  {t('searchCandidatesLabel')}
                 </label>
-
-                <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 font-medium">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
                   <input
-                    type="checkbox"
-                    checked={relocationOnly}
-                    onChange={(e) => setRelocationOnly(e.target.checked)}
-                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    id="cand-search"
+                    type="search"
+                    value={filters.query}
+                    placeholder={t('searchCandidatePlaceholder')}
+                    onChange={(e) => setFilters((f) => ({ ...f, query: e.target.value }))}
+                    className="field !pl-9"
                   />
-                  <span>Willing to Relocate Inter-State</span>
-                </label>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <span className="text-slate-500">Max Wage:</span>
-                <span className="font-bold text-slate-900 tabular-nums">
-                  ₹{maxExpectedSalary.toLocaleString('en-IN')}/mo
-                </span>
-                <input
-                  type="range"
-                  min={15000}
-                  max={35000}
-                  step={1000}
-                  value={maxExpectedSalary}
-                  onChange={(e) => setMaxExpectedSalary(Number(e.target.value))}
-                  className="w-28 accent-blue-600 cursor-pointer"
-                />
-                <span className="text-slate-400">·</span>
-                <span className="tabular-nums text-slate-500">
-                  {filteredCandidates.length} Candidates
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Candidates Grid with M2 Masked Phone & M7/M12 1-Credit Contact Unlock */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredCandidates.map((candidate) => {
-              const isShortlisted = shortlistedIds.includes(candidate.id);
-              const isUnlocked = unlockedSet.has(candidate.id);
-              const rawDigits = candidate.phone.replace(/\D/g, '').slice(-10);
-              const maskedPhone = `+91 ${rawDigits.slice(0, 2)}•••••${rawDigits.slice(-3)}`;
-
-              return (
-                <div
-                  key={candidate.id}
-                  className="bg-white border border-slate-200 hover:border-slate-300 rounded-xl p-5 shadow-xs flex flex-col justify-between space-y-4 transition-all duration-150"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-slate-900 text-amber-400 flex items-center justify-center font-bold text-sm shrink-0">
-                          {candidate.avatarSeed}
-                        </div>
-                        <div>
-                          <h4 className="text-base font-bold text-slate-900 tracking-tight">
-                            {candidate.name}
-                          </h4>
-                          <div className="text-xs text-slate-500 flex items-center gap-1.5">
-                            <span className="font-medium text-slate-700">
-                              {candidate.trade}
-                            </span>
-                            <span aria-hidden="true">·</span>
-                            <span className="tabular-nums">{candidate.experienceYears} Yrs Exp</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => onToggleShortlist(candidate.id)}
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-colors border ${
-                            isShortlisted
-                              ? 'bg-blue-50 text-blue-700 border-blue-200'
-                              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                          }`}
-                        >
-                          {isShortlisted ? (
-                            <>
-                              <BookmarkCheck className="w-3.5 h-3.5 text-blue-600" />
-                              <span>Shortlisted</span>
-                            </>
-                          ) : (
-                            <>
-                              <Bookmark className="w-3.5 h-3.5" />
-                              <span>Shortlist</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Location, Pay Range & Masked/Unlocked Phone Row */}
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
-                      {candidate.ncvtCertificate.isVerified ? (
-                        <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                          <ShieldCheck className="w-3.5 h-3.5" />
-                          NCVT Grade {candidate.ncvtCertificate.grade}
-                        </span>
-                      ) : (
-                        <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                          <ShieldCheck className="w-3.5 h-3.5" />
-                          Work-Readiness Verified
-                        </span>
-                      )}
-                      <span aria-hidden="true">·</span>
-                      <span className="flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                        {candidate.currentCity} ({candidate.homeState})
-                      </span>
-                      <span aria-hidden="true">·</span>
-                      <span className="font-bold text-emerald-700 tabular-nums">
-                        ₹{(candidate.expectedPayMin || candidate.expectedSalary).toLocaleString('en-IN')}–₹{(candidate.expectedPayMax || candidate.expectedSalary + 2000).toLocaleString('en-IN')}/mo
-                      </span>
-                    </div>
-
-                    {/* M2 & M7 Phone Number Masking Bar */}
-                    <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        {isUnlocked ? (
-                          <>
-                            <Unlock className="w-3.5 h-3.5 text-emerald-600" />
-                            <span className="font-bold text-emerald-800 tabular-nums">
-                              Direct Mobile: {candidate.phone}
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <Lock className="w-3.5 h-3.5 text-amber-600" />
-                            <span className="font-semibold text-slate-700 tabular-nums">
-                              Phone Masked: {maskedPhone}
-                            </span>
-                          </>
-                        )}
-                      </div>
-
-                      {!isUnlocked && onUnlockCandidateContact && (
-                        <button
-                          type="button"
-                          disabled={unlockingId === candidate.id}
-                          onClick={() => handleUnlockClick(candidate.id)}
-                          className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-[11px] flex items-center gap-1"
-                        >
-                          <Coins className="w-3 h-3" />
-                          <span>
-                            {unlockingId === candidate.id
-                              ? 'Unlocking...'
-                              : 'Unlock & Invite (1 Credit)'}
-                          </span>
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Machines / Tasks Handled */}
-                    <div className="space-y-1">
-                      <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
-                        {t.machinesHandled}:
-                      </span>
-                      <div className="flex flex-wrap gap-1">
-                        {candidate.machinesOperated.map((machine, idx) => (
-                          <span
-                            key={idx}
-                            className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded text-xs"
-                          >
-                            {machine}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Candidate Action Buttons */}
-                  <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      {candidate.ncvtCertificate.isVerified && (
-                        <button
-                          onClick={() => onInspectCertificate(candidate)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded transition-colors"
-                        >
-                          <Award className="w-3.5 h-3.5 text-amber-600" />
-                          <span>View NCVT Card</span>
-                        </button>
-                      )}
-
-                      {candidate.hasVideoDemo && (
-                        <button
-                          onClick={() => onOpenVideoDemo(candidate)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded transition-colors"
-                        >
-                          <Video className="w-3.5 h-3.5 text-slate-500" />
-                          <span>30s Practical Demo</span>
-                        </button>
-                      )}
-                    </div>
-
-                    <button
-                      onClick={() => onOpenIssueOffer(candidate)}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-extrabold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-lg transition-colors shadow-xs"
-                    >
-                      <FileText className="w-3.5 h-3.5" />
-                      <span>Issue Locked-Pay Offer</span>
-                    </button>
-                  </div>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+              <div>
+                <label htmlFor="cand-trade" className="field-label">
+                  {t('filterTrade')}
+                </label>
+                <select
+                  id="cand-trade"
+                  className="field"
+                  value={filters.trade}
+                  onChange={(e) => setFilters((f) => ({ ...f, trade: e.target.value }))}
+                >
+                  <option value={ALL}>{t('filterAllTrades')}</option>
+                  {TRADES.map((trade) => (
+                    <option key={trade} value={trade}>
+                      {trade}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <Disclosure
+              label={t('moreFilters')}
+              openLabel={t('fewerFilters')}
+              hint={hiddenFilterCount > 0 ? t('filtersActive', { n: hiddenFilterCount }) : undefined}
+            >
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <label className="flex min-h-11 items-center gap-2 text-body text-slate-800">
+                  <input
+                    type="checkbox"
+                    checked={filters.ncvtOnly}
+                    onChange={(e) => setFilters((f) => ({ ...f, ncvtOnly: e.target.checked }))}
+                    className="h-5 w-5 rounded border-slate-400 accent-[var(--sk-blue)]"
+                  />
+                  <span>{t('ncvtOnly')}</span>
+                </label>
+                <label className="flex min-h-11 items-center gap-2 text-body text-slate-800">
+                  <input
+                    type="checkbox"
+                    checked={filters.relocationOnly}
+                    onChange={(e) => setFilters((f) => ({ ...f, relocationOnly: e.target.checked }))}
+                    className="h-5 w-5 rounded border-slate-400 accent-[var(--sk-blue)]"
+                  />
+                  <span>{t('relocOnly')}</span>
+                </label>
+                <div>
+                  <label htmlFor="cand-wage" className="field-label">
+                    {t('maxWage')}:{' '}
+                    <span className="tabular-nums text-slate-900">
+                      ₹{filters.maxExpectedSalary.toLocaleString('en-IN')}
+                      {t('perMonthShort')}
+                    </span>
+                  </label>
+                  <input
+                    id="cand-wage"
+                    type="range"
+                    min={MIN_WAGE_FLOOR}
+                    max={MAX_WAGE_CEILING}
+                    step={1000}
+                    value={filters.maxExpectedSalary}
+                    aria-valuetext={`₹${filters.maxExpectedSalary.toLocaleString('en-IN')}${t('perMonthShort')}`}
+                    onChange={(e) => setFilters((f) => ({ ...f, maxExpectedSalary: Number(e.target.value) }))}
+                    className="h-11 w-full cursor-pointer accent-[var(--sk-blue)]"
+                  />
+                </div>
+              </div>
+            </Disclosure>
+
+            <ActiveFilters
+              items={filterItems}
+              onRemove={removeFilter}
+              onReset={resetFilters}
+              resetLabel={t('resetFilters')}
+              removeLabel={(label) => t('removeFilter', { label })}
+            />
+          </section>
+
+          <p role="status" aria-live="polite" className="text-body font-semibold tabular-nums text-slate-700">
+            {t('candidatesFound', { n: visible.length })}
+          </p>
+
+          {visible.length > 0 ? (
+            <ul className="grid gap-4 md:grid-cols-2">
+              {visible.map((candidate) => (
+                <li key={candidate.id} className="flex">
+                  <div className="flex-1">
+                    <CandidateCard
+                      candidate={candidate}
+                      t={t}
+                      isShortlisted={shortlistedIds.includes(candidate.id)}
+                      isUnlocked={unlockedIds.has(candidate.id)}
+                      isUnlocking={unlockingId === candidate.id}
+                      canUnlock={Boolean(onUnlockCandidateContact)}
+                      onToggleShortlist={() => onToggleShortlist(candidate.id)}
+                      onUnlock={() => unlock(candidate.id)}
+                      onInspectCertificate={() => onInspectCertificate(candidate)}
+                      onOpenVideoDemo={() => onOpenVideoDemo(candidate)}
+                      onOpenIssueOffer={() => onOpenIssueOffer(candidate)}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : directoryTotal === 0 ? (
+            <EmptyState
+              icon={<Users className="h-6 w-6" />}
+              title={t('emptyCandidatesTitle')}
+              body={t('emptyCandidatesBody')}
+              actions={
+                <button type="button" onClick={onOpenPostJob} className="btn btn-employer">
+                  <Plus className="h-4 w-4" aria-hidden="true" />
+                  {t('postRequirement')}
+                </button>
+              }
+            />
+          ) : (
+            <EmptyState
+              icon={<Search className="h-6 w-6" />}
+              title={t('noCandidatesMatchTitle')}
+              body={t('noCandidatesMatchBody')}
+              actions={
+                activeFilterCount > 0 ? (
+                  <button type="button" onClick={resetFilters} className="btn btn-employer">
+                    {t('resetFilters')}
+                  </button>
+                ) : undefined
+              }
+            />
+          )}
         </div>
       ) : (
-        /* Inbound Postings Overview */
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-              Active Production Line Postings ({jobs.length})
-            </h3>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={onOpenEmployerProfile}
-                className="px-3.5 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg"
-              >
-                Manage Applicants in Factory Workspace
+        <section aria-labelledby="postings-heading" className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 id="postings-heading" className="text-xl font-extrabold text-slate-900">
+              {t('tabJobs', { n: jobs.length })}
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={onOpenEmployerProfile} className="btn btn-secondary btn-sm">
+                {t('manageApplicants')}
               </button>
-              <button
-                onClick={onOpenPostJob}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-extrabold text-slate-950 bg-amber-400 rounded-lg hover:bg-amber-300"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Create New Opening</span>
+              <button type="button" onClick={onOpenPostJob} className="btn btn-employer btn-sm">
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                <span>{t('createOpening')}</span>
               </button>
             </div>
           </div>
 
-          <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-xs">
-            <div className="grid grid-cols-12 bg-slate-100 p-3 text-xs font-semibold text-slate-700 border-b border-slate-200">
-              <span className="col-span-4">Job Designation & Plant</span>
-              <span className="col-span-3">Industrial Trade</span>
-              <span className="col-span-2 text-right">In-Hand Salary</span>
-              <span className="col-span-3 text-right">Vacancies / Status</span>
-            </div>
-
-            <div className="divide-y divide-slate-100 text-xs">
-              {jobs.map((job) => (
-                <div
-                  key={job.id}
-                  className="grid grid-cols-12 p-3 items-center hover:bg-slate-50 transition-colors"
-                >
-                  <div className="col-span-4 space-y-0.5">
-                    <div className="font-bold text-slate-900">{job.title}</div>
-                    <div className="text-slate-500 text-[11px] flex items-center gap-1">
-                      <Building2 className="w-3 h-3" />
+          {jobs.length === 0 ? (
+            <EmptyState
+              icon={<Layers className="h-6 w-6" />}
+              title={t('emptyPostingsTitle')}
+              body={t('emptyPostingsBody')}
+              actions={
+                <button type="button" onClick={onOpenPostJob} className="btn btn-employer">
+                  <Plus className="h-4 w-4" aria-hidden="true" />
+                  {t('createOpening')}
+                </button>
+              }
+            />
+          ) : (
+            <>
+              {/* Phones: one card per posting, so nothing needs sideways scrolling. */}
+              <ul className="space-y-3 md:hidden">
+                {jobs.map((job) => (
+                  <li key={job.id} className="card space-y-1 p-4">
+                    <h3 className="text-base font-extrabold text-slate-900">{job.title}</h3>
+                    <p className="text-body text-slate-600">
                       {job.companyName} · {job.industrialHub}
-                    </div>
-                  </div>
+                    </p>
+                    <p className="text-body text-slate-800">{job.trade}</p>
+                    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-body tabular-nums">
+                      <span className="font-bold text-[var(--sk-green-text)]">
+                        ₹{job.takeHomeSalary.toLocaleString('en-IN')}
+                        {t('perMonthShort')}
+                      </span>
+                      <span className="font-semibold text-[var(--sk-blue-text)]">
+                        {t('vacanciesLeft', { left: job.vacanciesLeft, total: job.openingsCount })}
+                      </span>
+                      <span className={`badge ${job.isActive === false ? '' : 'badge-verified'}`}>
+                        {job.isActive === false ? t('statusClosed') : t('statusActive')}
+                      </span>
+                    </p>
+                  </li>
+                ))}
+              </ul>
 
-                  <div className="col-span-3 font-medium text-slate-800">
-                    {job.trade}
-                  </div>
-
-                  <div className="col-span-2 text-right font-bold text-emerald-700 tabular-nums">
-                    ₹{job.takeHomeSalary.toLocaleString('en-IN')}/mo
-                  </div>
-
-                  <div className="col-span-3 text-right tabular-nums">
-                    <span className="font-bold text-blue-700">
-                      {job.vacanciesLeft} left
-                    </span>{' '}
-                    of {job.openingsCount} ·{' '}
-                    <span className="text-emerald-700 font-semibold">
-                      {job.isActive === false ? 'Closed' : 'Active'}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+              <div className="card hidden overflow-hidden md:block">
+                <table className="w-full text-left text-body">
+                  <caption className="sr-only">{t('postingsTableCaption')}</caption>
+                  <thead className="bg-slate-100 text-meta font-bold text-slate-700">
+                    <tr>
+                      <th scope="col" className="px-4 py-3">{t('thJob')}</th>
+                      <th scope="col" className="px-4 py-3">{t('thTrade')}</th>
+                      <th scope="col" className="px-4 py-3 text-right">{t('thPay')}</th>
+                      <th scope="col" className="px-4 py-3 text-right">{t('thVacancies')}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {jobs.map((job) => (
+                      <tr key={job.id}>
+                        <th scope="row" className="px-4 py-3 font-normal">
+                          <span className="block font-bold text-slate-900">{job.title}</span>
+                          <span className="block text-meta text-slate-600">
+                            {job.companyName} · {job.industrialHub}
+                          </span>
+                        </th>
+                        <td className="px-4 py-3 text-slate-800">{job.trade}</td>
+                        <td className="px-4 py-3 text-right font-bold tabular-nums text-[var(--sk-green-text)]">
+                          ₹{job.takeHomeSalary.toLocaleString('en-IN')}
+                          {t('perMonthShort')}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums">
+                          <span className="font-semibold text-[var(--sk-blue-text)]">
+                            {t('vacanciesLeft', { left: job.vacanciesLeft, total: job.openingsCount })}
+                          </span>{' '}
+                          <span className={`badge ${job.isActive === false ? '' : 'badge-verified'}`}>
+                            {job.isActive === false ? t('statusClosed') : t('statusActive')}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </section>
       )}
     </div>
   );

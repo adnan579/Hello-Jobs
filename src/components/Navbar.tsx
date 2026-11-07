@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   UserRole,
   Language,
@@ -9,6 +9,7 @@ import {
 import {
   UserCheck,
   Factory,
+  FileText,
   LogIn,
   UserPlus,
   Bell,
@@ -18,6 +19,9 @@ import {
   Plus,
 } from 'lucide-react';
 import { BrandLogo } from './BrandLogo';
+import { makeT } from '../data/translations';
+
+export type WorkerTab = 'profile' | 'inbox' | 'idcard';
 
 interface Props {
   currentRole: UserRole;
@@ -25,8 +29,13 @@ interface Props {
   authSession: AuthSession | null;
   activeWorker?: CandidateProfile;
   employerProfile: EmployerFactoryProfile;
+  /** Notifications the person has not seen yet. */
   unreadNotificationsCount?: number;
+  /** Which section of the worker profile page is open (for the active nav marker). */
+  workerTab?: WorkerTab;
   onRoleChange: (role: UserRole) => void;
+  /** Opens a section of the worker profile page, e.g. "Applications & offers". */
+  onOpenWorkerTab?: (tab: WorkerTab) => void;
   onLangChange: (lang: Language) => void;
   onOpenCalculator: () => void;
   onOpenReport: () => void;
@@ -40,6 +49,40 @@ interface Props {
   onLogout?: () => void;
 }
 
+const LANGUAGES: { code: Language; nativeName: string }[] = [
+  { code: 'en', nativeName: 'English' },
+  { code: 'hi', nativeName: 'हिंदी' },
+  { code: 'mr', nativeName: 'मराठी' },
+  { code: 'ta', nativeName: 'தமிழ்' },
+];
+
+/** One desktop navigation link. The current page is marked in text, underline and aria-current. */
+const NavLink: React.FC<{
+  active: boolean;
+  tone: 'worker' | 'employer' | 'neutral';
+  onClick: () => void;
+  children: React.ReactNode;
+}> = ({ active, tone, onClick, children }) => {
+  const activeStyle =
+    tone === 'employer'
+      ? 'text-[var(--sk-blue-text)] border-[var(--sk-blue)]'
+      : tone === 'worker'
+        ? 'text-[var(--sk-amber-text)] border-[var(--sk-amber)]'
+        : 'text-slate-900 border-slate-900';
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-current={active ? 'page' : undefined}
+      className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-0.5 text-sm font-bold transition-colors ${
+        active ? `${activeStyle} font-extrabold` : 'border-transparent text-slate-700 hover:text-slate-900'
+      }`}
+    >
+      {children}
+    </button>
+  );
+};
+
 export const Navbar: React.FC<Props> = ({
   currentRole,
   currentLang,
@@ -47,7 +90,9 @@ export const Navbar: React.FC<Props> = ({
   activeWorker,
   employerProfile,
   unreadNotificationsCount = 0,
+  workerTab = 'profile',
   onRoleChange,
+  onOpenWorkerTab,
   onLangChange,
   onOpenCalculator,
   onOpenAuthModal,
@@ -55,255 +100,172 @@ export const Navbar: React.FC<Props> = ({
   onOpenNotifications,
   onLogout,
 }) => {
-  const languages: { code: Language; label: string; nativeName: string }[] = [
-    { code: 'en', label: 'EN', nativeName: 'English' },
-    { code: 'hi', label: 'हिं', nativeName: 'हिंदी' },
-    { code: 'mr', label: 'म', nativeName: 'मराठी' },
-    { code: 'ta', label: 'த', nativeName: 'தமிழ்' },
-  ];
+  const t = useMemo(() => makeT(currentLang), [currentLang]);
 
   const isWorkerLoggedIn = authSession?.role === 'worker' && Boolean(activeWorker);
   const isEmployerLoggedIn = authSession?.role === 'employer';
 
+  const openWorkerTab = (tab: WorkerTab) =>
+    onOpenWorkerTab ? onOpenWorkerTab(tab) : onRoleChange('worker-profile');
+
+  const onProfilePage = currentRole === 'worker-profile';
+  const authTone = currentRole === 'employer' || isEmployerLoggedIn ? 'employer' : 'worker';
+
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
+    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur-md">
       <div className="hv-stripe h-1" aria-hidden="true" />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-        {/* Zone 1: Brand Wordmark */}
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+        {/* Zone 1: Brand wordmark */}
         <button
+          type="button"
           onClick={() => onRoleChange('landing')}
-          aria-label="Shramkart home"
-          className="shrink-0 cursor-pointer rounded-lg py-1 transition-opacity hover:opacity-80"
+          aria-label={t('navHomeAria')}
+          className="min-h-11 shrink-0 cursor-pointer rounded-lg py-1 transition-opacity hover:opacity-80"
         >
           <BrandLogo showTagline />
         </button>
 
-        {/* Zone 2: Contextual Navigation Links */}
-        <nav className="hidden md:flex items-center gap-6 text-xs font-bold text-slate-600">
+        {/* Zone 2: Navigation for the current role (desktop; phones and tablets use the bottom bar) */}
+        <nav aria-label={t('navMainAria')} className="hidden items-center gap-6 lg:flex">
           {isWorkerLoggedIn ? (
             <>
-              <button
-                onClick={() => onRoleChange('worker')}
-                className={`whitespace-nowrap shrink-0 transition-colors flex items-center gap-1.5 py-1 ${
-                  currentRole === 'worker'
-                    ? 'text-amber-600 border-b-2 border-amber-500 font-extrabold'
-                    : 'hover:text-slate-900'
-                }`}
+              <NavLink tone="worker" active={currentRole === 'worker'} onClick={() => onRoleChange('worker')}>
+                <Briefcase className="h-4 w-4" aria-hidden="true" />
+                <span>{t('navJobsFeed')}</span>
+              </NavLink>
+              <NavLink
+                tone="worker"
+                active={onProfilePage && workerTab === 'inbox'}
+                onClick={() => openWorkerTab('inbox')}
               >
-                <Briefcase className="w-3.5 h-3.5" />
-                <span>Jobs Feed</span>
-              </button>
-              <button
-                onClick={() => onRoleChange('worker-profile')}
-                className={`whitespace-nowrap shrink-0 transition-colors flex items-center gap-1.5 py-1 ${
-                  currentRole === 'worker-profile'
-                    ? 'text-amber-600 border-b-2 border-amber-500 font-extrabold'
-                    : 'hover:text-slate-900'
-                }`}
+                <FileText className="h-4 w-4" aria-hidden="true" />
+                <span>{t('navApplications')}</span>
+              </NavLink>
+              <NavLink
+                tone="worker"
+                active={onProfilePage && workerTab !== 'inbox'}
+                onClick={() => openWorkerTab('profile')}
               >
-                <UserCheck className="w-3.5 h-3.5" />
-                <span>My Profile & Applications</span>
-              </button>
-              <button
-                onClick={onOpenCalculator}
-                className="whitespace-nowrap shrink-0 transition-colors hover:text-slate-900"
-              >
-                Salary Calculator
-              </button>
+                <UserCheck className="h-4 w-4" aria-hidden="true" />
+                <span>{t('navMyProfile')}</span>
+              </NavLink>
+              <NavLink tone="neutral" active={false} onClick={onOpenCalculator}>
+                {t('navSalaryCalc')}
+              </NavLink>
             </>
           ) : isEmployerLoggedIn ? (
             <>
-              <button
+              <NavLink
+                tone="employer"
+                active={currentRole === 'employer-profile'}
                 onClick={() => onRoleChange('employer-profile')}
-                className={`whitespace-nowrap shrink-0 transition-colors flex items-center gap-1.5 py-1 ${
-                  currentRole === 'employer-profile'
-                    ? 'text-blue-600 border-b-2 border-blue-600 font-extrabold'
-                    : 'hover:text-slate-900'
-                }`}
               >
-                <Factory className="w-3.5 h-3.5" />
-                <span>Employer Dashboard</span>
-              </button>
-              <button
-                onClick={() => onRoleChange('employer')}
-                className={`whitespace-nowrap shrink-0 transition-colors flex items-center gap-1.5 py-1 ${
-                  currentRole === 'employer'
-                    ? 'text-blue-600 border-b-2 border-blue-600 font-extrabold'
-                    : 'hover:text-slate-900'
-                }`}
-              >
-                <Users className="w-3.5 h-3.5" />
-                <span>Candidate Directory</span>
-              </button>
+                <Factory className="h-4 w-4" aria-hidden="true" />
+                <span>{t('navDashboard')}</span>
+              </NavLink>
+              <NavLink tone="employer" active={currentRole === 'employer'} onClick={() => onRoleChange('employer')}>
+                <Users className="h-4 w-4" aria-hidden="true" />
+                <span>{t('navCandidates')}</span>
+              </NavLink>
               {onOpenPostJob && (
-                <button
-                  onClick={onOpenPostJob}
-                  className="whitespace-nowrap shrink-0 transition-colors flex items-center gap-1 text-emerald-700 hover:text-emerald-800"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Post a Job</span>
-                </button>
+                <NavLink tone="employer" active={false} onClick={onOpenPostJob}>
+                  <Plus className="h-4 w-4" aria-hidden="true" />
+                  <span>{t('navPostJob')}</span>
+                </NavLink>
               )}
             </>
           ) : (
             <>
-              <button
-                onClick={() => onRoleChange('landing')}
-                className={`whitespace-nowrap shrink-0 transition-colors ${
-                  currentRole === 'landing'
-                    ? 'text-slate-900 font-extrabold underline underline-offset-4'
-                    : 'hover:text-slate-900'
-                }`}
-              >
-                Home
-              </button>
-              <button
-                onClick={() => onRoleChange('worker')}
-                className={`whitespace-nowrap shrink-0 transition-colors ${
-                  currentRole === 'worker'
-                    ? 'text-amber-600 font-extrabold underline underline-offset-4'
-                    : 'hover:text-slate-900'
-                }`}
-              >
-                Browse Jobs
-              </button>
-              <button
-                onClick={() => onRoleChange('employer')}
-                className={`whitespace-nowrap shrink-0 transition-colors ${
-                  currentRole === 'employer'
-                    ? 'text-blue-600 font-extrabold underline underline-offset-4'
-                    : 'hover:text-slate-900'
-                }`}
-              >
-                For Employers
-              </button>
-              <button
-                onClick={onOpenCalculator}
-                className="whitespace-nowrap shrink-0 transition-colors hover:text-slate-900"
-              >
-                Salary Calculator
-              </button>
+              <NavLink tone="neutral" active={currentRole === 'landing'} onClick={() => onRoleChange('landing')}>
+                {t('navHome')}
+              </NavLink>
+              <NavLink tone="worker" active={currentRole === 'worker'} onClick={() => onRoleChange('worker')}>
+                {t('navBrowseJobs')}
+              </NavLink>
+              <NavLink tone="employer" active={currentRole === 'employer'} onClick={() => onRoleChange('employer')}>
+                {t('navForEmployers')}
+              </NavLink>
+              <NavLink tone="neutral" active={false} onClick={onOpenCalculator}>
+                {t('navSalaryCalc')}
+              </NavLink>
             </>
           )}
         </nav>
 
-        {/* Zone 3: Language Switcher & Auth / Profile Controls */}
-        <div className="flex items-center gap-2.5 shrink-0">
-          <div className="hidden sm:flex items-center border border-slate-200 rounded-lg p-0.5 bg-slate-50 text-xs">
-            {languages.map((l) => (
-              <button
-                key={l.code}
-                onClick={() => onLangChange(l.code)}
-                title={l.nativeName}
-                className={`px-2 py-1 rounded-md font-medium transition-colors whitespace-nowrap shrink-0 ${
-                  currentLang === l.code
-                    ? 'bg-white text-slate-900 shadow-xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                {l.label}
-              </button>
-            ))}
+        {/* Zone 3: language, alerts and account */}
+        <div className="flex shrink-0 items-center gap-2">
+          {/* A native select works on every screen size, by keyboard, touch and screen reader. */}
+          <div>
+            <label htmlFor="lang-select" className="sr-only">
+              {t('langLabel')}
+            </label>
+            <select
+              id="lang-select"
+              value={currentLang}
+              onChange={(e) => onLangChange(e.target.value as Language)}
+              className="field !min-h-11 !w-auto !py-1 !pl-2 !pr-1 !text-sm font-semibold"
+            >
+              {LANGUAGES.map((l) => (
+                <option key={l.code} value={l.code}>
+                  {l.nativeName}
+                </option>
+              ))}
+            </select>
           </div>
 
           {(isWorkerLoggedIn || isEmployerLoggedIn) && onOpenNotifications && (
             <button
+              type="button"
               onClick={onOpenNotifications}
-              className="relative p-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700"
-              title="Notifications"
+              aria-label={
+                unreadNotificationsCount > 0
+                  ? t('bellAria', { n: unreadNotificationsCount })
+                  : t('bellAriaNone')
+              }
+              className="btn btn-secondary relative !min-w-11 !px-0"
             >
-              <Bell className="w-4 h-4" />
+              <Bell className="h-5 w-5" aria-hidden="true" />
               {unreadNotificationsCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-400 text-slate-950 font-black text-[10px] flex items-center justify-center tabular-nums">
-                  {unreadNotificationsCount}
+                <span
+                  aria-hidden="true"
+                  className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--sk-amber)] px-1 text-meta font-black tabular-nums text-slate-950"
+                >
+                  {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
                 </span>
               )}
             </button>
           )}
 
-          {isWorkerLoggedIn && activeWorker ? (
-            <div className="flex items-center gap-2">
+          {isWorkerLoggedIn || isEmployerLoggedIn ? (
+            onLogout && (
               <button
-                onClick={() =>
-                  onRoleChange(
-                    currentRole === 'worker-profile' ? 'worker' : 'worker-profile'
-                  )
-                }
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-extrabold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-lg transition-colors whitespace-nowrap shrink-0 shadow-xs"
+                type="button"
+                onClick={onLogout}
+                aria-label={t('navLogout')}
+                className="btn btn-secondary max-[380px]:hidden sm:!px-3"
               >
-                <UserCheck className="w-3.5 h-3.5" />
-                <span>
-                  {currentRole === 'worker-profile'
-                    ? 'Jobs Feed'
-                    : `${activeWorker.name.split(' ')[0]} · My Profile`}
-                </span>
+                <LogOut className="h-4 w-4" aria-hidden="true" />
+                <span className="hidden sm:inline">{t('navLogout')}</span>
               </button>
-              {onLogout && (
-                <button
-                  onClick={onLogout}
-                  className="inline-flex items-center gap-1 px-2.5 py-2 text-xs font-semibold text-slate-600 hover:text-red-700 bg-slate-100 hover:bg-red-50 rounded-lg transition-colors whitespace-nowrap shrink-0"
-                  title="Log Out"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Log Out</span>
-                </button>
-              )}
-            </div>
-          ) : isEmployerLoggedIn ? (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() =>
-                  onRoleChange(
-                    currentRole === 'employer-profile'
-                      ? 'employer'
-                      : 'employer-profile'
-                  )
-                }
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-blue-700 hover:bg-blue-800 rounded-lg transition-colors whitespace-nowrap shrink-0 shadow-xs"
-              >
-                <Factory className="w-3.5 h-3.5" />
-                <span>
-                  {currentRole === 'employer-profile'
-                    ? 'Find Candidates'
-                    : `${employerProfile.companyName.split(' ')[0]} · Dashboard`}
-                </span>
-              </button>
-              {onLogout && (
-                <button
-                  onClick={onLogout}
-                  className="inline-flex items-center gap-1 px-2.5 py-2 text-xs font-semibold text-slate-600 hover:text-red-700 bg-slate-100 hover:bg-red-50 rounded-lg transition-colors whitespace-nowrap shrink-0"
-                  title="Log Out"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Log Out</span>
-                </button>
-              )}
-            </div>
+            )
           ) : (
-            <div className="flex items-center gap-2">
+            // Phones get Log in / Register from the bottom bar and the page itself.
+            <div className="hidden items-center gap-2 sm:flex">
               <button
-                onClick={() =>
-                  onOpenAuthModal(
-                    currentRole === 'employer' ? 'employer' : 'worker',
-                    'login'
-                  )
-                }
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors whitespace-nowrap shrink-0"
+                type="button"
+                onClick={() => onOpenAuthModal(authTone, 'login')}
+                className="btn btn-secondary"
               >
-                <LogIn className="w-3.5 h-3.5" />
-                <span>Log In</span>
+                <LogIn className="h-4 w-4" aria-hidden="true" />
+                <span>{t('navLogin')}</span>
               </button>
               <button
-                onClick={() =>
-                  onOpenAuthModal(
-                    currentRole === 'employer' ? 'employer' : 'worker',
-                    'register'
-                  )
-                }
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-extrabold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-lg transition-colors whitespace-nowrap shrink-0 shadow-xs"
+                type="button"
+                onClick={() => onOpenAuthModal(authTone, 'register')}
+                className={`btn ${authTone === 'employer' ? 'btn-employer' : 'btn-worker'}`}
               >
-                <UserPlus className="w-3.5 h-3.5" />
-                <span>Register</span>
+                <UserPlus className="h-4 w-4" aria-hidden="true" />
+                <span>{t('navRegister')}</span>
               </button>
             </div>
           )}

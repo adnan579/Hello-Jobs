@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   UserRole,
   Language,
@@ -23,7 +23,11 @@ import {
   DpdpAuditLog,
 } from './types';
 import { EMPTY_EMPLOYER } from './data/emptyState';
-import { Navbar } from './components/Navbar';
+import { makeT } from './data/translations';
+import { isUnread, savedJobIdSet, toggleId } from './modules/discovery';
+import { Navbar, type WorkerTab } from './components/Navbar';
+import { BottomNav } from './components/BottomNav';
+import { Dialog } from './components/ui/Dialog';
 import { DualLanding } from './components/DualLanding';
 import { WorkerPortal } from './components/WorkerPortal';
 import { EmployerPortal } from './components/EmployerPortal';
@@ -70,18 +74,7 @@ import {
   ERROR_EVENT,
   type BootstrapPayload,
 } from './utils/api';
-import {
-  Briefcase,
-  FileText,
-  UserCheck,
-  Bell,
-  X,
-  CheckCircle2,
-  Clock,
-  Building2,
-  Users,
-  AlertTriangle,
-} from 'lucide-react';
+import { Bell, X, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
 
 export default function App() {
   const [currentRole, setCurrentRole] = useState<UserRole>('landing');
@@ -100,6 +93,10 @@ export default function App() {
   const [shortlistedIds, setShortlistedIds] = useState<string[]>([]);
   const [feeReports, setFeeReports] = useState<FeeReport[]>([]);
   const [notifications, setNotifications] = useState<NotificationEvent[]>([]);
+  // Notifications the person has opened the list for in this visit. The server's own `read` flag
+  // still counts: a notification is unread only if neither says it was read.
+  const [readNotificationIds, setReadNotificationIds] = useState<Set<string>>(new Set());
+  const [workerTab, setWorkerTab] = useState<WorkerTab>('profile');
   const [verificationRecords, setVerificationRecords] = useState<
     VerificationRecord[]
   >([]);
@@ -111,6 +108,7 @@ export default function App() {
   const [grievances, setGrievances] = useState<DpdpGrievanceTicket[]>([]);
   const [auditLogs, setAuditLogs] = useState<DpdpAuditLog[]>([]);
   const [stats, setStats] = useState({ workers: 0, factories: 0, jobs: 0 });
+  const t = useMemo(() => makeT(currentLang), [currentLang]);
 
   // Modals & Drawers
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -389,8 +387,80 @@ export default function App() {
     }
   };
 
+  /* Notifications unread tracking */
+  const unreadNotificationsCount = notifications.filter(
+    (n) => isUnread(n) && !readNotificationIds.has(n.id)
+  ).length;
+
+  const markNotificationsRead = () => {
+    setReadNotificationIds((prev) => {
+      const next = new Set(prev);
+      notifications.forEach((n) => next.add(n.id));
+      return next;
+    });
+  };
+
+  // One entry point for the header bell and the phone Alerts tab, so both mark things as seen.
+  const openNotifications = () => {
+    setIsNotificationsDrawerOpen(true);
+    markNotificationsRead();
+  };
+
+  const openWorkerTab = (tab: WorkerTab) => {
+    setWorkerTab(tab);
+    handleRoleChange('worker-profile');
+  };
+
+  /** Saves or un-saves a job on the signed-in worker's profile (stored on the server). */
+  const handleToggleSaveJob = async (jobId: string) => {
+    if (!activeWorker) return;
+    const current = [...savedJobIdSet(activeWorker)];
+    await run(updateCandidateApi({ ...activeWorker, savedJobIds: toggleId(current, jobId) }));
+  };
+
+  // Screen readers and browser translation need the page language.
+  useEffect(() => {
+    document.documentElement.lang = currentLang;
+  }, [currentLang]);
+
+  /* Escape key handler for all modals and drawers */
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isCalculatorOpen) setIsCalculatorOpen(false);
+        if (isReportOpen) setIsReportOpen(false);
+        if (isNcvtSearchOpen) setIsNcvtSearchOpen(false);
+        if (isCreateProfileOpen) setIsCreateProfileOpen(false);
+        if (isPostJobOpen) setIsPostJobOpen(false);
+        if (isAuthModalOpen) setIsAuthModalOpen(false);
+        if (isLegalModalOpen) setIsLegalModalOpen(false);
+        if (isDpdpOpen) setIsDpdpOpen(false);
+        if (isNcvtModalOpen) setIsNcvtModalOpen(false);
+        if (isOfferModalOpen) setIsOfferModalOpen(false);
+        if (isVideoModalOpen) setIsVideoModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    isCalculatorOpen,
+    isReportOpen,
+    isNcvtSearchOpen,
+    isCreateProfileOpen,
+    isPostJobOpen,
+    isAuthModalOpen,
+    isLegalModalOpen,
+    isDpdpOpen,
+    isNcvtModalOpen,
+    isOfferModalOpen,
+    isVideoModalOpen,
+  ]);
+
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
+    <div className="pb-nav flex min-h-screen flex-col bg-slate-50 text-slate-900">
+      <a href="#main" className="skip-link">
+        {t('skipToContent')}
+      </a>
       {toast && (
         <div
           role="alert"
@@ -398,8 +468,8 @@ export default function App() {
         >
           <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
           <span className="flex-1">{toast}</span>
-          <button onClick={() => setToast('')} aria-label="Dismiss">
-            <X className="w-4 h-4" />
+          <button type="button" onClick={() => setToast('')} aria-label={t('close')}>
+            <X className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
       )}
@@ -410,20 +480,22 @@ export default function App() {
         authSession={authSession}
         activeWorker={activeWorker}
         employerProfile={employerProfile}
-        unreadNotificationsCount={notifications.length}
+        unreadNotificationsCount={unreadNotificationsCount}
+        workerTab={workerTab}
+        onOpenWorkerTab={openWorkerTab}
         onRoleChange={handleRoleChange}
         onLangChange={setCurrentLang}
         onOpenCalculator={() => setIsCalculatorOpen(true)}
         onOpenReport={() => handleOpenReport()}
         onOpenNcvtSearch={() => setIsNcvtSearchOpen(true)}
         onOpenAuthModal={handleOpenAuthModal}
-        onOpenNotifications={() => setIsNotificationsDrawerOpen(true)}
+        onOpenNotifications={openNotifications}
         onOpenPostJob={() => setIsPostJobOpen(true)}
         onLogout={handleLogout}
       />
 
       {/* Main View Router */}
-      <main className="flex-1">
+      <main id="main" tabIndex={-1} className="flex-1 outline-none">
         {currentRole === 'landing' && (
           <DualLanding
             currentLang={currentLang}
@@ -461,6 +533,7 @@ export default function App() {
             onOpenCreateProfile={() => setIsCreateProfileOpen(true)}
             onOpenReport={handleOpenReport}
             onRegisterDrive={handleRegisterDrive}
+            onToggleSaveJob={handleToggleSaveJob}
           />
         )}
 
@@ -496,6 +569,8 @@ export default function App() {
             offers={offers}
             currentLang={currentLang}
             retentionCheckIns={retentionCheckIns}
+            activeTab={workerTab}
+            onActiveTabChange={setWorkerTab}
             onUpdateWorker={handleUpdateWorker}
             onUpdateOfferStatus={handleUpdateOfferStatus}
             onSubmitCheckIn={handleSubmitCheckIn}
@@ -531,162 +606,63 @@ export default function App() {
       </main>
 
       {/* Mobile Bottom Tab Bar */}
-      <nav
-        aria-label="Mobile bottom navigation"
-        className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-slate-950 text-slate-300 border-t border-slate-800 grid grid-cols-4 h-16"
-      >
-        {authSession?.role === 'employer' ? (
-          <>
-            <button
-              onClick={() => handleRoleChange('employer-profile')}
-              className={`flex flex-col items-center justify-center gap-1 text-[11px] font-bold ${
-                currentRole === 'employer-profile'
-                  ? 'text-indigo-400'
-                  : 'text-slate-400'
-              }`}
-            >
-              <Building2 className="w-4 h-4" />
-              <span>Dashboard</span>
-            </button>
-            <button
-              onClick={() => handleRoleChange('employer')}
-              className={`flex flex-col items-center justify-center gap-1 text-[11px] font-bold ${
-                currentRole === 'employer'
-                  ? 'text-indigo-400'
-                  : 'text-slate-400'
-              }`}
-            >
-              <Users className="w-4 h-4" />
-              <span>Candidates</span>
-            </button>
-            <button
-              onClick={() => setIsPostJobOpen(true)}
-              className="flex flex-col items-center justify-center gap-1 text-[11px] font-bold text-slate-400 hover:text-indigo-400"
-            >
-              <Briefcase className="w-4 h-4" />
-              <span>Post Job</span>
-            </button>
-            <button
-              onClick={() => setIsNotificationsDrawerOpen(true)}
-              className="flex flex-col items-center justify-center gap-1 text-[11px] font-bold text-slate-400 hover:text-indigo-400 relative"
-            >
-              <Bell className="w-4 h-4" />
-              <span>Alerts ({notifications.length})</span>
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              onClick={() => handleRoleChange('worker')}
-              className={`flex flex-col items-center justify-center gap-1 text-[11px] font-bold ${
-                currentRole === 'worker' ? 'text-amber-400' : 'text-slate-400'
-              }`}
-            >
-              <Briefcase className="w-4 h-4" />
-              <span>Jobs Feed</span>
-            </button>
-
-            <button
-              onClick={() => {
-                if (authSession?.role === 'worker') {
-                  handleRoleChange('worker-profile');
-                } else {
-                  handleOpenAuthModal('worker', 'login');
-                }
-              }}
-              className={`flex flex-col items-center justify-center gap-1 text-[11px] font-bold ${
-                currentRole === 'worker-profile'
-                  ? 'text-amber-400'
-                  : 'text-slate-400'
-              }`}
-            >
-              <UserCheck className="w-4 h-4" />
-              <span>My Profile</span>
-            </button>
-
-            <button
-              onClick={() => {
-                if (authSession?.role === 'worker') {
-                  handleRoleChange('worker-profile');
-                } else {
-                  handleOpenAuthModal('worker', 'register');
-                }
-              }}
-              className="flex flex-col items-center justify-center gap-1 text-[11px] font-bold text-slate-400 hover:text-amber-400"
-            >
-              <FileText className="w-4 h-4" />
-              <span>
-                {authSession?.role === 'worker'
-                  ? `Offers (${offers.length})`
-                  : 'Register'}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setIsNotificationsDrawerOpen(true)}
-              className="flex flex-col items-center justify-center gap-1 text-[11px] font-bold text-slate-400 hover:text-amber-400 relative"
-            >
-              <Bell className="w-4 h-4" />
-              <span>Alerts ({notifications.length})</span>
-            </button>
-          </>
-        )}
-      </nav>
+      <BottomNav
+        t={t}
+        currentRole={currentRole}
+        signedInAs={
+          authSession?.role === 'employer'
+            ? 'employer'
+            : authSession?.role === 'worker' && activeWorker
+              ? 'worker'
+              : null
+        }
+        workerTab={workerTab}
+        unreadCount={unreadNotificationsCount}
+        onRoleChange={handleRoleChange}
+        onOpenWorkerTab={openWorkerTab}
+        onOpenNotifications={openNotifications}
+        onOpenPostJob={() => setIsPostJobOpen(true)}
+        onOpenAuthModal={handleOpenAuthModal}
+      />
 
       {/* In-App Notifications Drawer */}
-      {isNotificationsDrawerOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/70 backdrop-blur-xs">
-          <div className="w-full max-w-md bg-white h-full shadow-2xl border-l border-slate-200 flex flex-col">
-            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
-              <div>
-                <span className="text-[10px] uppercase tracking-wider text-amber-400 font-bold block">
-                  Activity & Alerts
-                </span>
-                <h3 className="text-sm font-extrabold">
-                  Application Updates & Hiring Notifications
-                </h3>
-              </div>
-              <button
-                onClick={() => setIsNotificationsDrawerOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-white rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-3 bg-indigo-50 border-b border-indigo-200 text-[11px] text-indigo-900 font-semibold flex items-center gap-2">
-              <Clock className="w-4 h-4 text-indigo-600 shrink-0" />
-              <span>
-                Quiet Hours Active: Non-urgent alerts between 9:00 PM – 8:00 AM IST are delivered at 8:00 AM.
-              </span>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {notifications.map((n) => (
-                <div
-                  key={n.id}
-                  className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-xs"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="px-2 py-0.5 rounded bg-slate-900 text-amber-300 font-bold text-[10px]">
-                      {n.channel}
-                    </span>
-                    <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" />
-                      {n.status}
-                    </span>
-                  </div>
-                  <div className="font-bold text-slate-900">{n.title}</div>
-                  <p className="text-slate-600">{n.body}</p>
-                  <div className="text-[10px] text-slate-400 tabular-nums">
-                    {n.createdAt}
-                  </div>
-                </div>
-              ))}
-            </div>
+      <Dialog
+        open={isNotificationsDrawerOpen}
+        onClose={() => setIsNotificationsDrawerOpen(false)}
+        variant="drawer"
+        eyebrow={t('notifSubtitle')}
+        title={t('notifTitle')}
+        closeLabel={t('notifCloseAria')}
+      >
+        <p className="mb-3 flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-meta font-semibold text-slate-700">
+          <Clock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>{t('notifQuiet')}</span>
+        </p>
+        {notifications.length === 0 ? (
+          <div className="flex flex-col items-center py-10 text-center">
+            <Bell className="mb-3 h-10 w-10 text-slate-400" aria-hidden="true" />
+            <h3 className="text-body font-bold text-slate-900">{t('notifEmptyTitle')}</h3>
+            <p className="mt-1 max-w-xs text-body text-slate-700">{t('notifEmptyBody')}</p>
           </div>
-        </div>
-      )}
+        ) : (
+          <ul className="space-y-3">
+            {notifications.map((n) => (
+              <li key={n.id} className="space-y-1.5 rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="badge">{n.channel}</span>
+                  <span className="inline-flex items-center gap-1 text-meta font-bold text-[var(--sk-green-text)]">
+                    <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                    {n.status}
+                  </span>
+                </div>
+                <p className="text-body font-bold text-slate-900">{n.title}</p>
+                <p className="text-body text-slate-700">{n.body}</p>
+                <p className="text-meta tabular-nums text-slate-600">{n.createdAt}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Dialog>
 
       {/* Universal Footer */}
       <Footer

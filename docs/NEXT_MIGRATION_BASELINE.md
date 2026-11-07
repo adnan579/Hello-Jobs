@@ -3,8 +3,9 @@
 ## Baseline gates
 
 - `npm run lint`: passed on the branch baseline.
-- `npm test`: 11 files and 114 tests passed.
-- `npm run e2e`: not completed in this container because Chromium cannot load `libatk-1.0.so.0`; CI installs browser system dependencies before running it.
+- `npm test`: 14 files and 122 tests pass.
+- `npm run e2e`: the journey passes against `next dev` (the test waits for the `html[data-hydrated]` marker, which the app sets once React is attached and the first session check is done).
+- `vite-final` rollback tag: not yet on GitHub. Create it from the Releases page (Draft a new release, tag `vite-final`, target commit `5942508`, the last Vite-only `main`).
 
 ## Behavior to preserve
 

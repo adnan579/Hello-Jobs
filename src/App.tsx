@@ -192,6 +192,12 @@ export default function App({ initialRole, initialData, initialAuth, initialLega
     return () => clearInterval(interval);
   }, [syncFromBackend]);
 
+  // Marks the page as ready once React is attached and the first session check is done, so browser tests
+  // never click a server-rendered button before the app knows who is signed in.
+  useEffect(() => {
+    if (!booting) document.documentElement.dataset.hydrated = 'true';
+  }, [booting]);
+
   // Server says our session is gone (expired, revoked elsewhere): drop to the public site.
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => {
@@ -443,7 +449,13 @@ export default function App({ initialRole, initialData, initialAuth, initialLega
 
   // Only a signed-in factory can post a job. Everyone else is sent to the right door first,
   // instead of filling in a form that the server would refuse at the end.
+  const pendingPostJob = useRef(false);
   const requestPostJob = () => {
+    // Still asking the server who is signed in: remember the click rather than showing a login box to a signed-in factory.
+    if (booting) {
+      pendingPostJob.current = true;
+      return;
+    }
     if (authSession?.role === 'employer') setIsPostJobOpen(true);
     else if (authSession?.role === 'worker') {
       setToast(t('postJobFactoryOnly'));
@@ -452,6 +464,14 @@ export default function App({ initialRole, initialData, initialAuth, initialLega
     }
     else handleOpenAuthModal('employer', 'login');
   };
+
+  useEffect(() => {
+    if (!booting && pendingPostJob.current) {
+      pendingPostJob.current = false;
+      requestPostJob();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [booting]);
 
   const openWorkerTab = (tab: WorkerTab) => {
     handleRoleChange('worker-profile');

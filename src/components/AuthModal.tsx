@@ -312,7 +312,7 @@ export const AuthModal: React.FC<Props> = ({
           {(
           <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl text-xs">
             <button
-              data-testid={`auth-register-mode-${roleTab}`}
+              data-testid={`auth-login-mode-${roleTab}`}
               type="button"
               onClick={() => {
                 setAuthMode('login');
@@ -329,6 +329,7 @@ export const AuthModal: React.FC<Props> = ({
               <span>Log In</span>
             </button>
             <button
+              data-testid={`auth-register-mode-${roleTab}`}
               type="button"
               onClick={() => {
                 setAuthMode('register');

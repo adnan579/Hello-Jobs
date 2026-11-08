@@ -5,7 +5,7 @@
 - `npm run lint`: passed on the branch baseline.
 - `npm test`: 14 files and 122 tests pass.
 - `npm run e2e`: the journey passes against `next dev` (the test waits for the `html[data-hydrated]` marker, which the app sets once React is attached and the first session check is done).
-- `vite-final` rollback tag: not yet on GitHub. Create it from the Releases page (Draft a new release, tag `vite-final`, target commit `5942508`, the last Vite-only `main`).
+- `vite-final` rollback tag: exists on GitHub at commit `5942508`, the last Vite-only `main`.
 
 ## Behavior to preserve
 
@@ -23,6 +23,6 @@ The public pages live under `app/(public)` with their own root layout and styles
 
 ## Deployment shape and Phase 5 pause point
 
-Next.js serves pages and API traffic in the existing Vercel project. A Node route handler adapts web requests to the Express app, preserving its middleware, request parsing, and tests. Local development uses this same route handler. The Vite build and server commands remain available for rollback.
+Next.js serves pages and API traffic in the existing Vercel project. A Node route handler adapts web requests to the Express app, preserving its middleware, request parsing, and tests. Local development uses this same route handler. The Vite build and server commands were removed in Phase 7; the `vite-final` tag keeps them.
 
 Phase 5 has not started: all API routes still use the Express adapter. Keep it until the replacement for the in-memory limiter is resolved and each route has equivalent direct-handler contract coverage.

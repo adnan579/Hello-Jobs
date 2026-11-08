@@ -1,7 +1,17 @@
 import type { NextConfig } from 'next';
 
+// Public contact details are read in the browser, so Next.js must inline them at build time. NEXT_PUBLIC_* is the
+// name to use; the old VITE_* names from the Vite build are still accepted so an existing deployment keeps working.
+const publicContact = (name: string) => process.env[`NEXT_PUBLIC_${name}`] ?? process.env[`VITE_${name}`] ?? '';
+
 const nextConfig: NextConfig = {
   agentRules: false,
+  env: {
+    NEXT_PUBLIC_GRIEVANCE_OFFICER_NAME: publicContact('GRIEVANCE_OFFICER_NAME'),
+    NEXT_PUBLIC_GRIEVANCE_EMAIL: publicContact('GRIEVANCE_EMAIL'),
+    NEXT_PUBLIC_HELPLINE: publicContact('HELPLINE'),
+    NEXT_PUBLIC_COMPANY_ADDRESS: publicContact('COMPANY_ADDRESS'),
+  },
   outputFileTracingIncludes: {
     '/*': ['./server/migrations/*.sql'],
   },

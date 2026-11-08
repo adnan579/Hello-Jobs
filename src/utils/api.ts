@@ -116,11 +116,6 @@ export async function logoutApi(): Promise<void> {
   await request('POST', '/api/auth/logout', {}, { quiet: true });
 }
 
-export async function listSessionsApi(): Promise<ServerSession[] | null> {
-  const r = await request<{ sessions: ServerSession[] }>('GET', '/api/sessions', undefined, { quiet: true });
-  return r.ok ? r.data.sessions : null;
-}
-
 export async function revokeSessionsApi(opts: { sessionId?: string; all?: boolean }): Promise<ServerSession[] | null> {
   const r = await request<{ sessions: ServerSession[] }>('POST', '/api/sessions/revoke', opts);
   return r.ok ? r.data.sessions : null;
@@ -246,9 +241,7 @@ export async function submitReportApi(report: Partial<WhistleblowerReport>): Pro
   return r.ok;
 }
 
-export const createHiringDriveApi = (drive: Partial<HiringDrive>) => snap('POST', '/api/drives', drive);
 export const registerHiringDriveApi = (driveId: string) => snap('POST', `/api/drives/${driveId}/register`, {});
-export const checkInToDriveApi = (driveId: string, body: { candidateId?: string; checkInCode?: string }) => snap('POST', `/api/drives/${driveId}/checkin`, body);
 export const submitRetentionCheckInApi = (c: Partial<RetentionCheckIn>) => snap('POST', '/api/checkins', c);
 
 // ---------- DPDP ----------

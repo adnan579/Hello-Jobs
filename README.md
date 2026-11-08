@@ -17,12 +17,12 @@ A two-way marketplace for blue and grey-collar manufacturing work in India. Veri
 
 ## How it is built
 
-- **Front end:** React 19, Next.js App Router, and Tailwind. The existing screen UI remains a client component while public routes are moved incrementally. The session is an httpOnly cookie; the browser only holds what the server sends for that person's role (`/api/bootstrap`).
+- **Front end:** React 19, Next.js App Router, and Tailwind. The main screen UI is one client component (`src/App.tsx`) mounted by the catch-all page; the job pages, `/employers`, `/about`, the sitemap and the staff console are native routes. The session is an httpOnly cookie; the browser only holds what the server sends for that person's role (`/api/bootstrap`).
 - **Back end:** Express and PostgreSQL (`server/`). Every input is checked with zod. Ownership and role checks are in SQL. Credits and payments are atomic and run once.
 - **Security:** hashed login codes with attempt limits, hashed session tokens, origin check on writes, strict content security policy in production, rate limits, append-only audit log.
-- **Hosting:** one Vercel deployment. Next.js serves pages and its Node API route adapts requests to the existing Express app during the migration. `server.ts` remains available for the Vite rollback build.
+- **Hosting:** one Vercel deployment. Next.js builds and serves everything (there is no separate front-end build). `GET /api/health`, `GET /api/bootstrap`, `POST /api/jobs` and `PUT /api/jobs/:id` are native Next.js route handlers; every other `/api` route is the Express app, mounted through `app/api/[...path]/route.ts`.
 
-Folder map: `server/` (API), `src/` (UI), `server/migrations/` (SQL), `tests/` (API tests), `e2e/` (browser test), `scripts/` (migrate, create admin, local Postgres), `docs/` (guides).
+Folder map: `app/` (Next.js pages, staff console and route handlers), `proxy.ts` (page security headers), `instrumentation.ts` (error reporting), `server/` (API), `src/` (UI components, data, helpers), `server/migrations/` (SQL), `tests/` (API tests), `e2e/` (browser tests), `scripts/` (migrate, create admin, local Postgres, lint, smoke test), `docs/` (guides).
 
 ## Run it on your computer
 
@@ -41,12 +41,11 @@ In development the login code is shown on screen. In production it is never show
 ```bash
 npm run lint                         # TypeScript (strict) + Biome; warnings may not increase
 npm run build                        # Next.js production build
-npm run build:vite                   # rollback Vite build
-TEST_DATABASE_URL=postgres://... npm test        # API and security tests (starts its own Postgres if unset)
+TEST_DATABASE_URL=postgres://... npm test        # API and security tests (Vitest; starts its own Postgres if unset)
 npx playwright install chromium && npm run e2e   # full browser journey
 ```
 
-CI (`.github/workflows/ci.yml`) runs all of these on every pull request.
+CI (`.github/workflows/ci.yml`) runs all of these on every pull request, plus a smoke test of the production build (`npm run preview:check`). The app is built, served and tested through Next.js only. Vitest, the test runner, needs the `vite` package as a required peer, so it stays as a dev dependency; nothing is built or served with it.
 
 ## Go live
 

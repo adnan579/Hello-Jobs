@@ -35,7 +35,7 @@ Never point preview at the production database. Never reuse `SESSION_SECRET` bet
 
 **Speed**: `PUBLIC_CACHE_SEC` is how long the public job list and counters are kept in each server instance's memory (default 30 in production, 0 elsewhere, at most 300). Only public data is cached. A person's own data (profile, applications, dashboards) and the admin console are always read fresh, and HR contact details are added per request, never stored in the cache. A job posted or edited shows up for everyone within this time, or at once on the instance that handled the change.
 
-**Public contact details** (shown on the site): `VITE_GRIEVANCE_OFFICER_NAME`, `VITE_GRIEVANCE_EMAIL`, `VITE_HELPLINE`, `VITE_COMPANY_ADDRESS`. These are baked in at build time, so redeploy after changing them.
+**Public contact details** (shown in the page footer and the legal pages): `NEXT_PUBLIC_GRIEVANCE_OFFICER_NAME`, `NEXT_PUBLIC_GRIEVANCE_EMAIL`, `NEXT_PUBLIC_HELPLINE`, `NEXT_PUBLIC_COMPANY_ADDRESS`. These are baked in at build time, so redeploy after changing them. The older `VITE_` versions of the same names (for example `VITE_GRIEVANCE_EMAIL`) are still read when the `NEXT_PUBLIC_` one is not set, so an existing deployment keeps working. Since the move to Next.js these were silently ignored until Phase 7, so if you set them earlier, check the footer after your next deploy.
 
 **Pilot switches (for a closed trial only)**: `OTP_DEMO_MODE=true` with `OTP_DEMO_ALLOWLIST=numbers` shows the login code on screen for those numbers. `PAYMENTS_DEMO_MODE=true` gives credits without payment. Remove both before real users or real money.
 

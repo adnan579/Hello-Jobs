@@ -1,5 +1,7 @@
 # Next.js cutover checklist (Phase 6)
 
+> The migration is finished (Phase 7 removed Vite). This page stays as the record of how the cutover was checked, and the smoke test and Vercel settings below are still valid.
+
 Everything below is safe to do from a Vercel preview deployment of this branch. Nothing here touches production until you press **Promote**.
 
 ## 1. Automatic gates (CI runs these on every push)
@@ -49,15 +51,16 @@ The smoke test cannot sign in, so do these by hand, once, on the preview URL. Op
 ## 5. Rollback
 
 - **Fastest**: Vercel → Deployments → pick the last deployment from before the merge → **Promote to Production**. No code change, takes seconds.
-- **From git**: the last Vite + Express build is commit `5942508` (create the `vite-final` tag there from GitHub → Releases). Revert the merge commit on `main`.
+- **From git**: the last Vite + Express build is the `vite-final` tag (commit `5942508`). Phase 7 deleted the Vite files from `main`, so to go back, redeploy that tag from Vercel (Deployments → Redeploy a deployment built from it), or branch from it. Do not mix it with newer database migrations: those are additive, but check `server/migrations/` first.
 - The database is the same in both versions. This migration adds no tables or columns, so rolling back needs no data change.
 
 ## 6. What still goes through Express (Phase 5 is partly done)
 
-Native Next.js routes: `GET /api/health`, `GET /api/bootstrap`, `POST /api/jobs`, `PUT /api/jobs/:id`. Everything else is served by the Express app through `app/api/[...path]/route.ts`, with identical behaviour. Port the rest one router at a time using `server/next/native.ts` and add a parity block to `tests/native-routes.test.ts` for each. Port login last. Delete `server.ts`, `vite.config.ts`, `index.html` and `admin.html` in Phase 7 once every route is native and production has been stable for a while.
+Native Next.js routes: `GET /api/health`, `GET /api/bootstrap`, `POST /api/jobs`, `PUT /api/jobs/:id`. Everything else is served by the Express app through `app/api/[...path]/route.ts`, with identical behaviour. Port the rest one router at a time using `server/next/native.ts` and add a parity block to `tests/native-routes.test.ts` for each. Port login last. Phase 7 is done: `server.ts`, `vite.config.ts`, `index.html`, `admin.html`, the old `src/main.tsx` and `src/admin/main.tsx` entries and the Vite dependencies are gone. The Express app itself stays until the remaining routers are ported.
 
 ## 7. Known differences from the Vite build
 
+- Public contact details are read from `NEXT_PUBLIC_*` variables (the old `VITE_*` names are still accepted). Between the migration and Phase 7 they were silently empty.
 - API responses now carry the headers in `server/lib/security-headers.ts` instead of `helmet`'s defaults; page headers come from `proxy.ts`.
 - The per-IP request limit (600 per minute) is counted in the database (`throttles` table) for writes (POST, PUT, PATCH, DELETE, including login and one-time-code requests), so it is shared across serverless instances. Reads (GET, HEAD, OPTIONS) are counted in each instance's memory and never touch the database, so a page view costs no write. If the database is unreachable the write limiter lets the request through. Login attempts and codes also have their own stricter limits in the database.
 - The public job list and counters are cached in memory for `PUBLIC_CACHE_SEC` seconds (default 30 in production). The cache is per instance and is cleared on that instance after any successful write.

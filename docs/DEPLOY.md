@@ -11,7 +11,7 @@ Make a long random text for `SESSION_SECRET`: open any password generator in you
 
 ## 3. Hosting (Vercel)
 1. Go to vercel.com, sign up with GitHub, press **Add New → Project**, pick `adnan579/Hello-Jobs`.
-2. Branch: `main` (merge the pull request first). Framework: Next.js. The `/api/*` App Router handler adapts requests to the existing Express app during the migration.
+2. Branch: `main`. Framework: Next.js (`vercel.json` already says so). Leave the Install, Build and Output Directory settings as they are; if an earlier version of this project set an Output Directory such as `dist`, clear it.
 3. Open **Environment Variables** and add:
    - `DATABASE_URL` — from step 1
    - `SESSION_SECRET` — from step 2
@@ -55,5 +55,5 @@ See `docs/ENVIRONMENT.md` for every setting and how to keep things running smoot
 - Have a lawyer review the privacy notice, terms and the DPDP flows.
 - Get the Hindi, Marathi and Tamil text reviewed by native speakers.
 - Register the company, confirm GST invoicing with an accountant.
-- Set `VITE_GRIEVANCE_OFFICER_NAME`, `VITE_GRIEVANCE_EMAIL`, `VITE_HELPLINE` and `VITE_COMPANY_ADDRESS` in Vercel and redeploy. Until you do, the site says the details are not published yet.
+- Set `NEXT_PUBLIC_GRIEVANCE_OFFICER_NAME`, `NEXT_PUBLIC_GRIEVANCE_EMAIL`, `NEXT_PUBLIC_HELPLINE` and `NEXT_PUBLIC_COMPANY_ADDRESS` in Vercel and redeploy (the older `VITE_` names still work). Until you do, the site says the details are not published yet. They appear in the page footer, so check there after the deploy.
 - Revoke any GitHub token that was ever pasted in a chat.

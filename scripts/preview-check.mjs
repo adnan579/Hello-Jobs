@@ -66,7 +66,13 @@ for (const path of ['/jobs', '/employers', '/admin']) {
 }
 
 const about = await get('/about');
+const aboutHtml = await about.text();
 check('GET /about is 200', about.status === 200, `status ${about.status}`);
+// The public grievance/helpline details are inlined at build time. CI builds with known values and lists them here
+// (EXPECT_CONTACT=a,b) so a build that silently drops them fails.
+for (const expected of (process.env.EXPECT_CONTACT ?? '').split(',').filter(Boolean)) {
+  check(`footer shows the configured contact detail "${expected}"`, aboutHtml.includes(expected));
+}
 const jobs = await get('/jobs');
 check('GET /jobs is 200', jobs.status === 200, `status ${jobs.status}`);
 const employers = await get('/employers');

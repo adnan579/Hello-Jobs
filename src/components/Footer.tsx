@@ -48,9 +48,9 @@ export const Footer: React.FC<Props> = ({
 
           {/* Platform Navigation */}
           <div className="space-y-2">
-            <h4 className="text-slate-200 font-bold uppercase tracking-wider text-[11px]">
+            <h2 className="text-slate-200 font-bold uppercase tracking-wider text-[11px]">
               For Workers & Employers
-            </h4>
+            </h2>
             <ul className="space-y-1.5">
               <li>
                 <button
@@ -105,9 +105,9 @@ export const Footer: React.FC<Props> = ({
 
           {/* Legal & Support */}
           <div className="space-y-2">
-            <h4 className="text-slate-200 font-bold uppercase tracking-wider text-[11px]">
+            <h2 className="text-slate-200 font-bold uppercase tracking-wider text-[11px]">
               Legal & Worker Support
-            </h4>
+            </h2>
             <ul className="space-y-1.5">
               <li>
                 <button
@@ -148,7 +148,7 @@ export const Footer: React.FC<Props> = ({
         </div>
 
         {/* Bottom bar */}
-        <div className="pt-6 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between gap-4 text-slate-500 text-[11px]">
+        <div className="pt-6 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between gap-4 text-slate-400 text-[11px]">
           <div>
             © {new Date().getFullYear()} Shramkart India. All rights reserved.
           </div>

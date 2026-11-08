@@ -32,8 +32,8 @@ export function totpAt(secret: string, step: number): string {
   const msg = Buffer.alloc(8);
   msg.writeBigUInt64BE(BigInt(step));
   const h = crypto.createHmac('sha1', base32Decode(secret)).update(msg).digest();
-  const off = h[h.length - 1] & 15;
-  const n = ((h[off] & 0x7f) << 24) | (h[off + 1] << 16) | (h[off + 2] << 8) | h[off + 3];
+  const off = (h[h.length - 1] ?? 0) & 15;
+  const n = h.readUInt32BE(off) & 0x7fffffff;
   return String(n % 1_000_000).padStart(6, '0');
 }
 
@@ -65,6 +65,7 @@ export function encryptSecret(secret: string, material: string): string {
 export function decryptSecret(stored: string, material: string): string | null {
   try {
     const [iv, tag, enc] = stored.split('.').map((s) => Buffer.from(s, 'base64'));
+    if (!iv || !tag || !enc) return null;
     const d = crypto.createDecipheriv('aes-256-gcm', keyFor(material), iv);
     d.setAuthTag(tag);
     return Buffer.concat([d.update(enc), d.final()]).toString('utf8');

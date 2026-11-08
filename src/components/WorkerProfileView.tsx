@@ -42,8 +42,6 @@ import {
   Camera,
   Share2,
   AlertTriangle,
-  Clock,
-  Smartphone,
 } from 'lucide-react';
 
 interface Props {

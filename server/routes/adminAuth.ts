@@ -34,7 +34,7 @@ function readChallenge(ctx: AppContext, token: string): string {
   const expected = crypto.createHmac('sha256', ctx.config.sessionSecret).update('admin-challenge:' + (body ?? '')).digest('base64url');
   const ok = sig && sig.length === expected.length && crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
   if (!ok) throw unauthorized('Please sign in again.');
-  const { a, e } = JSON.parse(Buffer.from(body, 'base64url').toString());
+  const { a, e } = JSON.parse(Buffer.from(body ?? '', 'base64url').toString());
   if (typeof a !== 'string' || Date.now() > e) throw unauthorized('That sign-in took too long. Please start again.');
   return a;
 }

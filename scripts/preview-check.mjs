@@ -50,6 +50,7 @@ if (isHttps || csp) {
     const bare = inline.filter((tag) => !tag.includes(`nonce="${nonce}"`));
     check(`all ${inline.length} inline scripts carry the nonce`, bare.length === 0, `${bare.length} without`);
   }
+  check('no third-party font hosts in the policy or the page', !/googleapis|gstatic/.test(csp + html));
   check('frames are refused (frame-ancestors none)', /frame-ancestors 'none'/.test(csp));
 }
 

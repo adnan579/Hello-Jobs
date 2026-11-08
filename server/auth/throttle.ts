@@ -16,7 +16,7 @@ export async function hit(q: Queryable, key: string, limit: number, windowSec: n
      RETURNING count, locked_until`,
     [key, windowSec]
   );
-  const { count, locked_until } = rows[0];
+  const { count, locked_until } = rows[0]!;
   const locked = locked_until && locked_until.getTime() > Date.now();
   return { count, blocked: count > limit || Boolean(locked), lockedUntil: locked ? locked_until! : undefined };
 }

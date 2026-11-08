@@ -14,7 +14,6 @@ import {
   Factory,
   ArrowRight,
   UserPlus,
-  LogIn,
   Building2,
   MapPin,
   Briefcase,

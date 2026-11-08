@@ -18,7 +18,7 @@ const expressHandler = serverless(createServerApp());
 const JSON_BODY_LIMIT = 200 * 1024;
 
 async function readRawBody(request: NextRequest): Promise<Buffer | null> {
-  const contentType = request.headers.get('content-type')?.split(';', 1)[0].trim().toLowerCase() || '';
+  const contentType = request.headers.get('content-type')?.split(';', 1)[0]?.trim().toLowerCase() || '';
   const isJson = contentType === 'application/json' || contentType.endsWith('+json');
   const declaredLength = Number(request.headers.get('content-length'));
   if (isJson && Number.isFinite(declaredLength) && declaredLength > JSON_BODY_LIMIT) return null;

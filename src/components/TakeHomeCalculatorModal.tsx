@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Calculator, ShieldCheck, AlertTriangle, ArrowRight, Check } from 'lucide-react';
+import { X, Calculator, ShieldCheck, AlertTriangle, } from 'lucide-react';
 import { Language } from '../types';
 import { TRANSLATIONS } from '../data/translations';
 

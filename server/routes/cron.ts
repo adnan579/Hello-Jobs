@@ -2,6 +2,7 @@ import { Router } from 'express';
 import crypto from 'node:crypto';
 import { wrap } from '../lib/http.ts';
 import { unauthorized } from '../lib/errors.ts';
+import { pingHeartbeat } from '../lib/monitoring.ts';
 
 export const cronRouter = Router();
 
@@ -23,6 +24,8 @@ cronRouter.all(
     const thr = await db.query(`DELETE FROM throttles WHERE window_start < now() - interval '1 day' AND (locked_until IS NULL OR locked_until < now())`);
     const ses = await db.query(`DELETE FROM sessions WHERE expires_at < now() OR revoked_at < now() - interval '30 days'`);
     const notes = await db.query(`DELETE FROM notifications WHERE created_at < now() - interval '180 days'`);
-    res.json({ otpChallenges: otp.rowCount, throttles: thr.rowCount, sessions: ses.rowCount, notifications: notes.rowCount });
+    // Tell the dead-man's-switch monitor the job finished. If this ping stops arriving, the monitor raises the alert.
+    const heartbeat = await pingHeartbeat(req.ctx.config.monitoring.cronHeartbeatUrl, req.ctx.deps.fetch);
+    res.json({ heartbeat: req.ctx.config.monitoring.cronHeartbeatUrl ? heartbeat : undefined, otpChallenges: otp.rowCount, throttles: thr.rowCount, sessions: ses.rowCount, notifications: notes.rowCount });
   })
 );

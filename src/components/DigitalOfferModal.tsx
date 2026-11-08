@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CandidateProfile, OfferLetter } from '../types';
-import { X, FileText, CheckCircle2, ShieldCheck, Building2, Send, Download } from 'lucide-react';
+import { X, FileText, CheckCircle2, ShieldCheck, Building2, Send, } from 'lucide-react';
 
 interface Props {
   candidate: CandidateProfile | null;

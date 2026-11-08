@@ -387,6 +387,7 @@ export const grievanceInput = z.object({
 
 export function firstIssue(err: z.ZodError): string {
   const i = err.issues[0];
+  if (!i) return 'Invalid request.';
   const where = i.path.length ? `${i.path.join('.')}: ` : '';
   return `${where}${i.message}`;
 }

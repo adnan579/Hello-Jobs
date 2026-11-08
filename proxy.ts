@@ -17,8 +17,8 @@ export function proxy(request: NextRequest) {
   const policy = [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' https://checkout.razorpay.com`,
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com data:",
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self' data:",
     "img-src 'self' data: blob:",
     "connect-src 'self' https://lumberjack.razorpay.com",
     "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com",

@@ -7,7 +7,7 @@ export function isValidGstin(raw: string): boolean {
   if (!SHAPE.test(g)) return false;
   let sum = 0;
   for (let i = 0; i < 14; i++) {
-    const v = CHARS.indexOf(g[i]);
+    const v = CHARS.indexOf(g[i]!);
     const p = v * (i % 2 === 0 ? 1 : 2);
     sum += Math.floor(p / 36) + (p % 36);
   }

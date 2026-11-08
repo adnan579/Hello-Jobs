@@ -17,7 +17,7 @@ export async function createAdminAccount(
   const exists = await q.query('SELECT 1 FROM admin_credentials WHERE lower(email) = $1', [email]);
   if (exists.rowCount) throw conflict('A staff account with this email already exists.');
   const acc = await q.query<{ id: string }>(`INSERT INTO accounts (phone, role, admin_role) VALUES ($1, 'admin', $2) RETURNING id`, [`admin:${email}`, input.role]);
-  const id = acc.rows[0].id;
+  const id = acc.rows[0]!.id;
   await q.query(
     `INSERT INTO admin_credentials (account_id, email, display_name, password_hash, must_change_password, created_by) VALUES ($1,$2,$3,$4,true,$5)`,
     [id, email, input.name.trim().slice(0, 80) || email, await hashPassword(input.password), input.createdBy ?? null]
@@ -48,7 +48,7 @@ async function bootstrapInner(db: Db, email: string, password: string, bootstrap
   await db.tx(async (q) => {
     const existing = (await q.query<{ account_id: string }>('SELECT account_id FROM admin_credentials WHERE lower(email) = $1', [email])).rows[0];
     if (!existing) {
-      await createAdminAccount(q, { email, name: email.split('@')[0], role: 'Super Admin', password, skipPolicy: true });
+      await createAdminAccount(q, { email, name: email.split('@')[0] ?? email, role: 'Super Admin', password, skipPolicy: true });
       return;
     }
     if (bootstrapReset) {

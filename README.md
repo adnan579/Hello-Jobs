@@ -39,7 +39,7 @@ In development the login code is shown on screen. In production it is never show
 ## Checks
 
 ```bash
-npm run lint                         # TypeScript
+npm run lint                         # TypeScript (strict) + Biome; warnings may not increase
 npm run build                        # Next.js production build
 npm run build:vite                   # rollback Vite build
 TEST_DATABASE_URL=postgres://... npm test        # API and security tests (starts its own Postgres if unset)

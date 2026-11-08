@@ -5,7 +5,7 @@ import { formatFindings, reviewConfig } from '../server/lib/doctor.ts';
 import { readdirSync } from 'node:fs';
 
 // Usage: NODE_ENV=production npm run doctor   (set the same variables you gave Vercel)
-let findings;
+let findings: ReturnType<typeof reviewConfig>;
 try {
   findings = reviewConfig(loadConfig(), process.env);
 } catch (e) {

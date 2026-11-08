@@ -92,8 +92,8 @@ export async function loginAdmin(env: TestEnv, agent: Agent, adminRole: AdminRol
   await env.db.query('UPDATE admin_credentials SET must_change_password = false WHERE lower(email) = $1', [email]);
   const first = await agent.post('/api/admin-auth/login').send({ email, password: ADMIN_TEST_PASSWORD });
   if (first.status !== 200) throw new Error(`admin login failed ${first.status} ${JSON.stringify(first.body)}`);
-  let challenge = first.body.challenge as string;
-  let secret = first.body.secret as string | undefined;
+  const challenge = first.body.challenge as string;
+  const secret = first.body.secret as string | undefined;
   if (first.body.next === 'enroll') {
     const v = await agent.post('/api/admin-auth/verify').send({ challenge, code: totpAt(secret!, Math.floor(Date.now() / 30_000)) });
     if (v.status !== 200) throw new Error(`admin enroll failed ${v.status} ${JSON.stringify(v.body)}`);

@@ -1,19 +1,29 @@
 import type { AppContext, AuthContext } from '../types.ts';
+import { cached } from '../lib/ttl-cache.ts';
 import {
   APPLICATION_SELECT, JOB_SELECT, OFFER_SELECT, WORKER_SELECT,
-  applicationView, auditView, checkInView, driveView, employerView, grievanceView, jobView,
-  ledgerView, notificationView, offerView, reportView, verificationView, workerView,
+  applicationView, auditView, checkInView, driveView, employerView, jobView,
+  ledgerView, notificationView, offerView, verificationView, workerView,
 } from './serialize.ts';
 
 export const PUBLIC_JOB_WHERE = `j.is_active AND j.moderation_status = 'Approved' AND e.kyb_status = 'VERIFIED' AND NOT e.paused AND j.expires_at > now() AND j.vacancies_left > 0`;
 
 async function publicStats(ctx: AppContext) {
-  const { rows } = await ctx.db.query<{ workers: number; factories: number; jobs: number }>(
-    `SELECT (SELECT count(*) FROM workers) AS workers,
-            (SELECT count(*) FROM employers WHERE kyb_status = 'VERIFIED' AND NOT paused) AS factories,
-            (SELECT count(*) FROM jobs j JOIN employers e ON e.id = j.employer_id WHERE ${PUBLIC_JOB_WHERE}) AS jobs`
+  return cached(ctx, ctx.config.publicCacheSec, 'stats', async () => {
+    const { rows } = await ctx.db.query<{ workers: number; factories: number; jobs: number }>(
+      `SELECT (SELECT count(*) FROM workers) AS workers,
+              (SELECT count(*) FROM employers WHERE kyb_status = 'VERIFIED' AND NOT paused) AS factories,
+              (SELECT count(*) FROM jobs j JOIN employers e ON e.id = j.employer_id WHERE ${PUBLIC_JOB_WHERE}) AS jobs`
+    );
+    return rows[0]!;
+  });
+}
+
+/** The raw public job rows (newest 500). Cached; each caller shapes them for its own role. */
+export function publicJobRows(ctx: AppContext) {
+  return cached(ctx, ctx.config.publicCacheSec, 'jobs', async () =>
+    (await ctx.db.query(`${JOB_SELECT} WHERE ${PUBLIC_JOB_WHERE} ORDER BY j.created_at DESC LIMIT 500`)).rows
   );
-  return rows[0];
 }
 
 export async function loadEmployerProfile(ctx: AppContext, employerId: string) {
@@ -52,8 +62,7 @@ export async function buildBootstrap(ctx: AppContext, auth: AuthContext | undefi
   };
 
   // `contact` is true only for a signed-in worker: visitors and other factories never get HR numbers.
-  const publicJobs = async (contact = false) =>
-    (await db.query(`${JOB_SELECT} WHERE ${PUBLIC_JOB_WHERE} ORDER BY j.created_at DESC LIMIT 500`)).rows.map((r) => jobView(r, { contact }));
+  const publicJobs = async (contact = false) => (await publicJobRows(ctx)).map((r) => jobView(r, { contact }));
 
   const drivesFor = async (where: string, params: unknown[], viewer: { ownerEmployerId?: string; workerId?: string }) => {
     const { rows } = await db.query(
@@ -77,7 +86,11 @@ export async function buildBootstrap(ctx: AppContext, auth: AuthContext | undefi
   };
 
   if (!auth) {
-    return { ...empty, jobs: await publicJobs(), hiringDrives: await drivesFor('WHERE e.kyb_status = \'VERIFIED\' AND NOT e.paused', [], {}) };
+    const [jobs, hiringDrives] = await Promise.all([
+      publicJobs(),
+      cached(ctx, ctx.config.publicCacheSec, 'visitor-drives', () => drivesFor("WHERE e.kyb_status = 'VERIFIED' AND NOT e.paused", [], {})),
+    ]);
+    return { ...empty, jobs, hiringDrives };
   }
 
   if (auth.role === 'worker' && auth.workerId) {

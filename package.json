@@ -10,16 +10,19 @@
     "start": "next start",
     "dev:vite": "NODE_ENV=development tsx server.ts",
     "start:vite": "NODE_ENV=production tsx server.ts",
-    "lint": "tsc --noEmit",
+    "lint": "tsc --noEmit && node scripts/lint.mjs",
     "test": "vitest run",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:local": "node scripts/dev-postgres.mjs",
     "admin:create": "tsx scripts/create-admin.ts",
     "e2e": "playwright test",
     "doctor": "tsx scripts/doctor.ts",
-    "preview:check": "node scripts/preview-check.mjs"
+    "preview:check": "node scripts/preview-check.mjs",
+    "lint:baseline": "node scripts/lint.mjs --update"
   },
   "dependencies": {
+    "@fontsource-variable/noto-sans": "^5.3.0",
+    "@fontsource-variable/noto-sans-devanagari": "^5.3.0",
     "@tailwindcss/postcss": "^4.3.5",
     "@tailwindcss/vite": "^4.3.5",
     "@vercel/analytics": "^2.0.1",
@@ -38,6 +41,8 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@biomejs/biome": "2.6.6",
     "@playwright/test": "^1.65.0",
     "@types/express": "^5.0.6",
     "@types/node": "^22.14.0",

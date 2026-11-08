@@ -35,7 +35,7 @@ export async function createSession(
     [input.accountId, sha256(token), input.deviceLabel.slice(0, 120), input.ip, SESSION_TTL_SEC]
   );
   await q.query('UPDATE accounts SET last_login_at = now() WHERE id = $1', [input.accountId]);
-  return { token, id: rows[0].id };
+  return { token, id: rows[0]!.id };
 }
 
 export function setSessionCookie(res: Response, token: string, secure: boolean): void {
@@ -105,7 +105,7 @@ export async function createAdminSession(q: Queryable, input: { accountId: strin
     [input.accountId, sha256(token), input.device.slice(0, 120), input.ip, ADMIN_IDLE_SEC, ADMIN_ABSOLUTE_SEC]
   );
   await q.query('UPDATE accounts SET last_login_at = now() WHERE id = $1', [input.accountId]);
-  return { token, id: rows[0].id };
+  return { token, id: rows[0]!.id };
 }
 
 export function setAdminCookie(res: Response, token: string, secure: boolean): void {

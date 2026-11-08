@@ -14,7 +14,7 @@ function usedKeys(): Set<string> {
   const keys = new Set<string>();
   for (const f of files) {
     const src = readFileSync(f, 'utf8');
-    for (const m of src.matchAll(/\bt\(\s*'([A-Za-z0-9_]+)'/g)) keys.add(m[1]);
+    for (const m of src.matchAll(/\bt\(\s*'([A-Za-z0-9_]+)'/g)) keys.add(m[1]!);
   }
   return keys;
 }
@@ -59,7 +59,7 @@ describe('translations', () => {
       expect(makeT('hi')('notifTitle')).toBe(TRANSLATIONS.en.notifTitle);
       expect(makeT('hi')('notifEmptyTitle')).toBe(TRANSLATIONS.hi.notifEmptyTitle);
     } finally {
-      TRANSLATIONS.hi.notifTitle = original;
+      TRANSLATIONS.hi.notifTitle = original!;
     }
   });
 });

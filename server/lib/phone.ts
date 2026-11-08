@@ -17,5 +17,5 @@ export function formatPhone(e164: string): string {
 /** "+919876543210" -> "+91 ••••• ••210" */
 export function maskPhone(e164: string): string {
   const m = /^\+91(\d{5})(\d{5})$/.exec(e164);
-  return m ? `+91 ••••• ••${m[2].slice(2)}` : '••••••••••';
+  return m ? `+91 ••••• ••${m[2]!.slice(2)}` : '••••••••••';
 }

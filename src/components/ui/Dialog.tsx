@@ -69,6 +69,7 @@ export const Dialog: React.FC<Props> = ({
       }
       const first = items[0];
       const last = items[items.length - 1];
+      if (!first || !last) return;
       if (e.shiftKey && document.activeElement === first) {
         e.preventDefault();
         last.focus();

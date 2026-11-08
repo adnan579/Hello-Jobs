@@ -385,6 +385,7 @@ export function estimateClusterDistanceKm(
   );
   if (!cityKey) return 18;
   const coords = CITY_COORDINATES[cityKey];
+  if (!coords || !cluster) return 18;
   const dist = haversineKm(coords.lat, coords.lng, cluster.lat, cluster.lng);
   return Math.max(4, dist);
 }

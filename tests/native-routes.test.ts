@@ -33,7 +33,7 @@ function shape(value: unknown): unknown {
   return typeof value;
 }
 
-const cookieOf = (res: { headers: Record<string, unknown> }) => String(((res.headers['set-cookie'] as string[]) ?? [])[0]).split(';')[0];
+const cookieOf = (res: { headers: Record<string, unknown> }) => String(((res.headers['set-cookie'] as string[]) ?? [])[0]).split(';')[0]!;
 
 async function verifiedEmployerCookie(): Promise<string> {
   const a = env.agent();
@@ -188,18 +188,27 @@ describe('PUT /api/jobs/:id', () => {
   });
 });
 
-describe('API rate limit (database-backed)', () => {
-  it('answers 429 once the caller is over the limit, from both implementations', async () => {
+describe('API rate limit', () => {
+  const write: Call = { method: 'POST', path: '/api/jobs', body: JOB };
+
+  it('answers 429 to a write once the caller is over the limit, from both implementations', async () => {
     await env.db.query(`INSERT INTO throttles (key, count, window_start) VALUES ($1, 600, now())`, [apiLimitKey('127.0.0.1')]);
-    const r = await both(bootstrapGET, { method: 'GET', path: '/api/bootstrap' });
+    const r = await both(jobsPOST, write);
     expect(r.native.status).toBe(429);
     expectSameError(r);
   });
 
-  it('is shared between callers through the database, not process memory', async () => {
+  it('counts writes in the database, shared between callers', async () => {
+    await viaExpress(write);
+    await viaNative(jobsPOST, write);
+    const { rows } = await env.db.query(`SELECT count FROM throttles WHERE key = $1`, [apiLimitKey('127.0.0.1')]);
+    expect(rows[0].count).toBe(2);
+  });
+
+  it('counts reads in memory and never writes to the database for them', async () => {
     await viaExpress({ method: 'GET', path: '/api/bootstrap' });
     await viaNative(bootstrapGET, { method: 'GET', path: '/api/bootstrap' });
     const { rows } = await env.db.query(`SELECT count FROM throttles WHERE key = $1`, [apiLimitKey('127.0.0.1')]);
-    expect(rows[0].count).toBe(2);
+    expect(rows).toHaveLength(0);
   });
 });

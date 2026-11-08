@@ -2,9 +2,11 @@ import express, { type ErrorRequestHandler } from 'express';
 import { ZodError } from 'zod';
 import type { AppContext } from './types.ts';
 import { HttpError } from './lib/errors.ts';
+import { reportError, reporterOf } from './lib/monitoring.ts';
 import { apiHeaders, isSameOrigin, MUTATING_METHODS } from './lib/security-headers.ts';
 import { overApiLimit, TOO_MANY } from './lib/api-limit.ts';
 import { clientIp } from './lib/http.ts';
+import { invalidate } from './lib/ttl-cache.ts';
 import { attachAuth } from './auth/session.ts';
 import { authRouter } from './routes/auth.ts';
 import { bootstrapRouter } from './routes/bootstrap.ts';
@@ -54,7 +56,12 @@ export function createApp(ctx: AppContext): express.Express {
   }
 
   app.use('/api', (req, res, next) => {
-    overApiLimit(ctx.db, clientIp(req)).then((blocked) => (blocked ? res.status(429).json(TOO_MANY) : next()), next);
+    overApiLimit(ctx.db, clientIp(req), req.method).then((blocked) => (blocked ? res.status(429).json(TOO_MANY) : next()), next);
+  });
+  // After any successful write, drop the cached public job list so this instance never serves it stale.
+  app.use('/api', (req, res, next) => {
+    if (MUTATING_METHODS.has(req.method)) res.on('finish', () => res.statusCode < 400 && invalidate(ctx));
+    next();
   });
   app.use('/api', (req, res, next) => {
     if (MUTATING_METHODS.has(req.method) && !isSameOrigin(req.headers.origin, req.headers.host, ctx.config.appUrl)) {
@@ -79,12 +86,13 @@ export function createApp(ctx: AppContext): express.Express {
 
   app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found.' }));
 
-  const onError: ErrorRequestHandler = (err, req, res, _next) => {
+  const onError: ErrorRequestHandler = async (err, req, res, _next) => {
     if (err instanceof HttpError) return res.status(err.status).json({ error: err.message, ...(err.extra ?? {}) });
     if (err instanceof ZodError) return res.status(400).json({ error: err.issues[0]?.message ?? 'Invalid request.' });
     if ((err as any)?.type === 'entity.too.large') return res.status(413).json({ error: 'Request too large.' });
     if (err instanceof SyntaxError && 'body' in err) return res.status(400).json({ error: 'Malformed JSON.' });
-    console.error(`[api] ${req.method} ${req.path}`, err);
+    // Reported before answering: on serverless the function can be frozen as soon as the response ends.
+    await reportError(reporterOf(ctx), err, { where: 'api', method: req.method, path: req.path, status: 500 });
     res.status(500).json({ error: 'Something went wrong on our side. Please try again.' });
   };
   app.use(onError);

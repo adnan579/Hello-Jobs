@@ -66,6 +66,7 @@ export default async function JobPage({ params }: JobPageProps) {
   };
   return (
     <main className="min-h-screen bg-[var(--sk-canvas)]">
+      {/* biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD built from our own data, with "<" escaped so it cannot close the tag */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, '\\u003c') }} />
       <header className="border-b border-[var(--sk-border)] bg-white">
         <nav className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4 sm:px-6" aria-label="Main">

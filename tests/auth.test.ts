@@ -98,7 +98,7 @@ describe('OTP + sessions', () => {
   it('a stolen-then-revoked token stops working', async () => {
     const a = env.agent();
     const { res } = await registerWorker(a);
-    const raw = String(res.headers['set-cookie']).split(';')[0];
+    const raw = String(res.headers['set-cookie']).split(';')[0]!;
     await a.post('/api/auth/logout');
     const replay = await request(env.app).get('/api/auth/me').set('Cookie', raw);
     expect(replay.body.session).toBeNull();

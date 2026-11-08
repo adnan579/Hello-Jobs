@@ -23,7 +23,17 @@ export interface Config {
     razorpayKeySecret?: string;
     razorpayWebhookSecret?: string;
   };
+  /** Seconds the public job list and counters may be served from memory (0 = always fresh). */
+  publicCacheSec: number;
   cronSecret?: string;
+  monitoring: {
+    /** Sentry DSN. When empty, errors are only written to the log as JSON lines. */
+    sentryDsn?: string;
+    environment: string;
+    release?: string;
+    /** Pinged after each successful daily cleanup; an alert fires when the ping stops. */
+    cronHeartbeatUrl?: string;
+  };
   admin: {
     /** Key material for encrypting authenticator secrets. */
     totpKey: string;
@@ -84,7 +94,14 @@ export function loadConfig(env: Env = process.env): Config {
       razorpayKeySecret: env.RAZORPAY_KEY_SECRET,
       razorpayWebhookSecret: env.RAZORPAY_WEBHOOK_SECRET,
     },
+    publicCacheSec: Math.min(300, Math.max(0, Number(env.PUBLIC_CACHE_SEC ?? (isProd ? 30 : 0)) || 0)),
     cronSecret: env.CRON_SECRET,
+    monitoring: {
+      sentryDsn: env.SENTRY_DSN?.trim() || undefined,
+      environment: env.VERCEL_ENV || nodeEnv,
+      release: env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) || undefined,
+      cronHeartbeatUrl: env.CRON_HEARTBEAT_URL?.trim() || undefined,
+    },
     admin: {
       totpKey: env.ADMIN_2FA_KEY || sessionSecret || 'dev-only-secret-do-not-use-in-production-0000',
       bootstrapEmail: env.ADMIN_BOOTSTRAP_EMAIL?.trim().toLowerCase() || undefined,

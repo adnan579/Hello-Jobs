@@ -1,4 +1,5 @@
 import type { Config } from '../config.ts';
+import { parseDsn } from './monitoring.ts';
 
 export interface Finding {
   level: 'ok' | 'warn' | 'error';
@@ -49,6 +50,15 @@ export function reviewConfig(config: Config, env: Env = process.env): Finding[] 
   }
 
   add(config.cronSecret ? 'ok' : prod ? 'warn' : 'ok', 'Cleanup job', config.cronSecret ? 'CRON_SECRET is set.' : 'CRON_SECRET is not set. The daily cleanup endpoint is disabled, so old login codes and sessions pile up.');
+
+  if (config.monitoring.sentryDsn) {
+    add(parseDsn(config.monitoring.sentryDsn) ? 'ok' : 'warn', 'Monitoring', parseDsn(config.monitoring.sentryDsn) ? 'Errors are sent to Sentry.' : 'SENTRY_DSN is not a valid Sentry address (expected https://KEY@HOST/PROJECT_ID), so errors are only logged.');
+  } else {
+    add(prod ? 'warn' : 'ok', 'Monitoring', 'SENTRY_DSN is not set. Errors only appear in the hosting logs; nobody is told when one happens.');
+  }
+  if (prod && config.cronSecret && !config.monitoring.cronHeartbeatUrl) {
+    add('warn', 'Cleanup job', 'CRON_HEARTBEAT_URL is not set, so nobody is alerted if the daily cleanup stops running.');
+  }
   return f;
 }
 

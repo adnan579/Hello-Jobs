@@ -4,7 +4,6 @@ import {
   CheckCircle2,
   UserCheck,
   ShieldCheck,
-  Sparkles,
   Volume2,
   VolumeX,
   Package,

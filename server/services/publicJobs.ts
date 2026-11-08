@@ -2,20 +2,22 @@ import type { AppContext } from '../types.ts';
 import { buildBootstrap, PUBLIC_JOB_WHERE } from './bootstrap.ts';
 import { getServerContext } from '../runtime.ts';
 import { JOB_SELECT, jobView } from './serialize.ts';
+import { cached } from '../lib/ttl-cache.ts';
 
 export async function listPublicJobs(ctx: AppContext, hub?: string, itiOnly = false) {
-  const params: string[] = [];
-  const filters = [PUBLIC_JOB_WHERE];
-  if (hub?.trim()) {
-    params.push(`%${hub.trim()}%`);
-    filters.push(`(j.industrial_hub ILIKE $${params.length} OR j.state ILIKE $${params.length})`);
-  }
-  if (itiOnly) filters.push(`j.data->>'noCertificateRequired' IS DISTINCT FROM 'true'`);
-  const { rows } = await ctx.db.query(
-    `${JOB_SELECT} WHERE ${filters.join(' AND ')} ORDER BY j.created_at DESC LIMIT 100`,
-    params
-  );
-  return rows.map((row) => jobView(row));
+  const load = async () => {
+    const params: string[] = [];
+    const filters = [PUBLIC_JOB_WHERE];
+    if (hub?.trim()) {
+      params.push(`%${hub.trim()}%`);
+      filters.push(`(j.industrial_hub ILIKE $${params.length} OR j.state ILIKE $${params.length})`);
+    }
+    if (itiOnly) filters.push(`j.data->>'noCertificateRequired' IS DISTINCT FROM 'true'`);
+    const { rows } = await ctx.db.query(`${JOB_SELECT} WHERE ${filters.join(' AND ')} ORDER BY j.created_at DESC LIMIT 100`, params);
+    return rows.map((row) => jobView(row));
+  };
+  // Only the unfiltered list (what most visitors and crawlers fetch) is cached; searches always hit the database.
+  return hub?.trim() || itiOnly ? load() : cached(ctx, ctx.config.publicCacheSec, 'job-list', load);
 }
 
 export async function publicJobById(ctx: AppContext, id: string) {

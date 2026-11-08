@@ -18,8 +18,16 @@ describe('configuration review', () => {
     const f = levels({ ...base, RAZORPAY_KEY_ID: 'k', RAZORPAY_KEY_SECRET: 's' });
     expect(f.some((x) => x.level === 'error' && x.area === 'Payments')).toBe(true);
   });
+  it('asks for error monitoring and a cleanup heartbeat in production, and rejects a malformed Sentry address', () => {
+    const missing = levels(base).filter((x) => x.level === 'warn').map((x) => `${x.area}:${x.message.split(' ')[0]}`);
+    expect(missing).toEqual(expect.arrayContaining(['Monitoring:SENTRY_DSN', 'Cleanup job:CRON_HEARTBEAT_URL']));
+    const bad = levels({ ...base, SENTRY_DSN: 'oops' }).find((x) => x.area === 'Monitoring');
+    expect(bad?.level).toBe('warn');
+    expect(bad?.message).toMatch(/not a valid/);
+    expect(levels({ NODE_ENV: 'development' }).filter((x) => x.area === 'Monitoring')[0]!.level).toBe('ok');
+  });
   it('is quiet when everything is set', () => {
-    const f = levels({ ...base, WHATSAPP_TOKEN: 't', WHATSAPP_PHONE_NUMBER_ID: '1', WHATSAPP_OTP_TEMPLATE: 'otp', RAZORPAY_KEY_ID: 'k', RAZORPAY_KEY_SECRET: 's', RAZORPAY_WEBHOOK_SECRET: 'w', ADMIN_BOOTSTRAP_PHONES: '9000000001' });
+    const f = levels({ ...base, WHATSAPP_TOKEN: 't', WHATSAPP_PHONE_NUMBER_ID: '1', WHATSAPP_OTP_TEMPLATE: 'otp', RAZORPAY_KEY_ID: 'k', RAZORPAY_KEY_SECRET: 's', RAZORPAY_WEBHOOK_SECRET: 'w', ADMIN_BOOTSTRAP_PHONES: '9000000001', SENTRY_DSN: 'https://k@o1.ingest.sentry.io/1', CRON_HEARTBEAT_URL: 'https://hc-ping.com/x' });
     expect(f.filter((x) => x.level !== 'ok')).toEqual([]);
   });
 });

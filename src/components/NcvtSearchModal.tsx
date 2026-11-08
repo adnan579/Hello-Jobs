@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Search, ShieldCheck, Award, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { X, Search, ShieldCheck, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { CandidateProfile } from '../types';
 
 interface Props {

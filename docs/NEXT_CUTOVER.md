@@ -6,7 +6,7 @@ Everything below is safe to do from a Vercel preview deployment of this branch. 
 
 | Gate | What it proves |
 | --- | --- |
-| `npm run lint` | Types are correct |
+| `npm run lint` | Types are correct (strict) and Biome finds no errors or new warnings |
 | `npm run build` | Next.js builds every route |
 | Production smoke test (`scripts/preview-check.mjs`) | The production build starts, sends the strict page policy, every page type carries its nonce, visitors see no HR contacts, `/admin` is `noindex` + `no-store`, API headers are present |
 | `npm test` | 135+ API, security and native-route parity tests |
@@ -59,4 +59,6 @@ Native Next.js routes: `GET /api/health`, `GET /api/bootstrap`, `POST /api/jobs`
 ## 7. Known differences from the Vite build
 
 - API responses now carry the headers in `server/lib/security-headers.ts` instead of `helmet`'s defaults; page headers come from `proxy.ts`.
-- The per-IP request limit (600 per minute) is counted in the database (`throttles` table) instead of in memory, so it is shared across serverless instances. If the database is unreachable the limiter lets the request through.
+- The per-IP request limit (600 per minute) is counted in the database (`throttles` table) for writes (POST, PUT, PATCH, DELETE, including login and one-time-code requests), so it is shared across serverless instances. Reads (GET, HEAD, OPTIONS) are counted in each instance's memory and never touch the database, so a page view costs no write. If the database is unreachable the write limiter lets the request through. Login attempts and codes also have their own stricter limits in the database.
+- The public job list and counters are cached in memory for `PUBLIC_CACHE_SEC` seconds (default 30 in production). The cache is per instance and is cleared on that instance after any successful write.
+- Errors are logged as JSON lines and optionally sent to Sentry; the daily cleanup can ping a heartbeat monitor. See [MONITORING.md](MONITORING.md).

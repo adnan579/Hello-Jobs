@@ -167,7 +167,7 @@ describe('About page listings', () => {
 describe('notification badge', () => {
   it('counts only unread notifications', () => {
     const list = [note({ id: '1', read: false }), note({ id: '2', read: true }), note({ id: '3' })];
-    expect(isUnread(list[1])).toBe(false);
+    expect(isUnread(list[1]!)).toBe(false);
     expect(countUnread(list)).toBe(2);
   });
 

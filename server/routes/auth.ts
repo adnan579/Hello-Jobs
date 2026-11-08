@@ -116,7 +116,7 @@ authRouter.post(
       if (!accountId) {
         if (body.mode !== 'register') throw notFound('No account found for this number. Please register first.');
         const ins = await q.query<{ id: string }>('INSERT INTO accounts (phone, role) VALUES ($1, $2) RETURNING id', [phone, role]);
-        accountId = ins.rows[0].id;
+        accountId = ins.rows[0]!.id;
         isNew = true;
         if (role === 'worker') await registerWorker(q, body as any, accountId, phone, ip);
         else if (role === 'employer') await registerEmployer(q, body as any, accountId, phone, ip);

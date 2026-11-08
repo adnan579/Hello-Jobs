@@ -54,10 +54,10 @@ export async function fulfilOrder(q: Queryable, orderId: string, providerPayment
   const order = upd.rows[0];
   if (!order) return { fulfilled: false };
 
-  const emp = (await q.query('SELECT hunt_credits, gstin, company_name FROM employers WHERE id = $1 FOR UPDATE', [order.employer_id])).rows[0];
+  const emp = (await q.query('SELECT hunt_credits, gstin, company_name FROM employers WHERE id = $1 FOR UPDATE', [order.employer_id])).rows[0]!;
   const balance = emp.hunt_credits + order.credits;
   await q.query('UPDATE employers SET hunt_credits = $2, updated_at = now() WHERE id = $1', [order.employer_id, balance]);
-  const seq = (await q.query<{ n: number }>("SELECT nextval('invoice_seq')::int AS n")).rows[0].n;
+  const seq = (await q.query<{ n: number }>("SELECT nextval('invoice_seq')::int AS n")).rows[0]!.n;
   const invoiceNo = `HJ/${financialYear()}/${String(seq).padStart(6, '0')}`;
   const pack = PACKS[order.pack_id as PackId];
   await q.query(

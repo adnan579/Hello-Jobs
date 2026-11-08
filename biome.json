@@ -1,0 +1,26 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.6.6/schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "files": {
+    "includes": ["app/**/*.{ts,tsx}", "server/**/*.ts", "src/**/*.{ts,tsx}", "tests/**/*.ts", "e2e/**/*.ts", "scripts/**/*.{ts,mjs}", "*.ts", "!**/node_modules", "!**/.next", "!**/dist"]
+  },
+  "formatter": { "enabled": false },
+  "assist": { "enabled": false },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "style": { "noNonNullAssertion": "off", "useImportType": "off", "useTemplate": "off" },
+      "suspicious": { "noExplicitAny": "warn", "useIterableCallbackReturn": "warn", "noArrayIndexKey": "warn" },
+      "correctness": { "useExhaustiveDependencies": "warn" },
+      "a11y": {
+        "useButtonType": "warn",
+        "noLabelWithoutControl": "warn",
+        "useSemanticElements": "warn",
+        "noStaticElementInteractions": "warn",
+        "useKeyWithClickEvents": "warn",
+        "noAutofocus": "warn"
+      }
+    }
+  }
+}

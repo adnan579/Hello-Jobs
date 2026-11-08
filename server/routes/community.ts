@@ -94,7 +94,8 @@ communityRouter.post(
     if (!target) throw badRequest('You can share feedback only about a job you have joined.');
     if (target.joined_at) {
       const days = (Date.now() - new Date(target.joined_at).getTime()) / 86_400_000;
-      if (days < MILESTONE_DAYS[milestone] - 1) throw badRequest(`This check-in opens on day ${MILESTONE_DAYS[milestone]} after you join.`);
+      const opensOnDay = MILESTONE_DAYS[milestone] ?? 0;
+      if (days < opensOnDay - 1) throw badRequest(`This check-in opens on day ${opensOnDay} after you join.`);
     }
     const pay = body.payMatchesPromise ?? body.promisedPayReceived ?? null;
     const hostel = body.hostelMatchesPromise ?? body.promisedShiftHonored ?? null;

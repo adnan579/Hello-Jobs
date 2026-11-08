@@ -3,6 +3,8 @@ import type { AppContext, AuthContext } from '../types.ts';
 import { HttpError } from '../lib/errors.ts';
 import { apiHeaders, isSameOrigin, MUTATING_METHODS } from '../lib/security-headers.ts';
 import { overApiLimit, TOO_MANY } from '../lib/api-limit.ts';
+import { invalidate } from '../lib/ttl-cache.ts';
+import { reportError, reporterFromEnv, reporterOf } from '../lib/monitoring.ts';
 import { ADMIN_COOKIE, COOKIE_NAME, loadAdminAuth, loadAuth, parseCookies } from '../auth/session.ts';
 import { ensureBootstrapAdmin } from '../services/adminAccounts.ts';
 import { getServerContext } from '../runtime.ts';
@@ -73,7 +75,7 @@ function reply(ctx: AppContext | undefined, result: NativeResult): Response {
 export const errorBody = (message: string, extra?: Record<string, unknown>) => ({ error: message, ...(extra ?? {}) });
 
 async function readJson(request: Request): Promise<unknown> {
-  const type = request.headers.get('content-type')?.split(';', 1)[0].trim().toLowerCase() ?? '';
+  const type = request.headers.get('content-type')?.split(';', 1)[0]?.trim().toLowerCase() ?? '';
   if (!(type === 'application/json' || type.endsWith('+json'))) return undefined;
   const declared = Number(request.headers.get('content-length'));
   if (Number.isFinite(declared) && declared > JSON_BODY_LIMIT) throw new HttpError(413, 'Request too large.');
@@ -104,7 +106,6 @@ async function readJson(request: Request): Promise<unknown> {
 export function errorResult(error: unknown, request: Request): NativeResult {
   if (error instanceof HttpError) return { status: error.status, body: errorBody(error.message, error.extra) };
   if (error instanceof ZodError) return { status: 400, body: errorBody(error.issues[0]?.message ?? 'Invalid request.') };
-  console.error(`[api] ${request.method} ${new URL(request.url).pathname}`, error);
   return { status: 500, body: errorBody('Something went wrong on our side. Please try again.') };
 }
 
@@ -114,7 +115,7 @@ export function nativeRoute(handler: Handler, options: NativeOptions = {}): Next
     try {
       ctx = await (options.getContext ?? defaultContext)();
     } catch (error) {
-      console.error('[startup] ', (error as Error)?.message ?? error);
+      await reportError(reporterFromEnv(), error, { where: 'startup', method: request.method, path: new URL(request.url).pathname, status: 503, tags: { stage: String((error as { startupStage?: string })?.startupStage ?? 'unknown') } });
       return reply(undefined, { status: 503, body: errorBody('The service is starting up or misconfigured. Please try again shortly.', { stage: (error as { startupStage?: string })?.startupStage }) });
     }
 
@@ -126,7 +127,7 @@ export function nativeRoute(handler: Handler, options: NativeOptions = {}): Next
       const body = await readJson(request);
       // 2. Rate limit.
       const ip = clientIpOf(request);
-      if (await overApiLimit(ctx.db, ip)) {
+      if (await overApiLimit(ctx.db, ip, request.method)) {
         result = { status: 429, body: TOO_MANY };
       } else if (MUTATING_METHODS.has(request.method) && !isSameOrigin(request.headers.get('origin'), request.headers.get('host'), ctx.config.appUrl)) {
         // 3. Browser writes must come from this site.
@@ -143,7 +144,9 @@ export function nativeRoute(handler: Handler, options: NativeOptions = {}): Next
       }
     } catch (error) {
       result = errorResult(error, request);
+      if (result.status === 500) await reportError(reporterOf(ctx), error, { where: 'api', method: request.method, path: pathname, status: 500 });
     }
+    if (MUTATING_METHODS.has(request.method) && (result.status ?? 200) < 400) invalidate(ctx);
     if (ctx.config.isProd && pathname !== '/api/health') {
       console.log(JSON.stringify({ t: new Date().toISOString(), m: request.method, p: pathname.replace(/^\/api/, ''), s: result.status ?? 200, ms: Date.now() - t0 }));
     }

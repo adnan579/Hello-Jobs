@@ -93,6 +93,13 @@ const missing = await get('/jobs/job-does-not-exist');
 check('unknown job id is 404', missing.status === 404, `status ${missing.status}`);
 
 // --- Discovery files
+// Every icon the site advertises must exist (a missing PNG would only show up as a blank tab or install icon).
+const manifest = await (await get('/manifest.json')).json().catch(() => ({ icons: [] }));
+const iconPaths = [...new Set([...(manifest.icons ?? []).map((i) => i.src), '/icon.svg', '/favicon.ico', '/apple-touch-icon.png', '/logo.svg'])];
+for (const path of iconPaths) {
+  const res = await get(path);
+  check(`icon ${path} loads`, res.status === 200 && /image\//.test(res.headers.get('content-type') ?? ''), `status ${res.status} ${res.headers.get('content-type')}`);
+}
 const sitemap = await get('/sitemap.xml');
 check('GET /sitemap.xml is XML with the home page', sitemap.status === 200 && /<urlset/.test(await sitemap.text()), `status ${sitemap.status}`);
 const robots = await get('/robots.txt');

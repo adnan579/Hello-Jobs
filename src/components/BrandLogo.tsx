@@ -1,21 +1,12 @@
 import React from 'react';
 
-/** The Shramkart mark: an amber tile with a bold S and a hi-vis safety stripe. */
-export const BrandMark: React.FC<{ className?: string }> = ({ className = 'w-9 h-9' }) => (
-  <svg viewBox="0 0 64 64" className={className} role="img" aria-label="Shramkart" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <clipPath id="sk-tile"><rect width="64" height="64" rx="15" /></clipPath>
-    </defs>
-    <g clipPath="url(#sk-tile)">
-      <rect width="64" height="64" fill="#F5A524" />
-      <g fill="#14181F">
-        <path d="M-2 64 L14 48 H26 L10 64 Z" />
-        <path d="M22 64 L38 48 H50 L34 64 Z" />
-        <path d="M46 64 L62 48 H74 L58 64 Z" />
-      </g>
-    </g>
-    <path d="M44 15 H26 C19 15 19 27 26 27 H38 C45 27 45 39 38 39 H20" fill="none" stroke="#14181F" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
+/**
+ * The Shramkart badge (a welder in an orange ring), served from /icon.svg so it is cached and not part of the page
+ * script. Next to the written name it is decorative, so BrandLogo passes `decorative`; on its own it is named.
+ */
+export const BrandMark: React.FC<{ className?: string; decorative?: boolean }> = ({ className = 'w-9 h-9', decorative = false }) => (
+  // biome-ignore lint/performance/noImgElement: next/image does not optimise SVG, so a plain <img> is correct here
+  <img src="/icon.svg" alt={decorative ? '' : 'Shramkart'} width={36} height={37} decoding="async" draggable={false} className={`${className} shrink-0 object-contain`} />
 );
 
 interface Props {
@@ -31,7 +22,7 @@ export const BrandLogo: React.FC<Props> = ({ tone = 'light', size = 'md', showTa
   const tag = tone === 'dark' ? 'text-slate-400' : 'text-slate-500';
   return (
     <span className="inline-flex items-center gap-2.5">
-      <BrandMark className={size === 'sm' ? 'w-7 h-7' : 'w-9 h-9'} />
+      <BrandMark decorative className={size === 'sm' ? 'w-8 h-8' : 'w-10 h-10'} />
       <span className="flex flex-col leading-none text-left">
         <span className={`${size === 'sm' ? 'text-base' : 'text-xl'} font-extrabold tracking-tight`}>
           <span className={shram}>Shram</span>

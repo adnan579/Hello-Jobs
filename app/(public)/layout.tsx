@@ -13,7 +13,13 @@ export const metadata: Metadata = {
   openGraph: { title, description, type: 'website' },
   twitter: { card: 'summary_large_image' },
   manifest: '/manifest.json',
-  icons: { icon: '/icon.svg' },
+  icons: {
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', sizes: '48x48' },
+    ],
+    apple: '/apple-touch-icon.png',
+  },
 };
 
 export const viewport: Viewport = { themeColor: '#F5A524' };

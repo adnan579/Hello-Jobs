@@ -1,3 +1,5 @@
+<p align="center"><img src="public/logo.svg" alt="Shramkart: Direct Hands for Indian Industry" width="180"></p>
+
 # Shramkart — Direct Hands for Indian Industry
 
 A two-way marketplace for blue and grey-collar manufacturing work in India. Verified factories and ITI / semi-skilled workers find each other directly. No contractor cut. Free for workers. Factories pay for talent-directory credits.
@@ -21,6 +23,8 @@ A two-way marketplace for blue and grey-collar manufacturing work in India. Veri
 - **Back end:** Express and PostgreSQL (`server/`). Every input is checked with zod. Ownership and role checks are in SQL. Credits and payments are atomic and run once.
 - **Security:** hashed login codes with attempt limits, hashed session tokens, origin check on writes, strict content security policy in production, rate limits, append-only audit log.
 - **Hosting:** one Vercel deployment. Next.js builds and serves everything (there is no separate front-end build). `GET /api/health`, `GET /api/bootstrap`, `POST /api/jobs` and `PUT /api/jobs/:id` are native Next.js route handlers; every other `/api` route is the Express app, mounted through `app/api/[...path]/route.ts`.
+
+Brand files are in `public/`: `logo.svg` (full badge with tagline), `icon.svg` (badge without the tagline, used in the app and as the favicon), and the PNG, ICO and maskable versions for browsers, phones and installed web apps.
 
 Folder map: `app/` (Next.js pages, staff console and route handlers), `proxy.ts` (page security headers), `instrumentation.ts` (error reporting), `server/` (API), `src/` (UI components, data, helpers), `server/migrations/` (SQL), `tests/` (API tests), `e2e/` (browser tests), `scripts/` (migrate, create admin, local Postgres, lint, smoke test), `docs/` (guides).
 

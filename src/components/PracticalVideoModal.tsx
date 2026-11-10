@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId, useRef } from 'react';
+import { useModalBehavior } from './ui/Dialog';
 import { CandidateProfile } from '../types';
 import { X, Play, Pause, RotateCcw, CheckCircle2, ShieldCheck, Flame, Wrench } from 'lucide-react';
 
@@ -38,18 +39,22 @@ export const PracticalVideoModal: React.FC<Props> = ({ candidate, isOpen, onClos
     return () => clearInterval(interval);
   }, [isPlaying, progress]);
 
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  useModalBehavior(isOpen && !!candidate, panelRef, onClose);
+
   if (!isOpen || !candidate) return null;
 
   const currentSeconds = Math.floor((progress / 100) * 30);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-xs">
-      <div className="relative w-full max-w-xl bg-slate-900 border border-slate-800 rounded-xl shadow-2xl overflow-hidden text-white flex flex-col">
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className="outline-none relative w-full max-w-xl bg-slate-900 border border-slate-800 rounded-xl shadow-2xl overflow-hidden text-white flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-800 bg-slate-950">
           <div className="flex items-center gap-2.5">
             <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            <h3 className="text-xs font-mono font-bold tracking-wider text-slate-300 uppercase">
+            <h3 id={titleId} className="text-xs font-mono font-bold tracking-wider text-slate-300 uppercase">
               30-Second Practical Video Proof · {candidate.trade}
             </h3>
           </div>

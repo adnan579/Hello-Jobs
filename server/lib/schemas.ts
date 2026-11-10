@@ -177,7 +177,7 @@ export const employerProfileInput = z.object({
         state: str(60),
         industrialHub: str(80).optional(),
         industrialCluster: str(80).optional(),
-        gstin: str(15),
+        gstin: gstinField.or(z.literal('')),
         address: str(300),
       })
     )
@@ -209,8 +209,8 @@ export const jobInput = z.object({
   openingsCount: z.number().int().min(1).max(5000),
   vacanciesLeft: z.number().int().min(0).max(5000).optional(),
   hrContactName: reqStr(80),
-  hrContactPhone: str(30).default(''),
-  whatsappApplyNumber: str(30).default(''),
+  hrContactPhone: str(30).refine((v) => !v || normalizeIndianPhone(v), 'Enter a valid 10-digit Indian mobile number').default(''),
+  whatsappApplyNumber: str(30).refine((v) => !v || normalizeIndianPhone(v), 'Enter a valid 10-digit Indian mobile number').transform((v) => (v ? (normalizeIndianPhone(v) ?? '').slice(1) : '')).default(''),
   experienceRequired: str(80).default(''),
   minQualification: str(120).default(''),
   canteenCostPerMeal: str(60).optional(),
@@ -252,7 +252,7 @@ export const jobInput = z.object({
       nearestRailwayStation: str(80),
     })
     .optional(),
-});
+}).refine((j) => !j.grossSalary || j.grossSalary >= j.takeHomeSalary, 'Gross pay cannot be lower than in-hand pay.');
 
 // ---------- Applications / offers ----------
 export const applicationCreate = z.object({ jobId: reqStr(80) });
@@ -290,7 +290,7 @@ export const offerCreate = z.object({
   accommodationProvided: z.boolean().default(false),
   esiPfIncluded: z.boolean().default(false),
   plantLocation: str(160).optional(),
-});
+}).refine((o) => !o.monthlyGross || o.monthlyGross >= o.monthlyInHand, 'Gross pay cannot be lower than in-hand pay.');
 
 export const offerStatusPatch = z.object({
   status: z.enum(['Accepted', 'Declined', 'Joined Confirmed']),

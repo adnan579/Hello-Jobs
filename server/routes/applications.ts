@@ -8,6 +8,7 @@ import { badRequest, forbidden, notFound, unauthorized } from '../lib/errors.ts'
 import { newId } from '../lib/ids.ts';
 import { notify } from '../lib/audit.ts';
 import { respond } from '../lib/respond.ts';
+import { PUBLIC_JOB_WHERE } from '../services/bootstrap.ts';
 import { canTransitionPipeline } from '../../src/modules/domain.ts';
 import { fmtDateTime } from '../lib/format.ts';
 import type { PipelineStage } from '../../src/types/index.ts';
@@ -43,7 +44,7 @@ applicationsRouter.post(
       const job = (
         await q.query(
           `SELECT j.id, j.title, j.employer_id FROM jobs j JOIN employers e ON e.id = j.employer_id
-            WHERE j.id = $1 AND j.is_active AND j.moderation_status = 'Approved' AND e.kyb_status = 'VERIFIED' AND NOT e.paused AND j.expires_at > now() AND j.vacancies_left > 0`,
+            WHERE j.id = $1 AND ${PUBLIC_JOB_WHERE}`,
           [jobId]
         )
       ).rows[0];

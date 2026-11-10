@@ -29,7 +29,7 @@ async function saveOwnProfile(req: any, res: any) {
     if (ncvtCertificate) {
       const prev = old.ncvtCertificate ?? {};
       data.ncvtCertificate = { ...prev, ...ncvtCertificate };
-      const changed = ncvtCertificate.certificateNumber !== (prev.certificateNumber ?? '') || ncvtCertificate.rollNumber !== (prev.rollNumber ?? '');
+      const changed = (['certificateNumber', 'rollNumber', 'tradeName', 'itiCollege'] as const).some((k) => ncvtCertificate[k] !== (prev[k] ?? ''));
       if (changed && ncvtCertificate.certificateNumber) {
         await q.query(
           `INSERT INTO verification_records (id, subject_id, subject_name, subject_type, kind, method, data)

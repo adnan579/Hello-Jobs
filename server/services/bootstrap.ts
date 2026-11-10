@@ -6,13 +6,15 @@ import {
   ledgerView, notificationView, offerView, verificationView, workerView,
 } from './serialize.ts';
 
-export const PUBLIC_JOB_WHERE = `j.is_active AND j.moderation_status = 'Approved' AND e.kyb_status = 'VERIFIED' AND NOT e.paused AND j.expires_at > now() AND j.vacancies_left > 0`;
+/** A factory whose jobs and drives anyone may see (alias `e`). */
+export const OPEN_FACTORY = `e.kyb_status = 'VERIFIED' AND NOT e.paused`;
+export const PUBLIC_JOB_WHERE = `j.is_active AND j.moderation_status = 'Approved' AND ${OPEN_FACTORY} AND j.expires_at > now() AND j.vacancies_left > 0`;
 
 async function publicStats(ctx: AppContext) {
   return cached(ctx, ctx.config.publicCacheSec, 'stats', async () => {
     const { rows } = await ctx.db.query<{ workers: number; factories: number; jobs: number }>(
       `SELECT (SELECT count(*) FROM workers) AS workers,
-              (SELECT count(*) FROM employers WHERE kyb_status = 'VERIFIED' AND NOT paused) AS factories,
+              (SELECT count(*) FROM employers e WHERE ${OPEN_FACTORY}) AS factories,
               (SELECT count(*) FROM jobs j JOIN employers e ON e.id = j.employer_id WHERE ${PUBLIC_JOB_WHERE}) AS jobs`
     );
     return rows[0]!;
@@ -88,7 +90,7 @@ export async function buildBootstrap(ctx: AppContext, auth: AuthContext | undefi
   if (!auth) {
     const [jobs, hiringDrives] = await Promise.all([
       publicJobs(),
-      cached(ctx, ctx.config.publicCacheSec, 'visitor-drives', () => drivesFor("WHERE e.kyb_status = 'VERIFIED' AND NOT e.paused", [], {})),
+      cached(ctx, ctx.config.publicCacheSec, 'visitor-drives', () => drivesFor(`WHERE ${OPEN_FACTORY}`, [], {})),
     ]);
     return { ...empty, jobs, hiringDrives };
   }
@@ -101,7 +103,7 @@ export async function buildBootstrap(ctx: AppContext, auth: AuthContext | undefi
       db.query(`${APPLICATION_SELECT} WHERE a.worker_id = $1 ORDER BY a.created_at DESC`, [wid]),
       db.query(`${OFFER_SELECT} WHERE o.worker_id = $1 ORDER BY o.created_at DESC`, [wid]),
       db.query(`SELECT * FROM notifications WHERE recipient_role = 'worker' AND recipient_id = $1 ORDER BY created_at DESC LIMIT 100`, [wid]),
-      drivesFor("WHERE e.kyb_status = 'VERIFIED' AND NOT e.paused", [], { workerId: wid }),
+      drivesFor(`WHERE ${OPEN_FACTORY}`, [], { workerId: wid }),
       db.query(
         `SELECT r.*, w.name AS worker_name, e.company_name FROM retention_checkins r JOIN workers w ON w.id = r.worker_id JOIN employers e ON e.id = r.employer_id WHERE r.worker_id = $1 ORDER BY r.created_at DESC`,
         [wid]
@@ -131,9 +133,9 @@ export async function buildBootstrap(ctx: AppContext, auth: AuthContext | undefi
       publicJobs(),
       db.query(`${JOB_SELECT} WHERE j.employer_id = $1 ORDER BY j.created_at DESC`, [eid]),
       verified
-        ? db.query(
+        ? cached(ctx, Math.min(5, ctx.config.publicCacheSec), 'directory', () => db.query(
             `${WORKER_SELECT} WHERE w.directory_visible AND EXISTS (SELECT 1 FROM accounts ac WHERE ac.id = w.account_id AND ac.status = 'active') ORDER BY w.updated_at DESC LIMIT 500`
-          )
+          ))
         : Promise.resolve({ rows: [] as any[] }),
       db.query(`${APPLICATION_SELECT} WHERE a.employer_id = $1 ORDER BY a.created_at DESC LIMIT 1000`, [eid]),
       db.query(`${OFFER_SELECT} WHERE o.employer_id = $1 ORDER BY o.created_at DESC LIMIT 1000`, [eid]),

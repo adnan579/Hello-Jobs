@@ -27,7 +27,7 @@ describe('configuration review', () => {
     expect(levels({ NODE_ENV: 'development' }).filter((x) => x.area === 'Monitoring')[0]!.level).toBe('ok');
   });
   it('is quiet when everything is set', () => {
-    const f = levels({ ...base, WHATSAPP_TOKEN: 't', WHATSAPP_PHONE_NUMBER_ID: '1', WHATSAPP_OTP_TEMPLATE: 'otp', RAZORPAY_KEY_ID: 'k', RAZORPAY_KEY_SECRET: 's', RAZORPAY_WEBHOOK_SECRET: 'w', ADMIN_BOOTSTRAP_PHONES: '9000000001', SENTRY_DSN: 'https://k@o1.ingest.sentry.io/1', CRON_HEARTBEAT_URL: 'https://hc-ping.com/x' });
+    const f = levels({ ...base, ADMIN_2FA_KEY: 'k'.repeat(32), WHATSAPP_TOKEN: 't', WHATSAPP_PHONE_NUMBER_ID: '1', WHATSAPP_OTP_TEMPLATE: 'otp', RAZORPAY_KEY_ID: 'k', RAZORPAY_KEY_SECRET: 's', RAZORPAY_WEBHOOK_SECRET: 'w', ADMIN_BOOTSTRAP_PHONES: '9000000001', SENTRY_DSN: 'https://k@o1.ingest.sentry.io/1', CRON_HEARTBEAT_URL: 'https://hc-ping.com/x' });
     expect(f.filter((x) => x.level !== 'ok')).toEqual([]);
   });
 });

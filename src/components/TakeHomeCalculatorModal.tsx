@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useId, useRef } from 'react';
+import { useModalBehavior } from './ui/Dialog';
 import { X, Calculator, ShieldCheck, AlertTriangle, } from 'lucide-react';
 import { Language } from '../types';
 import { TRANSLATIONS } from '../data/translations';
@@ -14,6 +15,10 @@ export const TakeHomeCalculatorModal: React.FC<Props> = ({ isOpen, onClose, lang
   const [grossWage, setGrossWage] = useState(25000);
   const [overtimeHours, setOvertimeHours] = useState(20);
   const [thekedarCutPercent, setThekedarCutPercent] = useState(25);
+
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  useModalBehavior(isOpen, panelRef, onClose);
 
   if (!isOpen) return null;
 
@@ -39,7 +44,7 @@ export const TakeHomeCalculatorModal: React.FC<Props> = ({ isOpen, onClose, lang
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-xs">
-      <div className="relative w-full max-w-2xl bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className="outline-none relative w-full max-w-2xl bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white shrink-0">
           <div className="flex items-center gap-3">
@@ -50,7 +55,7 @@ export const TakeHomeCalculatorModal: React.FC<Props> = ({ isOpen, onClose, lang
               <div className="text-xs font-mono uppercase tracking-wider text-amber-400">
                 Fair Pay Transparency Engine
               </div>
-              <h2 className="text-base font-bold text-white">
+              <h2 id={titleId} className="text-base font-bold text-white">
                 {t.calculatorTitle}
               </h2>
             </div>

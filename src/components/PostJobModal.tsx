@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId, useRef } from 'react';
+import { useModalBehavior } from './ui/Dialog';
 import { X, CheckCircle2, Factory, ShieldCheck, Plus } from 'lucide-react';
 import {
   JobListing,
@@ -10,7 +11,8 @@ import {
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onJobCreated: (job: JobListing) => void;
+  /** Resolves to false when the server refused the job, so the success screen is taken back. */
+  onJobCreated: (job: JobListing) => Promise<boolean>;
   employer?: EmployerFactoryProfile;
 }
 
@@ -66,9 +68,13 @@ export const PostJobModal: React.FC<Props> = ({ isOpen, onClose, onJobCreated, e
     }
   }, [isOpen, employer]);
 
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  useModalBehavior(isOpen, panelRef, onClose);
+
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const grossSalary = Number(grossInput);
@@ -124,13 +130,13 @@ export const PostJobModal: React.FC<Props> = ({ isOpen, onClose, onJobCreated, e
       isActive: true,
     };
 
-    onJobCreated(newJob);
     setIsSuccess(true);
+    if (!(await onJobCreated(newJob))) setIsSuccess(false);
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-xs">
-      <div className="relative w-full max-w-2xl bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className="outline-none relative w-full max-w-2xl bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white shrink-0">
           <div className="flex items-center gap-3">
@@ -141,7 +147,7 @@ export const PostJobModal: React.FC<Props> = ({ isOpen, onClose, onJobCreated, e
               <div className="text-xs font-mono uppercase tracking-wider text-blue-300">
                 Direct Plant Intake
               </div>
-              <h2 className="text-base font-bold text-white">
+              <h2 id={titleId} className="text-base font-bold text-white">
                 Post Factory Requirement (Helpers, Packers & ITI)
               </h2>
             </div>

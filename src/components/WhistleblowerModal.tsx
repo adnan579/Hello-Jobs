@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useId, useRef } from 'react';
+import { useModalBehavior } from './ui/Dialog';
 import { X, ShieldAlert, CheckCircle2, AlertOctagon, Send } from 'lucide-react';
 import { WhistleblowerReport, Language } from '../types';
 import { TRANSLATIONS } from '../data/translations';
@@ -25,6 +26,10 @@ export const WhistleblowerModal: React.FC<Props> = ({
   const [reporterPhone, setReporterPhone] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
 
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  useModalBehavior(isOpen, panelRef, onClose);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -46,7 +51,7 @@ export const WhistleblowerModal: React.FC<Props> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-xs">
-      <div className="relative w-full max-w-lg bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden flex flex-col">
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className="outline-none relative w-full max-w-lg bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 bg-red-950 text-white shrink-0">
           <div className="flex items-center gap-3">
@@ -57,7 +62,7 @@ export const WhistleblowerModal: React.FC<Props> = ({
               <div className="text-xs font-mono uppercase tracking-wider text-red-400">
                 Anti-Exploitation Hotline
               </div>
-              <h2 className="text-base font-bold text-white">
+              <h2 id={titleId} className="text-base font-bold text-white">
                 {t.reportModalTitle}
               </h2>
             </div>

@@ -60,7 +60,7 @@ async function defaultContext(): Promise<AppContext> {
 }
 
 function clientIpOf(request: Request): string {
-  const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+  const forwarded = request.headers.get('x-forwarded-for')?.split(',').at(-1)?.trim();
   return (forwarded || '127.0.0.1').replace(/^::ffff:/, '');
 }
 
@@ -123,11 +123,11 @@ export function nativeRoute(handler: Handler, options: NativeOptions = {}): Next
     const pathname = new URL(request.url).pathname;
     let result: NativeResult;
     try {
-      // 1. Body (Express parses it before anything else, so a bad body wins over a missing session).
-      const body = await readJson(request);
-      // 2. Rate limit.
+      // 1. Rate limit, then the body (a blocked caller never costs a parse).
       const ip = clientIpOf(request);
-      if (await overApiLimit(ctx.db, ip, request.method)) {
+      const limited = await overApiLimit(ctx.db, ip, request.method);
+      const body = limited ? undefined : await readJson(request);
+      if (limited) {
         result = { status: 429, body: TOO_MANY };
       } else if (MUTATING_METHODS.has(request.method) && !isSameOrigin(request.headers.get('origin'), request.headers.get('host'), ctx.config.appUrl)) {
         // 3. Browser writes must come from this site.

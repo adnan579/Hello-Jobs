@@ -34,15 +34,6 @@ export function createApp(ctx: AppContext): express.Express {
     next();
   });
 
-  app.use(
-    express.json({
-      limit: '200kb',
-      verify: (req, _res, buf) => {
-        (req as any).rawBody = buf;
-      },
-    })
-  );
-
   // One log line per API call in production: no bodies, no phone numbers, no cookies.
   if (ctx.config.isProd) {
     app.use('/api', (req, res, next) => {
@@ -58,6 +49,14 @@ export function createApp(ctx: AppContext): express.Express {
   app.use('/api', (req, res, next) => {
     overApiLimit(ctx.db, clientIp(req), req.method).then((blocked) => (blocked ? res.status(429).json(TOO_MANY) : next()), next);
   });
+  app.use(
+    express.json({
+      limit: '200kb',
+      verify: (req, _res, buf) => {
+        (req as any).rawBody = buf;
+      },
+    })
+  );
   // After any successful write, drop the cached public job list so this instance never serves it stale.
   app.use('/api', (req, res, next) => {
     if (MUTATING_METHODS.has(req.method)) res.on('finish', () => res.statusCode < 400 && invalidate(ctx));

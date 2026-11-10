@@ -27,6 +27,7 @@ export function reviewConfig(config: Config, env: Env = process.env): Finding[] 
     add(config.appUrl ? 'ok' : 'warn', 'Security', config.appUrl ? `APP_URL is ${config.appUrl}.` : 'APP_URL is not set. Set it to your public address so cross-site requests are blocked correctly.');
     if (config.appUrl && !config.appUrl.startsWith('https://')) add('warn', 'Security', 'APP_URL is not https. Login cookies are marked Secure in production and will not work over plain http.');
   }
+  if (prod && !env.ADMIN_2FA_KEY) add('warn', 'Security', 'ADMIN_2FA_KEY is not set: changing SESSION_SECRET would lock every admin out of 2FA.');
 
   const email = (env.ADMIN_BOOTSTRAP_EMAIL ?? '').trim();
   const pw = env.ADMIN_BOOTSTRAP_PASSWORD ?? '';

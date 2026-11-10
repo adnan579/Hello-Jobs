@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId, useRef } from 'react';
+import { useModalBehavior } from './ui/Dialog';
 import { CONTACT } from '../config/contact';
 import {
   X,
@@ -43,11 +44,15 @@ export const LegalModal: React.FC<Props> = ({
     }
   }, [isOpen, initialTab]);
 
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  useModalBehavior(isOpen, panelRef, onClose);
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-xs">
-      <div className="relative w-full max-w-3xl bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className="outline-none relative w-full max-w-3xl bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white shrink-0">
           <div className="flex items-center gap-3">
@@ -55,7 +60,7 @@ export const LegalModal: React.FC<Props> = ({
               <Scale className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white">
+              <h2 id={titleId} className="text-base font-bold text-white">
                 Legal, Privacy Policy & Terms of Use
               </h2>
               <p className="text-xs text-slate-400">

@@ -105,7 +105,8 @@ dpdpRouter.delete(
       await revokeAll(q, accountId);
       // Keep the account row only as a tombstone so the number can register again later.
       await q.query(`UPDATE accounts SET status = 'erased', phone = 'erased:' || id::text WHERE id = $1`, [accountId]);
-      await audit(q, { actorAccountId: accountId, principalId: wid, principalName: w.name, action: 'DATA_ERASED', ip: clientIp(req), details: 'Worker erased profile, applications, offers and consent records.' });
+      await q.query(`UPDATE audit_logs SET principal_name = 'Erased', details = '[erased]' WHERE principal_id = $1`, [wid]);
+      await audit(q, { actorAccountId: accountId, principalId: wid, principalName: 'Erased', action: 'DATA_ERASED', ip: clientIp(req), details: 'Worker erased profile, applications, offers and consent records.' });
     });
     clearSessionCookie(res, req.ctx.config.isProd);
     res.json({ ok: true });

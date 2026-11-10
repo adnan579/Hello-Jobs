@@ -60,6 +60,7 @@ async function request<T = BootstrapPayload>(
     const res = await fetch(url, {
       method,
       credentials: 'same-origin',
+      signal: AbortSignal.timeout(30_000),
       headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
       body: body === undefined ? undefined : JSON.stringify(body),
     });

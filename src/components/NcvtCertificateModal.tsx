@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useId, useRef } from 'react';
+import { useModalBehavior } from './ui/Dialog';
 import { NcvtCertificate } from '../types';
 import { X, CheckCircle2, ShieldCheck, Award, QrCode, Printer } from 'lucide-react';
 
@@ -15,6 +16,10 @@ export const NcvtCertificateModal: React.FC<Props> = ({
   isOpen,
   onClose,
 }) => {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  useModalBehavior(isOpen, panelRef, onClose);
+
   if (!isOpen) return null;
 
   const totalScore = certificate.practicalScore + certificate.theoryScore;
@@ -23,7 +28,7 @@ export const NcvtCertificateModal: React.FC<Props> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs">
-      <div className="relative w-full max-w-2xl bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className="outline-none relative w-full max-w-2xl bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
         {/* Header Bar */}
         <div className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white shrink-0">
           <div className="flex items-center gap-3">
@@ -34,7 +39,7 @@ export const NcvtCertificateModal: React.FC<Props> = ({
               <div className="text-xs font-mono uppercase tracking-wider text-amber-400">
                 Shramkart Credential Check
               </div>
-              <h2 className="text-base font-bold text-white">
+              <h2 id={titleId} className="text-base font-bold text-white">
                 ITI National Trade Certificate
               </h2>
             </div>

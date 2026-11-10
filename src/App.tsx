@@ -396,14 +396,13 @@ export default function App({ initialRole, initialData, initialAuth, initialLega
     await run(submitRetentionCheckInApi(checkIn));
   };
 
-  const handleJobCreated = async (newJob: JobListing) => {
-    await run(createJobApi(newJob));
-  };
+  const handleJobCreated = async (newJob: JobListing) => !!(await run(createJobApi(newJob)));
 
   const handleProfileCreated = async (newCandidate: CandidateProfile) => {
-    if (!activeWorker) return;
-    await run(createCandidateApi({ ...newCandidate, id: activeWorker.id }));
-    handleRoleChange('worker');
+    if (!activeWorker) return false;
+    const ok = !!(await run(createCandidateApi({ ...newCandidate, id: activeWorker.id })));
+    if (ok) handleRoleChange('worker');
+    return ok;
   };
 
   const handleUpdateEmployerProfile = async (
@@ -504,39 +503,6 @@ export default function App({ initialRole, initialData, initialAuth, initialLega
   useEffect(() => {
     document.documentElement.lang = currentLang;
   }, [currentLang]);
-
-  /* Escape key handler for all modals and drawers */
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (isCalculatorOpen) setIsCalculatorOpen(false);
-        if (isReportOpen) setIsReportOpen(false);
-        if (isNcvtSearchOpen) setIsNcvtSearchOpen(false);
-        if (isCreateProfileOpen) setIsCreateProfileOpen(false);
-        if (isPostJobOpen) setIsPostJobOpen(false);
-        if (isAuthModalOpen) setIsAuthModalOpen(false);
-        if (isLegalModalOpen) setIsLegalModalOpen(false);
-        if (isDpdpOpen) setIsDpdpOpen(false);
-        if (isNcvtModalOpen) setIsNcvtModalOpen(false);
-        if (isOfferModalOpen) setIsOfferModalOpen(false);
-        if (isVideoModalOpen) setIsVideoModalOpen(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [
-    isCalculatorOpen,
-    isReportOpen,
-    isNcvtSearchOpen,
-    isCreateProfileOpen,
-    isPostJobOpen,
-    isAuthModalOpen,
-    isLegalModalOpen,
-    isDpdpOpen,
-    isNcvtModalOpen,
-    isOfferModalOpen,
-    isVideoModalOpen,
-  ]);
 
   return (
     <div className="pb-nav flex min-h-screen flex-col bg-slate-50 text-slate-900">

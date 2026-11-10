@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useId, useRef } from 'react';
+import { useModalBehavior } from './ui/Dialog';
 import { CONTACT } from '../config/contact';
 import {
   X,
@@ -119,6 +120,10 @@ export const DpdpComplianceModal: React.FC<Props> = ({
   const [grievanceDesc, setGrievanceDesc] = useState('');
   const [grievanceSubmittedId, setGrievanceSubmittedId] = useState('');
 
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  useModalBehavior(isOpen, panelRef, onClose);
+
   if (!isOpen) return null;
 
   const workerApps = activeWorker
@@ -225,7 +230,7 @@ export const DpdpComplianceModal: React.FC<Props> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-xs">
-      <div className="relative w-full max-w-4xl bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className="outline-none relative w-full max-w-4xl bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
         {/* Top Header */}
         <div className="flex items-center justify-between px-6 py-4 bg-slate-950 text-white border-b border-slate-800 shrink-0">
           <div className="flex items-center gap-3">
@@ -241,7 +246,7 @@ export const DpdpComplianceModal: React.FC<Props> = ({
                   SECTIONS 5, 6, 11–14 COMPLIANT
                 </span>
               </div>
-              <h2 className="text-base sm:text-lg font-extrabold text-white">
+              <h2 id={titleId} className="text-base sm:text-lg font-extrabold text-white">
                 DPDP Data Principal Rights, Consent Manager & DPO Portal
               </h2>
             </div>

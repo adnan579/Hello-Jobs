@@ -7,6 +7,7 @@ import { badRequest, forbidden, notFound, tooMany, unauthorized } from '../lib/e
 import { newId, newToken } from '../lib/ids.ts';
 import { hit } from '../auth/throttle.ts';
 import { respond } from '../lib/respond.ts';
+import { OPEN_FACTORY } from '../services/bootstrap.ts';
 
 export const communityRouter = Router();
 
@@ -41,7 +42,7 @@ communityRouter.post(
   requireRole('worker'),
   wrap(async (req, res) => {
     const wid = workerId(req);
-    const d = (await req.ctx.db.query(`SELECT d.id FROM hiring_drives d JOIN employers e ON e.id = d.employer_id WHERE d.id = $1 AND e.kyb_status = 'VERIFIED' AND NOT e.paused`, [req.params.id])).rows[0];
+    const d = (await req.ctx.db.query(`SELECT d.id FROM hiring_drives d JOIN employers e ON e.id = d.employer_id WHERE d.id = $1 AND ${OPEN_FACTORY}`, [req.params.id])).rows[0];
     if (!d) throw notFound('Drive not found.');
     await req.ctx.db.query('INSERT INTO drive_registrations (drive_id, worker_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [d.id, wid]);
     await respond(req, res);

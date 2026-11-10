@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useId, useRef } from 'react';
+import { useModalBehavior } from './ui/Dialog';
 import {
   X,
   CheckCircle2,
@@ -27,7 +28,8 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   lang: Language;
-  onProfileCreated: (candidate: CandidateProfile) => void;
+  /** Resolves to false when the server refused the profile, so the success screen is taken back. */
+  onProfileCreated: (candidate: CandidateProfile) => Promise<boolean>;
 }
 
 const UNSKILLED_TRADES: TradeType[] = [
@@ -119,6 +121,10 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
   const [isVoicePlaying, setIsVoicePlaying] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  useModalBehavior(isOpen, panelRef, onClose);
+
   if (!isOpen) return null;
 
   const handleToggleVoiceGuide = () => {
@@ -162,7 +168,7 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     stopJobAudio();
 
@@ -241,8 +247,8 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
       },
     };
 
-    onProfileCreated(newCandidate);
     setIsSuccess(true);
+    if (!(await onProfileCreated(newCandidate))) setIsSuccess(false);
   };
 
   const tradesForCategory =
@@ -254,7 +260,7 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-xs">
-      <div className="relative w-full max-w-xl bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className="outline-none relative w-full max-w-xl bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
         {/* Top Header with Voice Guide */}
         <div className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white shrink-0">
           <div className="flex items-center gap-3">
@@ -265,7 +271,7 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
               <div className="text-[11px] font-mono uppercase tracking-wider text-amber-400">
                 Zero Documents Required · 3 Easy Taps
               </div>
-              <h2 className="text-base font-bold text-white">
+              <h2 id={titleId} className="text-base font-bold text-white">
                 Easy Worker Card (No Resume or Certificate Needed)
               </h2>
             </div>

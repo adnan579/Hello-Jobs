@@ -23,23 +23,10 @@ const FOCUSABLE =
   'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
 /**
- * Accessible modal. Moves focus in when it opens, keeps Tab inside, closes on Escape or a
- * backdrop click, locks page scroll and hands focus back to whatever opened it.
- * It sits above the mobile bottom bar (z-50 over z-40) so its actions are never covered.
+ * What every modal needs: focus moves in, Tab stays inside, Escape closes, page scroll locks and
+ * focus returns to whatever opened it. Put `ref`, role="dialog" and aria-modal on the panel.
  */
-export const Dialog: React.FC<Props> = ({
-  open,
-  onClose,
-  title,
-  eyebrow,
-  variant = 'center',
-  closeLabel,
-  footer,
-  size = 'md',
-  children,
-}) => {
-  const titleId = useId();
-  const panelRef = useRef<HTMLDivElement>(null);
+export function useModalBehavior(open: boolean, panelRef: React.RefObject<HTMLElement | null>, onClose: () => void) {
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
@@ -85,7 +72,28 @@ export const Dialog: React.FC<Props> = ({
       document.body.style.overflow = previousOverflow;
       if (opener && document.contains(opener)) opener.focus();
     };
-  }, [open]);
+  }, [open, panelRef]);
+}
+
+/**
+ * Accessible modal. Moves focus in when it opens, keeps Tab inside, closes on Escape or a
+ * backdrop click, locks page scroll and hands focus back to whatever opened it.
+ * It sits above the mobile bottom bar (z-50 over z-40) so its actions are never covered.
+ */
+export const Dialog: React.FC<Props> = ({
+  open,
+  onClose,
+  title,
+  eyebrow,
+  variant = 'center',
+  closeLabel,
+  footer,
+  size = 'md',
+  children,
+}) => {
+  const titleId = useId();
+  const panelRef = useRef<HTMLDivElement>(null);
+  useModalBehavior(open, panelRef, onClose);
 
   if (!open) return null;
 
@@ -96,7 +104,7 @@ export const Dialog: React.FC<Props> = ({
         isDrawer ? 'justify-end' : 'items-center justify-center p-3 sm:p-4'
       }`}
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onCloseRef.current();
+        if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
@@ -120,7 +128,7 @@ export const Dialog: React.FC<Props> = ({
           </div>
           <button
             type="button"
-            onClick={() => onCloseRef.current()}
+            onClick={() => onClose()}
             aria-label={closeLabel}
             className="btn btn-ghost -mr-2 shrink-0 !min-h-11 !min-w-11 !p-0"
           >

@@ -53,6 +53,7 @@ export async function sendOtp(
   if (perIp.blocked) return { ok: false, status: 429, error: 'Too many requests from this network. Please try again later.' };
   const perPhone = await hit(db, `otp-send-phone:${phone}`, 3, 600);
   if (perPhone.blocked) return { ok: false, status: 429, error: 'Too many codes requested. Please wait a few minutes and try again.' };
+  if ((await hit(db, 'otp-send-all', 3000, 3600)).blocked) return { ok: false, status: 503, error: 'Login codes are busy right now. Please try again shortly.' };
 
   const code = generateCode();
   const codeHash = hashCode(config.sessionSecret, phone, role, code);

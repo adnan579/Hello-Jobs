@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useId, useRef } from 'react';
+import { useModalBehavior } from './ui/Dialog';
 import { X, Search, ShieldCheck, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { CandidateProfile } from '../types';
 
@@ -17,6 +18,10 @@ export const NcvtSearchModal: React.FC<Props> = ({
 }) => {
   const [query, setQuery] = useState('');
 
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  useModalBehavior(isOpen, panelRef, onClose);
+
   if (!isOpen) return null;
 
   const verifiedCandidates = candidates.filter((c) => c.ncvtCertificate.isVerified);
@@ -31,7 +36,7 @@ export const NcvtSearchModal: React.FC<Props> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-xs">
-      <div className="relative w-full max-w-2xl bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className="outline-none relative w-full max-w-2xl bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white shrink-0">
           <div className="flex items-center gap-3">
@@ -42,7 +47,7 @@ export const NcvtSearchModal: React.FC<Props> = ({
               <div className="text-xs font-mono uppercase tracking-wider text-amber-400">
                 Shramkart Credential Check
               </div>
-              <h2 className="text-base font-bold text-white">
+              <h2 id={titleId} className="text-base font-bold text-white">
                 Workers with a checked ITI certificate
               </h2>
             </div>

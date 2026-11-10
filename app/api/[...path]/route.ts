@@ -49,7 +49,7 @@ async function handle(request: NextRequest): Promise<Response> {
       headers: { 'content-type': 'application/json; charset=utf-8', 'x-content-type-options': 'nosniff' },
     });
   }
-  const forwardedIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+  const forwardedIp = request.headers.get('x-forwarded-for')?.split(',').at(-1)?.trim();
   const event = {
     version: '2.0',
     routeKey: `${request.method} /api/{proxy+}`,

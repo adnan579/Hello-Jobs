@@ -25,3 +25,20 @@ for (const path of ['/', '/about', '/jobs', '/employers']) {
     });
   }
 }
+
+// Axe cannot see dialog semantics that are missing, so check the sign-in modal directly:
+// it must announce itself as a dialog, keep focus inside, close on Escape and hand focus back.
+test('the sign-in modal is a real dialog', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('html[data-hydrated="true"]');
+  const opener = page.getByTestId('auth-login-worker').first();
+  await opener.click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toHaveCount(1);
+  await expect(dialog).toHaveAttribute('aria-modal', 'true');
+  await expect(dialog).toHaveAccessibleName(/login|register/i);
+  for (let i = 0; i < 40; i++) await page.keyboard.press('Tab');
+  expect(await page.evaluate(() => !!document.activeElement?.closest('[role=dialog]'))).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+});

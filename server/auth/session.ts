@@ -66,11 +66,12 @@ export async function loadAuth(ctx: AppContext, token: string | undefined): Prom
     member_role: AuthContext['memberRole'] | null;
   }>(
     `SELECT s.id AS session_id, a.id AS account_id, a.role, a.admin_role, a.phone, s.last_seen_at,
-            w.id AS worker_id, m.employer_id, m.member_role
+            w.id AS worker_id, m.employer_id, CASE WHEN e.paused THEN 'Viewer' ELSE m.member_role END AS member_role
        FROM sessions s
        JOIN accounts a ON a.id = s.account_id
        LEFT JOIN workers w ON w.account_id = a.id
        LEFT JOIN employer_members m ON m.account_id = a.id
+       LEFT JOIN employers e ON e.id = m.employer_id
       WHERE s.token_hash = $1 AND s.kind = 'user' AND a.role <> 'admin' AND s.revoked_at IS NULL AND s.expires_at > now() AND a.status = 'active'`,
     [sha256(token)]
   );

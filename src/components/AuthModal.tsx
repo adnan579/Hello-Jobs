@@ -12,7 +12,8 @@ import {
   UserPlus,
   LogIn,
 } from 'lucide-react';
-import { TradeType, WorkerSkillCategory } from '../types';
+import { Language, TradeType, WorkerSkillCategory } from '../types';
+import { makeT } from '../data/translations';
 import { sendOtpApi, signInApi } from '../utils/api';
 import { BrandMark } from './BrandLogo';
 
@@ -24,6 +25,8 @@ interface Props {
   /** Called after the server has signed the person in (cookie set). */
   onLoginSuccess: () => void;
   onOpenLegalModal?: (tab: 'privacy' | 'terms') => void;
+  /** The language the person chose; the sign-in text and the privacy notice follow it. */
+  lang?: Language;
 }
 
 const QUICK_WORK_TYPES: {
@@ -75,7 +78,9 @@ export const AuthModal: React.FC<Props> = ({
   onClose,
   onLoginSuccess,
   onOpenLegalModal,
+  lang = 'en',
 }) => {
+  const t = makeT(lang);
   const [roleTab, setRoleTab] = useState<'worker' | 'employer'>(initialTab);
   const [authMode, setAuthMode] = useState<'login' | 'register'>(initialMode);
 
@@ -134,13 +139,13 @@ export const AuthModal: React.FC<Props> = ({
 
     const digits = activePhone.replace(/\D/g, '').slice(-10);
     if (digits.length < 10) {
-      setAuthError('Please enter a valid 10-digit mobile number.');
+      setAuthError(t('amErrPhone'));
       return;
     }
 
     if (authMode === 'register') {
       if (roleTab === 'worker' && (!newWorkerName.trim() || !newWorkerCity.trim() || !newWorkerState.trim())) {
-        setAuthError('Please enter your full name, city and home state to register.');
+        setAuthError(t('amErrName'));
         return;
       }
       if (roleTab === 'employer' && (!newCompanyName.trim() || !newHrName.trim() || !newGstin.trim() || !newHub.trim())) {
@@ -148,13 +153,11 @@ export const AuthModal: React.FC<Props> = ({
         return;
       }
       if (!confirmAdult18Plus) {
-        setAuthError('Please confirm that you are 18 years of age or older.');
+        setAuthError(t('amErrAdult'));
         return;
       }
       if (!acceptTermsAndPrivacy) {
-        setAuthError(
-          'Please accept the Privacy Policy and Terms & Conditions of Use to create an account.'
-        );
+        setAuthError(t('amErrTerms'));
         return;
       }
     }
@@ -190,7 +193,7 @@ export const AuthModal: React.FC<Props> = ({
               whatsappJobAlerts: false,
               credentialVerification: true,
               marketingCommunications: false,
-              noticeLanguage: 'en',
+              noticeLanguage: lang,
             },
             registration:
               authMode === 'register'
@@ -248,15 +251,15 @@ export const AuthModal: React.FC<Props> = ({
               <h2 id={titleId} className="text-base font-bold text-white">
                 {authMode === 'register'
                   ? roleTab === 'worker'
-                    ? 'Register as a Worker'
+                    ? t('amTitleRegisterWorker')
                     : 'Register as an Employer'
                   : roleTab === 'worker'
-                  ? 'Worker Login'
+                  ? t('amTitleLoginWorker')
                   : 'Employer Login'}
               </h2>
               <p className="text-xs text-slate-400">
                 {roleTab === 'worker'
-                  ? 'Access the Jobs Feed, apply in 1 click, and manage your profile'
+                  ? t('amSubWorker')
                   : 'Access your Employer Dashboard to post jobs and shortlist candidates'}
               </p>
             </div>
@@ -264,7 +267,7 @@ export const AuthModal: React.FC<Props> = ({
           <button
             onClick={onClose}
             className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
-            aria-label="Close modal"
+            aria-label={t('amClose')}
           >
             <X className="w-5 h-5" />
           </button>
@@ -288,7 +291,7 @@ export const AuthModal: React.FC<Props> = ({
             }`}
           >
             <Users className="w-4 h-4 text-amber-600" />
-            <span>I am a Worker</span>
+            <span>{t('amRoleWorker')}</span>
           </button>
 
           <button
@@ -306,7 +309,7 @@ export const AuthModal: React.FC<Props> = ({
             }`}
           >
             <Factory className="w-4 h-4 text-blue-600" />
-            <span>I am an Employer</span>
+            <span>{t('amRoleEmployer')}</span>
           </button>
         </div>
         )}
@@ -331,7 +334,7 @@ export const AuthModal: React.FC<Props> = ({
               }`}
             >
               <LogIn className="w-3.5 h-3.5" />
-              <span>Log In</span>
+              <span>{t('amLogIn')}</span>
             </button>
             <button
               data-testid={`auth-register-mode-${roleTab}`}
@@ -350,7 +353,7 @@ export const AuthModal: React.FC<Props> = ({
               <UserPlus className="w-3.5 h-3.5" />
               <span>
                 {roleTab === 'worker'
-                  ? 'New Worker Registration'
+                  ? t('amNewWorker')
                   : 'New Employer Registration'}
               </span>
             </button>
@@ -374,12 +377,12 @@ export const AuthModal: React.FC<Props> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Your Full Name *
+                        {t('amFullName')}
                       </label>
                       <input
                         type="text"
                         required
-                        placeholder="Your name as on your ID"
+                        placeholder={t('amNamePh')}
                         value={newWorkerName}
                         onChange={(e) => setNewWorkerName(e.target.value)}
                         className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white"
@@ -387,13 +390,13 @@ export const AuthModal: React.FC<Props> = ({
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Expected Monthly In-Hand Pay (₹)
+                        {t('amExpectedPay')}
                       </label>
                       <input
                         type="number"
                         step={500}
                         min={0}
-                        placeholder="Optional"
+                        placeholder={t('amOptional')}
                         value={newWorkerExpectedPay}
                         onChange={(e) =>
                           setNewWorkerExpectedPay(
@@ -408,7 +411,7 @@ export const AuthModal: React.FC<Props> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Current City / District
+                        {t('amCity')}
                       </label>
                       <input
                         type="text"
@@ -420,7 +423,7 @@ export const AuthModal: React.FC<Props> = ({
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Home State
+                        {t('amHomeState')}
                       </label>
                       <input
                         type="text"
@@ -434,7 +437,7 @@ export const AuthModal: React.FC<Props> = ({
 
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Primary Trade / Work Role *
+                      {t('amTrade')}
                     </label>
                     <select
                       value={newWorkerTrade}
@@ -445,7 +448,7 @@ export const AuthModal: React.FC<Props> = ({
                     >
                       {QUICK_WORK_TYPES.map((q) => (
                         <option key={q.trade} value={q.trade}>
-                          {q.label}
+                          {t(`amWork${QUICK_WORK_TYPES.indexOf(q)}`)}
                         </option>
                       ))}
                     </select>
@@ -519,7 +522,7 @@ export const AuthModal: React.FC<Props> = ({
               <div>
                 <label className="block text-xs font-bold text-slate-800 mb-1.5">
                   {roleTab === 'worker'
-                    ? '10-Digit Mobile Number'
+                    ? t('amMobile')
                     : 'HR Manager 10-Digit Mobile Number'}
                 </label>
                 <div className="flex items-center gap-2">
@@ -530,7 +533,7 @@ export const AuthModal: React.FC<Props> = ({
                     type="tel"
                     required
                     value={activePhone}
-                    placeholder="10-digit mobile"
+                    placeholder={t('amMobilePh')}
                     onChange={(e) => setPhoneInput(e.target.value)}
                     className="flex-1 px-3.5 py-2 text-sm font-bold tabular-nums border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-amber-500"
                   />
@@ -548,7 +551,7 @@ export const AuthModal: React.FC<Props> = ({
                       className="mt-0.5 rounded border-slate-400 text-amber-600"
                     />
                     <span>
-                      I confirm that I am at least <strong>18 years of age</strong>.
+                      {t('amAdultA')} <strong>{t('amAdultB')}</strong>{t('amAdultC')}
                     </span>
                   </label>
 
@@ -562,7 +565,7 @@ export const AuthModal: React.FC<Props> = ({
                       className="mt-0.5 rounded border-slate-400 text-emerald-600"
                     />
                     <span>
-                      I agree to the{' '}
+                      {t('amAgreeA')}{' '}
                       <button
                         type="button"
                         onClick={() =>
@@ -570,9 +573,9 @@ export const AuthModal: React.FC<Props> = ({
                         }
                         className="text-blue-700 font-semibold hover:underline"
                       >
-                        Terms & Conditions of Use
+                        {t('amTerms')}
                       </button>{' '}
-                      and{' '}
+                      {t('amAnd')}{' '}
                       <button
                         type="button"
                         onClick={() =>
@@ -580,9 +583,9 @@ export const AuthModal: React.FC<Props> = ({
                         }
                         className="text-blue-700 font-semibold hover:underline"
                       >
-                        Privacy Policy
+                        {t('amPrivacy')}
                       </button>
-                      , and consent to processing my account details for direct hiring.
+                      {t('amAgreeB')}
                     </span>
                   </label>
 
@@ -597,7 +600,7 @@ export const AuthModal: React.FC<Props> = ({
                         className="mt-0.5 rounded border-slate-400 text-emerald-600"
                       />
                       <span>
-                        Allow verified employers to discover my profile in the Candidate Directory (my mobile number remains masked until I apply or am invited).
+                        {t('amDiscovery')}
                       </span>
                     </label>
                   )}
@@ -613,10 +616,10 @@ export const AuthModal: React.FC<Props> = ({
                 <MessageSquare className="w-4 h-4" />
                 <span>
                   {busy
-                    ? 'Sending...'
+                    ? t('amSending')
                     : authMode === 'register'
-                    ? 'Send WhatsApp OTP to Register'
-                    : 'Send WhatsApp OTP'}
+                    ? t('amSendReg')
+                    : t('amSend')}
                 </span>
               </button>
             </form>
@@ -628,8 +631,8 @@ export const AuthModal: React.FC<Props> = ({
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                     <span>
                       {demoCode
-                        ? `Test site: your code is shown here instead of WhatsApp`
-                        : `Verification code sent on WhatsApp to +91 ${activePhone}`}
+                        ? t('amTestCode')
+                        : t('amSentTo', { phone: activePhone })}
                     </span>
                   </div>
                   {demoCode && (
@@ -639,7 +642,7 @@ export const AuthModal: React.FC<Props> = ({
                       className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-emerald-300 text-emerald-900 font-bold text-[11px] hover:bg-emerald-100"
                     >
                       <Copy className="w-3 h-3" />
-                      <span>{copiedCode ? 'Copied!' : `Code: ${demoCode}`}</span>
+                      <span>{copiedCode ? t('amCopied') : t('amCode', { code: demoCode })}</span>
                     </button>
                   )}
                 </div>
@@ -647,7 +650,7 @@ export const AuthModal: React.FC<Props> = ({
 
               <div>
                 <label className="block text-xs font-bold text-slate-800 mb-1.5">
-                  Enter 6-Digit Verification Code
+                  {t('amEnterCode')}
                 </label>
                 <input
                   type="text"
@@ -667,14 +670,14 @@ export const AuthModal: React.FC<Props> = ({
                   onClick={() => handleRequestOtp()}
                   className="text-blue-700 hover:underline font-semibold"
                 >
-                  Resend Verification Code
+                  {t('amResend')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setOtpSent(false)}
                   className="text-slate-500 hover:text-slate-800"
                 >
-                  Change Mobile Number
+                  {t('amChangeNo')}
                 </button>
               </div>
 
@@ -688,10 +691,10 @@ export const AuthModal: React.FC<Props> = ({
                 <span>
                   {authMode === 'register'
                     ? roleTab === 'worker'
-                      ? 'Complete Registration & Open Jobs Feed'
+                      ? t('amDoneReg')
                       : 'Complete Registration & Open Employer Dashboard'
                     : roleTab === 'worker'
-                    ? 'Verify & Go to Jobs Feed'
+                    ? t('amVerify')
                     : 'Verify & Go to Employer Dashboard'}
                 </span>
               </button>

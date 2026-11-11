@@ -1,8 +1,10 @@
 import { Language, JobListing } from '../types';
 import { UX_STRINGS } from './translations.ux';
 import { ABOUT_STRINGS } from './translations.about';
+import { GU_STRINGS } from './translations.gu';
+import { WORKER_STRINGS } from './translations.worker';
 
-const BASE_TRANSLATIONS: Record<Language, Record<string, string>> = {
+const BASE_TRANSLATIONS: Record<Exclude<Language, 'gu'>, Record<string, string>> = {
   en: {
     brandTagline: 'Direct Hands for Indian Industry',
     subTagline: 'Zero Middlemen. 100% Fair Pay.',
@@ -448,10 +450,12 @@ const BASE_TRANSLATIONS: Record<Language, Record<string, string>> = {
 
 /**
  * Every language, merged key by key: English first, then the shared base copy, then the
- * newer interface copy for that language. A key missing in hi / mr / ta therefore shows the
+ * newer interface copy for that language. A key missing in hi / mr / ta / gu therefore shows the
  * English text for that one key instead of "undefined" or a blank.
  */
-const LANGUAGES: Language[] = ['en', 'hi', 'mr', 'ta'];
+const LANGUAGES: Language[] = ['en', 'hi', 'mr', 'ta', 'gu'];
+type Dict = Record<string, string>;
+const partial = (d: object, lang: Language): Dict => (d as Partial<Record<Language, Dict>>)[lang] ?? {};
 export const TRANSLATIONS = Object.fromEntries(
   LANGUAGES.map((lang) => [
     lang,
@@ -459,9 +463,12 @@ export const TRANSLATIONS = Object.fromEntries(
       ...BASE_TRANSLATIONS.en,
       ...UX_STRINGS.en,
       ...ABOUT_STRINGS.en,
-      ...BASE_TRANSLATIONS[lang],
-      ...UX_STRINGS[lang],
-      ...ABOUT_STRINGS[lang],
+      ...WORKER_STRINGS.en,
+      ...partial(BASE_TRANSLATIONS, lang),
+      ...partial(UX_STRINGS, lang),
+      ...partial(ABOUT_STRINGS, lang),
+      ...(lang === 'gu' ? GU_STRINGS : {}),
+      ...WORKER_STRINGS[lang],
     },
   ])
 ) as Record<Language, Record<string, string>>;

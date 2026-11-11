@@ -21,7 +21,7 @@ import {
 import { BrandLogo } from './BrandLogo';
 import { makeT } from '../data/translations';
 
-export type WorkerTab = 'profile' | 'inbox' | 'idcard';
+export type WorkerTab = 'home' | 'profile' | 'inbox' | 'idcard';
 
 interface Props {
   currentRole: UserRole;
@@ -54,6 +54,7 @@ const LANGUAGES: { code: Language; nativeName: string }[] = [
   { code: 'hi', nativeName: 'हिंदी' },
   { code: 'mr', nativeName: 'मराठी' },
   { code: 'ta', nativeName: 'தமிழ்' },
+  { code: 'gu', nativeName: 'ગુજરાતી' },
 ];
 
 /** One desktop navigation link. The current page is marked in text, underline and aria-current. */
@@ -90,7 +91,7 @@ export const Navbar: React.FC<Props> = ({
   activeWorker,
   employerProfile,
   unreadNotificationsCount = 0,
-  workerTab = 'profile',
+  workerTab = 'home',
   onRoleChange,
   onOpenWorkerTab,
   onLangChange,
@@ -144,7 +145,7 @@ export const Navbar: React.FC<Props> = ({
               <NavLink
                 tone="worker"
                 active={onProfilePage && workerTab !== 'inbox'}
-                onClick={() => openWorkerTab('profile')}
+                onClick={() => openWorkerTab('home')}
               >
                 <UserCheck className="h-4 w-4" aria-hidden="true" />
                 <span>{t('navMyProfile')}</span>
@@ -245,7 +246,7 @@ export const Navbar: React.FC<Props> = ({
                 type="button"
                 onClick={onLogout}
                 aria-label={t('navLogout')}
-                className="btn btn-secondary max-[380px]:hidden sm:!px-3"
+                className="btn btn-secondary sm:!px-3"
               >
                 <LogOut className="h-4 w-4" aria-hidden="true" />
                 <span className="hidden sm:inline">{t('navLogout')}</span>

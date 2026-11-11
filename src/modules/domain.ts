@@ -127,27 +127,38 @@ export function searchMachineCatalog(query: string): MachineCatalogEntry[] {
 // M4: Profile Completeness Meter with "Single Next Best Action"
 // ============================================================================
 
+/** What a worker can still add, in the order we ask. The video is optional and always last. */
+export type ProfileStepKey = 'machines' | 'pastWork' | 'certificate' | 'pay' | 'video';
+
 export interface CompletenessResult {
+  /** Share of the required steps done (0-100). The optional video never lowers it. */
   scorePct: number;
   percentage: number;
   nextBestAction: string;
   nextBestActionHi: string;
+  /** Steps still open, required ones first and the optional video last. */
+  missingKeys: ProfileStepKey[];
+  /** First open step, or null when the profile is complete. */
+  nextStepKey: ProfileStepKey | null;
+  /** Open steps that count toward the percentage (the optional video is not one of them). */
   missingStepsCount: number;
 }
+
+const REQUIRED_WEIGHT_TOTAL = 85;
 
 export function calculateProfileCompleteness(
   worker: CandidateProfile
 ): CompletenessResult {
   let score = 35; // Base for Mobile OTP + Name + Trade
-  const missingActions: { en: string; hi: string; weight: number }[] = [];
+  const missingActions: { key: ProfileStepKey; en: string; hi: string }[] = [];
 
   if (worker.machinesOperated && worker.machinesOperated.length >= 2) {
     score += 15;
   } else {
     missingActions.push({
+      key: 'machines',
       en: 'Select at least 2 machines or tools from the controlled catalogue (+15%)',
       hi: 'मशीन सूची से कम से कम 2 मशीनें या टूल चुनें (+15%)',
-      weight: 15,
     });
   }
 
@@ -155,19 +166,9 @@ export function calculateProfileCompleteness(
     score += 15;
   } else {
     missingActions.push({
+      key: 'pastWork',
       en: 'Add 1 past factory employer or work experience to boost factory trust (+15%)',
       hi: 'फैक्ट्री का भरोसा बढ़ाने के लिए पिछली 1 कंपनी का नाम जोड़ें (+15%)',
-      weight: 15,
-    });
-  }
-
-  if (worker.hasVideoDemo) {
-    score += 15;
-  } else {
-    missingActions.push({
-      en: 'Upload a 30-second phone camera skill video for 2x faster offers (+15%)',
-      hi: 'दोगुनी तेजी से ऑफर पाने के लिए 30 सेकंड का काम का वीडियो अपलोड करें (+15%)',
-      weight: 15,
     });
   }
 
@@ -179,9 +180,9 @@ export function calculateProfileCompleteness(
     score += 10;
   } else {
     missingActions.push({
+      key: 'certificate',
       en: 'Verify your NCVT Roll Number or select 3 Work-Readiness badges (+10%)',
       hi: 'अपना NCVT रोल नंबर सत्यापित करें या 3 कार्य-तत्परता बैज चुनें (+10%)',
-      weight: 10,
     });
   }
 
@@ -189,14 +190,26 @@ export function calculateProfileCompleteness(
     score += 10;
   } else {
     missingActions.push({
+      key: 'pay',
       en: 'Set your expected monthly in-hand pay range (Min–Max) (+10%)',
       hi: 'अपनी अपेक्षित इन-हैंड वेतन सीमा (न्यूनतम-अधिकतम) चुनें (+10%)',
-      weight: 10,
     });
   }
 
-  const clampedScore = Math.min(100, score);
+  // Optional, and always the last thing we suggest. It does not count against the percentage.
+  const requiredOpen = missingActions.length;
+  if (!worker.hasVideoDemo) {
+    missingActions.push({
+      key: 'video',
+      en: 'Optional: add a 30-second phone video of your work for faster offers',
+      hi: 'वैकल्पिक: जल्दी ऑफर पाने के लिए अपने काम का 30 सेकंड का वीडियो जोड़ें',
+    });
+  }
+
+  const pct = Math.min(100, Math.round((score / REQUIRED_WEIGHT_TOTAL) * 100));
+  const clampedScore = requiredOpen === 0 ? 100 : Math.min(99, pct);
   const topAction = missingActions[0] || {
+    key: null,
     en: 'Trade Card 100% complete — Share your QR Trade Card on WhatsApp',
     hi: 'ट्रेड कार्ड 100% पूरा है — अपना QR ट्रेड कार्ड व्हाट्सएप पर शेयर करें',
   };
@@ -206,7 +219,9 @@ export function calculateProfileCompleteness(
     percentage: clampedScore,
     nextBestAction: topAction.en,
     nextBestActionHi: topAction.hi,
-    missingStepsCount: missingActions.length,
+    missingKeys: missingActions.map((m) => m.key),
+    nextStepKey: topAction.key,
+    missingStepsCount: requiredOpen,
   };
 }
 

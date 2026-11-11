@@ -22,9 +22,10 @@ export function roleForPath(pathname: string, hash = ''): UserRole {
 export function workerTabForPath(pathname: string): WorkerTab {
   if (pathname === '/me/applications' || pathname.startsWith('/me/applications/')) return 'inbox';
   if (pathname === '/me/id-card' || pathname.startsWith('/me/id-card/')) return 'idcard';
-  return 'profile';
+  if (pathname === '/me/profile' || pathname.startsWith('/me/profile/')) return 'profile';
+  return 'home';
 }
 
 export function languageForCookie(value?: string): Language {
-  return value === 'hi' || value === 'mr' || value === 'ta' ? value : 'en';
+  return value === 'hi' || value === 'mr' || value === 'ta' || value === 'gu' ? value : 'en';
 }

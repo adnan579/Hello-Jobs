@@ -1,4 +1,4 @@
-export type Language = 'en' | 'hi' | 'mr' | 'ta';
+export type Language = 'en' | 'hi' | 'mr' | 'ta' | 'gu';
 
 export type UserRole =
   | 'landing'

@@ -21,7 +21,7 @@ export const gstinField = z
   .toUpperCase()
   .refine(isValidGstin, 'This GSTIN does not look right. Please check all 15 characters.');
 
-export const languageField = z.enum(['en', 'hi', 'mr', 'ta']);
+export const languageField = z.enum(['en', 'hi', 'mr', 'ta', 'gu']);
 
 // ---------- Auth ----------
 export const otpSendSchema = z.object({

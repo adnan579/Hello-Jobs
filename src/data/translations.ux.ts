@@ -820,4 +820,4 @@ const ta: Dict = {
   loginToSave: 'வேலைகளைச் சேமிக்க உள்நுழையுங்கள்',
 };
 
-export const UX_STRINGS: Record<Language, Dict> = { en, hi, mr, ta };
+export const UX_STRINGS: Record<Exclude<Language, 'gu'>, Dict> = { en, hi, mr, ta };

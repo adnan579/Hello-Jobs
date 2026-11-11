@@ -10,7 +10,11 @@ import {
   PastEmploymentItem,
   RetentionCheckIn,
 } from '../types';
-import { getVoiceGuideScript, TRANSLATIONS } from '../data/translations';
+import { getVoiceGuideScript, makeT, TRANSLATIONS } from '../data/translations';
+import type { WorkerTab } from './Navbar';
+import { WorkerHome } from './WorkerHome';
+import { ProfileStepper, type StepId } from './ProfileStepper';
+import { ApplicationStatus } from './ApplicationStatus';
 import { playJobAudio, stopJobAudio } from '../utils/audioNarrator';
 import {
   calculateProfileCompleteness,
@@ -20,7 +24,6 @@ import { revokeSessionsApi } from '../utils/api';
 import {
   ShieldCheck,
   Award,
-  Wrench,
   Briefcase,
   FileText,
   QrCode,
@@ -32,6 +35,7 @@ import {
   X,
   MapPin,
   LogOut,
+  ArrowLeft,
   ArrowRight,
   Video,
   Save,
@@ -68,8 +72,8 @@ interface Props {
   onLogout: () => void;
   onOpenDpdpModal?: () => void;
   /** Optional: lets the app control which section is open, so navigation can mark it active. */
-  activeTab?: 'profile' | 'inbox' | 'idcard';
-  onActiveTabChange?: (tab: 'profile' | 'inbox' | 'idcard') => void;
+  activeTab?: WorkerTab;
+  onActiveTabChange?: (tab: WorkerTab) => void;
 }
 
 const TRADES: TradeType[] = [
@@ -125,14 +129,18 @@ export const WorkerProfileView: React.FC<Props> = ({
   onActiveTabChange,
 }) => {
   const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
-  const [ownTab, setOwnTab] = useState<'profile' | 'inbox' | 'idcard'>('profile');
+  const [ownTab, setOwnTab] = useState<WorkerTab>('home');
   // Follows the app when it controls the tab; otherwise keeps its own state.
   const activeTab = controlledTab ?? ownTab;
-  const setActiveTab = (tab: 'profile' | 'inbox' | 'idcard') => {
+  const setActiveTab = (tab: WorkerTab) => {
     setOwnTab(tab);
     onActiveTabChange?.(tab);
   };
   const [isVoicePlaying, setIsVoicePlaying] = useState(false);
+  const tf = makeT(currentLang);
+  // The profile opens as one question at a time; "All my details" shows the long form.
+  const [showFullForm, setShowFullForm] = useState(false);
+  const [stepperStart, setStepperStart] = useState<StepId | undefined>(undefined);
 
   // Form states synced with worker prop
   const [name, setName] = useState(worker.name);
@@ -214,7 +222,6 @@ export const WorkerProfileView: React.FC<Props> = ({
 
   const workerOffers = offers.filter((o) => o.candidateId === worker.id);
   const workerApps = applications.filter((a) => a.candidateId === worker.id);
-  const pendingOffersCount = workerOffers.filter((o) => o.status === 'Issued').length;
 
   // M4 Profile Completeness Meter with Single Next Best Action
   const completeness = calculateProfileCompleteness({
@@ -407,6 +414,29 @@ export const WorkerProfileView: React.FC<Props> = ({
     }, 1200);
   };
 
+  if (activeTab === 'home') {
+    return (
+      <WorkerHome
+        worker={worker}
+        applications={applications}
+        offers={offers}
+        lang={currentLang}
+        onOpenTab={(tab) => {
+          setShowFullForm(false);
+          setStepperStart(undefined);
+          setActiveTab(tab);
+        }}
+        onStartProfile={(step) => {
+          setShowFullForm(false);
+          setStepperStart(step);
+          setActiveTab('profile');
+        }}
+        onBrowseJobs={onBrowseJobs}
+        onLogout={onLogout}
+      />
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-24">
       {/* Top Worker Identity Header Card + M4 Profile Completeness Meter */}
@@ -496,11 +526,11 @@ export const WorkerProfileView: React.FC<Props> = ({
 
             <button
               onClick={handleLogOutEverywhere}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-red-300 hover:text-white bg-red-950/50 hover:bg-red-900 border border-red-700/50 rounded-xl transition-colors"
+              className="inline-flex min-h-11 items-center gap-1.5 px-3 py-2 text-[13px] font-semibold text-red-300 hover:text-white bg-red-950/50 hover:bg-red-900 border border-red-700/50 rounded-xl transition-colors"
               title="Sign out from all active devices"
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span>Log Out</span>
+              <span>{tf('navLogout')}</span>
             </button>
           </div>
         </div>
@@ -510,10 +540,10 @@ export const WorkerProfileView: React.FC<Props> = ({
           <div className="space-y-1 flex-1">
             <div className="flex items-center justify-between text-xs">
               <span className="font-bold text-amber-400 uppercase tracking-wider">
-                Profile Completeness
+                {tf('whMyProfile')}
               </span>
               <span className="font-extrabold text-white tabular-nums">
-                {completeness.percentage}% Complete
+                {tf('whProfilePct', { pct: completeness.percentage })}
               </span>
             </div>
             <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
@@ -523,9 +553,15 @@ export const WorkerProfileView: React.FC<Props> = ({
               />
             </div>
           </div>
-          <div className="text-xs text-slate-300 sm:max-w-sm">
-            <span className="text-slate-400 block text-[11px]">Recommended Next Step:</span>
-            <strong className="text-emerald-300">{completeness.nextBestAction}</strong>
+          <div className="text-[13px] text-slate-300 sm:max-w-sm">
+            <span className="text-slate-400 block text-[13px]">{tf('whNextStepTitle')}:</span>
+            <strong className="text-emerald-300">
+              {completeness.nextStepKey === null
+                ? tf('whProfileDone')
+                : completeness.nextStepKey === 'video'
+                  ? tf('whNextVideo')
+                  : tf(`whNextProfile_${completeness.nextStepKey}`)}
+            </strong>
           </div>
         </div>
 
@@ -536,54 +572,46 @@ export const WorkerProfileView: React.FC<Props> = ({
         )}
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-2">
+      {/* One way around: back to the worker home. The three sections are opened from there. */}
+      <div className="flex flex-wrap items-center gap-3">
         <button
-          onClick={() => setActiveTab('profile')}
-          className={`inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold rounded-xl transition-colors ${
-            activeTab === 'profile'
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
+          type="button"
+          onClick={() => setActiveTab('home')}
+          className="btn btn-secondary !min-h-12"
         >
-          <Wrench className="w-4 h-4 text-amber-500" />
-          <span>Edit My Information & Skills</span>
+          <ArrowLeft className="w-5 h-5" aria-hidden="true" />
+          <span>{tf('whBackHome')}</span>
         </button>
-
-        <button
-          onClick={() => setActiveTab('inbox')}
-          className={`inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold rounded-xl transition-colors ${
-            activeTab === 'inbox'
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          <Briefcase className="w-4 h-4 text-emerald-500" />
-          <span>
-            My Applications ({workerApps.length}) & Job Offers ({workerOffers.length})
-          </span>
-          {pendingOffersCount > 0 && (
-            <span className="px-1.5 py-0.5 text-[10px] font-bold bg-amber-400 text-slate-950 rounded tabular-nums">
-              {pendingOffersCount} NEW
-            </span>
-          )}
-        </button>
-
-        <button
-          onClick={() => setActiveTab('idcard')}
-          className={`inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold rounded-xl transition-colors ${
-            activeTab === 'idcard'
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          <QrCode className="w-4 h-4 text-blue-500" />
-          <span>Shareable Trade Card</span>
-        </button>
+        {activeTab === 'profile' && (
+          <button
+            type="button"
+            onClick={() => {
+              setStepperStart(undefined);
+              setShowFullForm((v) => !v);
+            }}
+            className="btn btn-ghost !min-h-12"
+          >
+            {showFullForm ? tf('whStepByStep') : tf('whAllDetails')}
+          </button>
+        )}
       </div>
 
       {/* TAB 1: EDITABLE PROFILE, CONTROLLED MACHINE CATALOGUE & CAMERA VIDEO */}
-      {activeTab === 'profile' && (
+      {activeTab === 'profile' && !showFullForm && (
+        <ProfileStepper
+          key={stepperStart ?? 'start'}
+          worker={worker}
+          lang={currentLang}
+          startAt={stepperStart}
+          onSave={onUpdateWorker}
+          onDone={() => {
+            setStepperStart(undefined);
+            setActiveTab('home');
+          }}
+        />
+      )}
+
+      {activeTab === 'profile' && showFullForm && (
         <form onSubmit={handleSaveProfile} className="space-y-6">
           {saveToast && (
             <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center gap-2 text-xs text-emerald-900 font-semibold shadow-xs">
@@ -863,30 +891,6 @@ export const WorkerProfileView: React.FC<Props> = ({
                     ))}
                   </div>
                 </div>
-
-                {/* M11 Phone Camera 30-Second Skill Video Upload */}
-                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="space-y-0.5">
-                    <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                      <Camera className="w-4 h-4 text-amber-600" />
-                      Record or Upload 30-Second Practical Skill Video
-                    </span>
-                    <p className="text-[11px] text-slate-600">
-                      {videoDemoTitle || 'Record yourself operating a lathe, CNC panel, welding torch, or packing line (Max 30s).'}
-                    </p>
-                  </div>
-                  <label className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs cursor-pointer shrink-0">
-                    <Camera className="w-4 h-4" />
-                    <span>Open Camera / Upload Video</span>
-                    <input
-                      type="file"
-                      accept="video/*"
-                      capture="environment"
-                      onChange={handleVideoFileUpload}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
               </div>
 
               {/* M4 Past Employers (Up to 3) */}
@@ -1031,6 +1035,30 @@ export const WorkerProfileView: React.FC<Props> = ({
                   </div>
                 </div>
               )}
+
+                {/* M11 Phone Camera 30-Second Skill Video Upload */}
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="space-y-0.5">
+                    <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      <Camera className="w-4 h-4 text-amber-600" />
+                      Optional: Record or Upload 30-Second Practical Skill Video
+                    </span>
+                    <p className="text-[11px] text-slate-600">
+                      {videoDemoTitle || 'Record yourself operating a lathe, CNC panel, welding torch, or packing line (Max 30s).'}
+                    </p>
+                  </div>
+                  <label className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs cursor-pointer shrink-0">
+                    <Camera className="w-4 h-4" />
+                    <span>Open Camera / Upload Video</span>
+                    <input
+                      type="file"
+                      accept="video/*"
+                      capture="environment"
+                      onChange={handleVideoFileUpload}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
 
               <button
                 type="submit"
@@ -1245,8 +1273,6 @@ export const WorkerProfileView: React.FC<Props> = ({
               </h3>
 
               {workerApps.map((app) => {
-                const steps = ['Applied', 'Shortlisted', 'Interview', 'Offer Issued', 'Joined'];
-                const currentIdx = Math.max(0, steps.indexOf(app.status === 'Accepted' ? 'Offer Issued' : app.status));
 
                 return (
                   <div
@@ -1265,26 +1291,10 @@ export const WorkerProfileView: React.FC<Props> = ({
                           {app.companyName} · {app.industrialHub}
                         </div>
                       </div>
-                      <span className="px-2.5 py-1 rounded text-xs font-bold bg-amber-100 text-amber-900">
-                        {app.status}
-                      </span>
+
                     </div>
 
-                    {/* 4-Step Worker Progress Bar */}
-                    <div className="grid grid-cols-5 gap-1 pt-1">
-                      {steps.map((st, idx) => (
-                        <div key={st} className="text-center space-y-1">
-                          <div
-                            className={`h-1.5 rounded-full ${
-                              idx <= currentIdx ? 'bg-emerald-500' : 'bg-slate-200'
-                            }`}
-                          />
-                          <span className="text-[10px] font-semibold text-slate-600 block">
-                            {st}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                    <ApplicationStatus stage={app.status} jobTitle={app.jobTitle} t={tf} />
 
                     {/* Interview Slot Confirmation (M6) */}
                     {app.interviewSlot && (

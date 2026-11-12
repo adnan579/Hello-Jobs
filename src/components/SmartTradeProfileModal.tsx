@@ -281,7 +281,7 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
             <button
               type="button"
               onClick={handleToggleVoiceGuide}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+              className={`min-h-11 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-meta font-bold transition-colors ${
                 isVoicePlaying
                   ? 'bg-amber-400 text-slate-950'
                   : 'bg-slate-800 text-amber-300 hover:bg-slate-700 border border-slate-700'
@@ -304,7 +304,7 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
                 stopJobAudio();
                 onClose();
               }}
-              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+              className="min-h-11 p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -319,13 +319,13 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
             <h3 className="text-xl font-bold text-slate-900">
               Your Worker Gate-Pass Profile is Ready!
             </h3>
-            <p className="text-xs text-slate-600 max-w-sm mx-auto">
+            <p className="text-meta text-slate-600 max-w-sm mx-auto">
               No certificates or paperwork needed! Your Work-Readiness Badges are now active and visible to verified factories.
             </p>
             <div className="pt-2">
               <button
                 onClick={onClose}
-                className="px-6 py-2.5 text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-colors"
+                className="min-h-11 px-6 py-2.5 text-meta font-bold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-colors"
               >
                 Start Applying in 1 Tap
               </button>
@@ -334,11 +334,11 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
         ) : (
           <div className="p-6 overflow-y-auto space-y-6">
             {/* 3-Step Visual Progress Bar */}
-            <div className="grid grid-cols-3 gap-2 text-xs">
+            <div className="grid grid-cols-3 gap-2 text-meta">
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className={`p-2 rounded-lg font-bold text-center border transition-colors ${
+                className={`min-h-11 p-2 rounded-lg font-bold text-center border transition-colors ${
                   step === 1
                     ? 'bg-amber-50 border-amber-400 text-amber-950'
                     : 'bg-slate-50 border-slate-200 text-slate-500'
@@ -349,7 +349,7 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => setStep(2)}
-                className={`p-2 rounded-lg font-bold text-center border transition-colors ${
+                className={`min-h-11 p-2 rounded-lg font-bold text-center border transition-colors ${
                   step === 2
                     ? 'bg-amber-50 border-amber-400 text-amber-950'
                     : 'bg-slate-50 border-slate-200 text-slate-500'
@@ -360,7 +360,7 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => setStep(3)}
-                className={`p-2 rounded-lg font-bold text-center border transition-colors ${
+                className={`min-h-11 p-2 rounded-lg font-bold text-center border transition-colors ${
                   step === 3
                     ? 'bg-amber-50 border-amber-400 text-amber-950'
                     : 'bg-slate-50 border-slate-200 text-slate-500'
@@ -377,7 +377,7 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
                   <h3 className="text-lg font-extrabold text-slate-900">
                     Tap 1: What kind of work do you want?
                   </h3>
-                  <p className="text-xs text-slate-600">
+                  <p className="text-meta text-slate-600">
                     Don't have any certificate? Pick the first green card—100% welcome!
                   </p>
                 </div>
@@ -387,7 +387,7 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
                   <button
                     type="button"
                     onClick={() => handleSelectCategory('unskilled')}
-                    className="w-full p-4 bg-emerald-50/70 hover:bg-emerald-100/80 border-2 border-emerald-400 rounded-2xl text-left transition-all flex items-center justify-between gap-4 group"
+                    className="min-h-11 w-full p-4 bg-emerald-50/70 hover:bg-emerald-100/80 border-2 border-emerald-400 rounded-2xl text-left transition-all flex items-center justify-between gap-4 group"
                   >
                     <div className="flex items-start gap-3.5">
                       <div className="w-12 h-12 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
@@ -400,7 +400,7 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
                         <h4 className="text-base font-extrabold text-slate-900">
                           Helper, Packing & Box Loading
                         </h4>
-                        <p className="text-xs text-slate-600 mt-0.5">
+                        <p className="text-meta text-slate-600 mt-0.5">
                           No ITI or school certificate needed. Carton packing, loading, sorting & floor helper work.
                         </p>
                       </div>
@@ -412,7 +412,7 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
                   <button
                     type="button"
                     onClick={() => handleSelectCategory('semi-skilled')}
-                    className="w-full p-4 bg-amber-50/70 hover:bg-amber-100/80 border-2 border-amber-300 rounded-2xl text-left transition-all flex items-center justify-between gap-4 group"
+                    className="min-h-11 w-full p-4 bg-amber-50/70 hover:bg-amber-100/80 border-2 border-amber-300 rounded-2xl text-left transition-all flex items-center justify-between gap-4 group"
                   >
                     <div className="flex items-start gap-3.5">
                       <div className="w-12 h-12 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center shrink-0">
@@ -425,7 +425,7 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
                         <h4 className="text-base font-extrabold text-slate-900">
                           Assembly Line & Machine Helper
                         </h4>
-                        <p className="text-xs text-slate-600 mt-0.5">
+                        <p className="text-meta text-slate-600 mt-0.5">
                           Assisting on conveyor lines, power press helper, or basic factory floor support.
                         </p>
                       </div>
@@ -437,7 +437,7 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
                   <button
                     type="button"
                     onClick={() => handleSelectCategory('skilled')}
-                    className="w-full p-4 bg-blue-50/60 hover:bg-blue-100/60 border-2 border-blue-300 rounded-2xl text-left transition-all flex items-center justify-between gap-4 group"
+                    className="min-h-11 w-full p-4 bg-blue-50/60 hover:bg-blue-100/60 border-2 border-blue-300 rounded-2xl text-left transition-all flex items-center justify-between gap-4 group"
                   >
                     <div className="flex items-start gap-3.5">
                       <div className="w-12 h-12 rounded-xl bg-blue-700 text-white flex items-center justify-center shrink-0">
@@ -450,7 +450,7 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
                         <h4 className="text-base font-extrabold text-slate-900">
                           CNC, Fitter, Welder, Electrician & Lathe
                         </h4>
-                        <p className="text-xs text-slate-600 mt-0.5">
+                        <p className="text-meta text-slate-600 mt-0.5">
                           For machine operators and ITI pass technicians (adding certificate is optional).
                         </p>
                       </div>
@@ -468,14 +468,14 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
                   <h3 className="text-base font-extrabold text-slate-900">
                     Tap 2: Select Your Work & Strengths
                   </h3>
-                  <p className="text-xs text-slate-600">
+                  <p className="text-meta text-slate-600">
                     Tap the boxes below—factories trust these badges even without certificates!
                   </p>
                 </div>
 
                 {/* Work Type Visual Buttons */}
                 <div className="space-y-2">
-                  <span className="text-xs font-bold text-slate-700 block">
+                  <span className="text-meta font-bold text-slate-700 block">
                     Select Work Role:
                   </span>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -484,7 +484,7 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
                         key={tItem}
                         type="button"
                         onClick={() => setTrade(tItem)}
-                        className={`p-3 rounded-xl text-xs font-bold text-left border-2 transition-all flex items-center justify-between ${
+                        className={`min-h-11 p-3 rounded-xl text-meta font-bold text-left border-2 transition-all flex items-center justify-between ${
                           trade === tItem
                             ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
                             : 'bg-slate-50 text-slate-800 border-slate-200 hover:border-slate-300'
@@ -501,7 +501,7 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
 
                 {/* Work-Readiness Reliability Badges */}
                 <div className="space-y-2">
-                  <span className="text-xs font-bold text-slate-700 block">
+                  <span className="text-meta font-bold text-slate-700 block">
                     Tap Your Work-Readiness Strengths (No Document Needed):
                   </span>
                   <div className="grid grid-cols-1 gap-2">
@@ -512,14 +512,14 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
                           key={item.badge}
                           type="button"
                           onClick={() => handleToggleBadge(item.badge)}
-                          className={`p-3 rounded-xl text-left border-2 transition-all flex items-center justify-between ${
+                          className={`min-h-11 p-3 rounded-xl text-left border-2 transition-all flex items-center justify-between ${
                             isSelected
                               ? 'bg-emerald-50 border-emerald-500 text-emerald-950'
                               : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                           }`}
                         >
                           <div>
-                            <div className="text-xs font-bold">
+                            <div className="text-meta font-bold">
                               {item.badge} ·{' '}
                               <span className="text-emerald-700">{item.labelHi}</span>
                             </div>
@@ -546,7 +546,7 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
                   <button
                     type="button"
                     onClick={() => setStep(1)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl"
+                    className="min-h-11 inline-flex items-center gap-1.5 px-4 py-2.5 text-meta font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" />
                     <span>Back</span>
@@ -555,7 +555,7 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
                   <button
                     type="button"
                     onClick={() => setStep(3)}
-                    className="inline-flex items-center gap-2 px-6 py-2.5 text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl shadow-xs"
+                    className="min-h-11 inline-flex items-center gap-2 px-6 py-2.5 text-meta font-bold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl shadow-xs"
                   >
                     <span>Next: Enter Name & Phone</span>
                     <ArrowRight className="w-4 h-4" />
@@ -571,14 +571,14 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
                   <h3 className="text-base font-extrabold text-slate-900">
                     Tap 3: Just Your Name & Mobile Number
                   </h3>
-                  <p className="text-xs text-slate-600">
+                  <p className="text-meta text-slate-600">
                     Factory HR will call or WhatsApp you directly on this number.
                   </p>
                 </div>
 
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-xs font-bold text-slate-800 mb-1">
+                    <label className="block text-meta font-bold text-slate-800 mb-1">
                       Your Name (आपका नाम) *
                     </label>
                     <input
@@ -587,12 +587,12 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
                       placeholder="e.g. Suraj Paswan"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-amber-500"
+                      className="min-h-11 w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-800 mb-1">
+                    <label className="block text-meta font-bold text-slate-800 mb-1">
                       10-Digit Mobile Number (मोबाइल नंबर) *
                     </label>
                     <input
@@ -601,24 +601,24 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
                       placeholder="+91 98765 43210"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      className="w-full px-3.5 py-2.5 text-sm font-mono border border-slate-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-amber-500"
+                      className="min-h-11 w-full px-3.5 py-2.5 text-sm font-mono border border-slate-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">
+                      <label className="block text-meta font-medium text-slate-700 mb-1">
                         Your Home Town / City
                       </label>
                       <input
                         type="text"
                         value={currentCity}
                         onChange={(e) => setCurrentCity(e.target.value)}
-                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl"
+                        className="min-h-11 w-full px-3 py-2 text-meta border border-slate-300 rounded-xl"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">
+                      <label className="block text-meta font-medium text-slate-700 mb-1">
                         Expected Monthly Pay (₹)
                       </label>
                       <input
@@ -626,7 +626,7 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
                         step={500}
                         value={expectedSalary}
                         onChange={(e) => setExpectedSalary(e.target.value === '' ? '' : Number(e.target.value))}
-                        className="w-full px-3 py-2 text-xs font-mono font-bold text-emerald-700 border border-slate-300 rounded-xl"
+                        className="min-h-11 w-full px-3 py-2 text-meta font-mono font-bold text-emerald-700 border border-slate-300 rounded-xl"
                       />
                     </div>
                   </div>
@@ -638,7 +638,7 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
                     <button
                       type="button"
                       onClick={() => setShowOptionalIti(!showOptionalIti)}
-                      className="text-xs font-bold text-blue-700 hover:underline flex items-center gap-1"
+                      className="min-h-11 text-meta font-bold text-blue-700 hover:underline flex items-center gap-1"
                     >
                       <ShieldCheck className="w-3.5 h-3.5" />
                       <span>
@@ -655,14 +655,14 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
                           placeholder="NCVT Roll No (Optional)"
                           value={rollNumber}
                           onChange={(e) => setRollNumber(e.target.value)}
-                          className="px-3 py-1.5 text-xs font-mono border border-slate-300 rounded-lg bg-white"
+                          className="min-h-11 px-3 py-1.5 text-meta font-mono border border-slate-300 rounded-lg bg-white"
                         />
                         <input
                           type="text"
                           placeholder="ITI College Name (Optional)"
                           value={itiCollege}
                           onChange={(e) => setItiCollege(e.target.value)}
-                          className="px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
+                          className="min-h-11 px-3 py-1.5 text-meta border border-slate-300 rounded-lg bg-white"
                         />
                       </div>
                     )}
@@ -670,7 +670,7 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
                 )}
 
                 {/* DPDP Act 2023 Section 5 & 6 Itemized Consent Notice */}
-                <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-2 text-xs">
+                <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-2 text-meta">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-bold text-emerald-950 flex items-center gap-1.5">
                       <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -690,7 +690,7 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
                           () => setIsVoicePlaying(false)
                         );
                       }}
-                      className="text-[11px] font-bold text-amber-800 hover:underline flex items-center gap-1"
+                      className="min-h-11 text-[11px] font-bold text-amber-800 hover:underline flex items-center gap-1"
                     >
                       <Volume2 className="w-3.5 h-3.5" />
                       <span>Listen DPDP Notice</span>
@@ -713,7 +713,7 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
                   <button
                     type="button"
                     onClick={() => setStep(2)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl"
+                    className="min-h-11 inline-flex items-center gap-1.5 px-4 py-2.5 text-meta font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" />
                     <span>Back</span>
@@ -721,7 +721,7 @@ export const SmartTradeProfileModal: React.FC<Props> = ({
 
                   <button
                     type="submit"
-                    className="inline-flex items-center gap-2 px-6 py-3 text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md transition-colors"
+                    className="min-h-11 inline-flex items-center gap-2 px-6 py-3 text-meta font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md transition-colors"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     <span>Consent & Get Digital Gate Pass</span>

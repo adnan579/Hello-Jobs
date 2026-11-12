@@ -36,7 +36,7 @@
     "src/components/SmartTradeProfileModal.tsx": 2,
     "src/components/TakeHomeCalculatorModal.tsx": 2,
     "src/components/WhistleblowerModal.tsx": 2,
-    "src/components/WorkerProfileView.tsx": 5
+    "src/components/WorkerProfileView.tsx": 2
   },
   "lint/a11y/useKeyWithClickEvents": {
     "src/components/NcvtSearchModal.tsx": 1

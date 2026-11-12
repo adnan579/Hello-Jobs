@@ -97,6 +97,7 @@ export const AuthModal: React.FC<Props> = ({
   const [confirmAdult18Plus, setConfirmAdult18Plus] = useState(false);
   const [acceptTermsAndPrivacy, setAcceptTermsAndPrivacy] = useState(false);
   const [consentDirectoryDiscovery, setConsentDirectoryDiscovery] = useState(false);
+  const [consentWhatsappAlerts, setConsentWhatsappAlerts] = useState(false);
 
   // Worker Registration Fields
   const [newWorkerName, setNewWorkerName] = useState('');
@@ -190,7 +191,7 @@ export const AuthModal: React.FC<Props> = ({
             termsAccepted: acceptTermsAndPrivacy,
             consent: {
               directoryDiscovery: consentDirectoryDiscovery,
-              whatsappJobAlerts: false,
+              whatsappJobAlerts: consentWhatsappAlerts,
               credentialVerification: true,
               marketingCommunications: false,
               noticeLanguage: lang,
@@ -257,7 +258,7 @@ export const AuthModal: React.FC<Props> = ({
                   ? t('amTitleLoginWorker')
                   : 'Employer Login'}
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-meta text-slate-400">
                 {roleTab === 'worker'
                   ? t('amSubWorker')
                   : 'Access your Employer Dashboard to post jobs and shortlist candidates'}
@@ -266,7 +267,7 @@ export const AuthModal: React.FC<Props> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+            className="min-h-11 p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
             aria-label={t('amClose')}
           >
             <X className="w-5 h-5" />
@@ -284,7 +285,7 @@ export const AuthModal: React.FC<Props> = ({
               setAuthError('');
               setOtpSent(false);
             }}
-            className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold transition-all ${
+            className={`min-h-11 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-meta font-bold transition-all ${
               roleTab === 'worker'
                 ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80'
                 : 'text-slate-600 hover:text-slate-900'
@@ -302,7 +303,7 @@ export const AuthModal: React.FC<Props> = ({
               setAuthError('');
               setOtpSent(false);
             }}
-            className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold transition-all ${
+            className={`min-h-11 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-meta font-bold transition-all ${
               roleTab === 'employer'
                 ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80'
                 : 'text-slate-600 hover:text-slate-900'
@@ -318,7 +319,7 @@ export const AuthModal: React.FC<Props> = ({
         <div className="p-6 overflow-y-auto space-y-5">
           {/* Login vs Register Mode Switcher */}
           {(
-          <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl text-xs">
+          <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl text-meta">
             <button
               data-testid={`auth-login-mode-${roleTab}`}
               type="button"
@@ -327,7 +328,7 @@ export const AuthModal: React.FC<Props> = ({
                 setOtpSent(false);
                 setAuthError('');
               }}
-              className={`py-2 px-3 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-colors ${
+              className={`min-h-11 py-2 px-3 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-colors ${
                 authMode === 'login'
                   ? 'bg-slate-900 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
@@ -344,7 +345,7 @@ export const AuthModal: React.FC<Props> = ({
                 setOtpSent(false);
                 setAuthError('');
               }}
-              className={`py-2 px-3 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-colors ${
+              className={`min-h-11 py-2 px-3 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-colors ${
                 authMode === 'register'
                   ? 'bg-amber-400 text-slate-950 shadow-xs font-extrabold'
                   : 'text-slate-600 hover:text-slate-900'
@@ -361,7 +362,7 @@ export const AuthModal: React.FC<Props> = ({
           )}
 
           {authError && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 font-medium flex items-start gap-2">
+            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-meta text-red-700 font-medium flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
               <span>{authError}</span>
             </div>
@@ -376,7 +377,7 @@ export const AuthModal: React.FC<Props> = ({
                 <div className="space-y-3 p-4 bg-slate-50 border border-slate-200 rounded-xl">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                      <label className="block text-meta font-bold text-slate-700 mb-1">
                         {t('amFullName')}
                       </label>
                       <input
@@ -385,11 +386,11 @@ export const AuthModal: React.FC<Props> = ({
                         placeholder={t('amNamePh')}
                         value={newWorkerName}
                         onChange={(e) => setNewWorkerName(e.target.value)}
-                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white"
+                        className="min-h-11 w-full px-3 py-2 text-meta border border-slate-300 rounded-lg bg-white"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                      <label className="block text-meta font-bold text-slate-700 mb-1">
                         {t('amExpectedPay')}
                       </label>
                       <input
@@ -403,14 +404,14 @@ export const AuthModal: React.FC<Props> = ({
                             e.target.value === '' ? '' : Number(e.target.value)
                           )
                         }
-                        className="w-full px-3 py-2 text-xs font-bold text-emerald-700 tabular-nums border border-slate-300 rounded-lg bg-white"
+                        className="min-h-11 w-full px-3 py-2 text-meta font-bold text-emerald-700 tabular-nums border border-slate-300 rounded-lg bg-white"
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                      <label className="block text-meta font-bold text-slate-700 mb-1">
                         {t('amCity')}
                       </label>
                       <input
@@ -418,11 +419,11 @@ export const AuthModal: React.FC<Props> = ({
                         required
                         value={newWorkerCity}
                         onChange={(e) => setNewWorkerCity(e.target.value)}
-                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white"
+                        className="min-h-11 w-full px-3 py-2 text-meta border border-slate-300 rounded-lg bg-white"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                      <label className="block text-meta font-bold text-slate-700 mb-1">
                         {t('amHomeState')}
                       </label>
                       <input
@@ -430,13 +431,13 @@ export const AuthModal: React.FC<Props> = ({
                         required
                         value={newWorkerState}
                         onChange={(e) => setNewWorkerState(e.target.value)}
-                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white"
+                        className="min-h-11 w-full px-3 py-2 text-meta border border-slate-300 rounded-lg bg-white"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                    <label className="block text-meta font-bold text-slate-700 mb-1">
                       {t('amTrade')}
                     </label>
                     <select
@@ -444,7 +445,7 @@ export const AuthModal: React.FC<Props> = ({
                       onChange={(e) =>
                         setNewWorkerTrade(e.target.value as TradeType)
                       }
-                      className="w-full px-3 py-2 text-xs font-semibold border border-slate-300 rounded-lg bg-white"
+                      className="min-h-11 w-full px-3 py-2 text-meta font-semibold border border-slate-300 rounded-lg bg-white"
                     >
                       {QUICK_WORK_TYPES.map((q) => (
                         <option key={q.trade} value={q.trade}>
@@ -460,7 +461,7 @@ export const AuthModal: React.FC<Props> = ({
                 <div className="space-y-3 p-4 bg-slate-50 border border-slate-200 rounded-xl">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                      <label className="block text-meta font-bold text-slate-700 mb-1">
                         Manufacturing Company Name *
                       </label>
                       <input
@@ -469,11 +470,11 @@ export const AuthModal: React.FC<Props> = ({
                         placeholder="Registered company name"
                         value={newCompanyName}
                         onChange={(e) => setNewCompanyName(e.target.value)}
-                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white"
+                        className="min-h-11 w-full px-3 py-2 text-meta border border-slate-300 rounded-lg bg-white"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                      <label className="block text-meta font-bold text-slate-700 mb-1">
                         15-Digit Plant GSTIN *
                       </label>
                       <input
@@ -483,13 +484,13 @@ export const AuthModal: React.FC<Props> = ({
                         placeholder="e.g. 27AAPFU0939F1ZV"
                         value={newGstin}
                         onChange={(e) => setNewGstin(e.target.value)}
-                        className="w-full px-3 py-2 text-xs uppercase tabular-nums border border-slate-300 rounded-lg bg-white"
+                        className="min-h-11 w-full px-3 py-2 text-meta uppercase tabular-nums border border-slate-300 rounded-lg bg-white"
                       />
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                      <label className="block text-meta font-bold text-slate-700 mb-1">
                         HR Manager Name *
                       </label>
                       <input
@@ -498,11 +499,11 @@ export const AuthModal: React.FC<Props> = ({
                         placeholder="HR manager full name"
                         value={newHrName}
                         onChange={(e) => setNewHrName(e.target.value)}
-                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white"
+                        className="min-h-11 w-full px-3 py-2 text-meta border border-slate-300 rounded-lg bg-white"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                      <label className="block text-meta font-bold text-slate-700 mb-1">
                         Industrial Hub / Location
                       </label>
                       <input
@@ -511,7 +512,7 @@ export const AuthModal: React.FC<Props> = ({
                         placeholder="e.g. Chakan MIDC, Pune"
                         value={newHub}
                         onChange={(e) => setNewHub(e.target.value)}
-                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white"
+                        className="min-h-11 w-full px-3 py-2 text-meta border border-slate-300 rounded-lg bg-white"
                       />
                     </div>
                   </div>
@@ -520,13 +521,13 @@ export const AuthModal: React.FC<Props> = ({
 
               {/* Mobile Number Input */}
               <div>
-                <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                <label className="block text-meta font-bold text-slate-800 mb-1.5">
                   {roleTab === 'worker'
                     ? t('amMobile')
                     : 'HR Manager 10-Digit Mobile Number'}
                 </label>
                 <div className="flex items-center gap-2">
-                  <span className="px-3 py-2 text-xs font-bold bg-slate-100 border border-slate-300 rounded-lg text-slate-700 tabular-nums">
+                  <span className="px-3 py-2 text-meta font-bold bg-slate-100 border border-slate-300 rounded-lg text-slate-700 tabular-nums">
                     +91
                   </span>
                   <input
@@ -535,14 +536,14 @@ export const AuthModal: React.FC<Props> = ({
                     value={activePhone}
                     placeholder={t('amMobilePh')}
                     onChange={(e) => setPhoneInput(e.target.value)}
-                    className="flex-1 px-3.5 py-2 text-sm font-bold tabular-nums border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-amber-500"
+                    className="min-h-11 flex-1 px-3.5 py-2 text-sm font-bold tabular-nums border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
               </div>
 
               {/* Clean Legal & Privacy Consent during Registration */}
               {authMode === 'register' && (
-                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs text-slate-700">
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-meta text-slate-700">
                   <label className="flex items-start gap-2 cursor-pointer">
                     <input
                       type="checkbox"
@@ -604,6 +605,18 @@ export const AuthModal: React.FC<Props> = ({
                       </span>
                     </label>
                   )}
+
+                  {roleTab === 'worker' && (
+                    <label className="flex items-start gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={consentWhatsappAlerts}
+                        onChange={(e) => setConsentWhatsappAlerts(e.target.checked)}
+                        className="mt-0.5 rounded border-slate-400 text-emerald-600"
+                      />
+                      <span>{t('amWhatsappAlerts')}</span>
+                    </label>
+                  )}
                 </div>
               )}
 
@@ -611,7 +624,7 @@ export const AuthModal: React.FC<Props> = ({
                 data-testid="auth-send-otp"
                 type="submit"
                 disabled={busy}
-                className="w-full py-2.5 px-4 bg-amber-400 hover:bg-amber-300 disabled:opacity-60 text-slate-950 font-extrabold text-xs rounded-xl transition-colors flex items-center justify-center gap-2 shadow-xs"
+                className="min-h-11 w-full py-2.5 px-4 bg-amber-400 hover:bg-amber-300 disabled:opacity-60 text-slate-950 font-extrabold text-meta rounded-xl transition-colors flex items-center justify-center gap-2 shadow-xs"
               >
                 <MessageSquare className="w-4 h-4" />
                 <span>
@@ -625,7 +638,7 @@ export const AuthModal: React.FC<Props> = ({
             </form>
           ) : (
             <form onSubmit={handleVerifyOtp} className="space-y-4">
-              <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2 text-xs">
+              <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2 text-meta">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-emerald-950 font-bold">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -639,7 +652,7 @@ export const AuthModal: React.FC<Props> = ({
                     <button
                       type="button"
                       onClick={handleCopyOtp}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-emerald-300 text-emerald-900 font-bold text-[11px] hover:bg-emerald-100"
+                      className="min-h-11 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-emerald-300 text-emerald-900 font-bold text-[11px] hover:bg-emerald-100"
                     >
                       <Copy className="w-3 h-3" />
                       <span>{copiedCode ? t('amCopied') : t('amCode', { code: demoCode })}</span>
@@ -649,7 +662,7 @@ export const AuthModal: React.FC<Props> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                <label className="block text-meta font-bold text-slate-800 mb-1.5">
                   {t('amEnterCode')}
                 </label>
                 <input
@@ -660,22 +673,22 @@ export const AuthModal: React.FC<Props> = ({
                   maxLength={6}
                   value={enteredOtp}
                   onChange={(e) => setEnteredOtp(e.target.value)}
-                  className="w-full px-4 py-2.5 text-center text-lg font-extrabold tracking-widest tabular-nums border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-amber-500"
+                  className="min-h-11 w-full px-4 py-2.5 text-center text-lg font-extrabold tracking-widest tabular-nums border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-amber-500"
                 />
               </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-meta">
                 <button
                   type="button"
                   onClick={() => handleRequestOtp()}
-                  className="text-blue-700 hover:underline font-semibold"
+                  className="min-h-11 text-blue-700 hover:underline font-semibold"
                 >
                   {t('amResend')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setOtpSent(false)}
-                  className="text-slate-500 hover:text-slate-800"
+                  className="min-h-11 text-slate-500 hover:text-slate-800"
                 >
                   {t('amChangeNo')}
                 </button>
@@ -685,7 +698,7 @@ export const AuthModal: React.FC<Props> = ({
                 data-testid="auth-verify-otp"
                 type="submit"
                 disabled={busy}
-                className="w-full py-3 px-4 disabled:opacity-60 bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs rounded-xl transition-colors flex items-center justify-center gap-2 shadow-xs"
+                className="min-h-11 w-full py-3 px-4 disabled:opacity-60 bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-meta rounded-xl transition-colors flex items-center justify-center gap-2 shadow-xs"
               >
                 <KeyRound className="w-4 h-4" />
                 <span>

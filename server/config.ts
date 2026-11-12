@@ -16,6 +16,8 @@ export interface Config {
     otpTemplate: string;
     language: string;
     apiVersion: string;
+    /** Prefix of the approved alert templates, e.g. `shramkart` for shramkart_shortlisted. Unset turns alerts off. */
+    alertTemplatePrefix?: string;
   };
   payments: {
     mode: 'razorpay' | 'demo' | 'off';
@@ -67,6 +69,7 @@ export function loadConfig(env: Env = process.env): Config {
           otpTemplate: env.WHATSAPP_OTP_TEMPLATE,
           language: env.WHATSAPP_OTP_LANGUAGE || 'en',
           apiVersion: env.WHATSAPP_API_VERSION || 'v21.0',
+          alertTemplatePrefix: env.WHATSAPP_ALERT_TEMPLATE_PREFIX?.trim() || undefined,
         }
       : undefined;
 

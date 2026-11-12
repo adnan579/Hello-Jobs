@@ -7,6 +7,7 @@ import { employerWriter, workerId } from '../lib/guards.ts';
 import { badRequest, forbidden, notFound, unauthorized } from '../lib/errors.ts';
 import { newId } from '../lib/ids.ts';
 import { notify } from '../lib/audit.ts';
+import { sendWorkerStageAlert, type AlertInput } from '../auth/alertDelivery.ts';
 import { respond } from '../lib/respond.ts';
 import { PUBLIC_JOB_WHERE } from '../services/bootstrap.ts';
 import { canTransitionPipeline } from '../../src/modules/domain.ts';
@@ -75,6 +76,7 @@ applicationsRouter.patch(
     const isWorker = auth.role === 'worker';
     const ownerId = isWorker ? workerId(req) : employerWriter(req);
 
+    const pendingAlert: { workerId?: string; input?: AlertInput } = {};
     await req.ctx.db.tx(async (q) => {
       const row = (
         await q.query(
@@ -119,6 +121,10 @@ applicationsRouter.patch(
           await q.query(`UPDATE offers SET status = 'Joined Confirmed', updated_at = now() WHERE application_id = $1 AND status = 'Accepted' AND COALESCE((data->>'workerConfirmedJoining')::boolean, false)`, [row.id]);
           if (!isWorker) extra.factoryMarkedJoinedAt = fmtDateTime(new Date());
         }
+        if (!isWorker && (nextStatus === 'Shortlisted' || nextStatus === 'Interview')) {
+          pendingAlert.workerId = row.worker_id;
+          pendingAlert.input = { kind: nextStatus === 'Interview' ? 'interview' : 'shortlisted', jobTitle: row.job_title, company: row.company_name };
+        }
         const eventType = nextStatus === 'Interview' ? 'INTERVIEW_SET' : nextStatus === 'Joined' ? 'JOINING_CONFIRMED' : 'SHORTLISTED';
         await notify(q, {
           role: isWorker ? 'employer' : 'worker',
@@ -134,6 +140,10 @@ applicationsRouter.patch(
         await q.query(`UPDATE applications SET data = data || $2::jsonb WHERE id = $1`, [row.id, JSON.stringify({ factoryMarkedJoinedAt: extra.factoryMarkedJoinedAt })]);
       }
     });
+    // After the change is saved. Best effort: a failed alert never undoes or delays it for long.
+    if (pendingAlert.workerId && pendingAlert.input) {
+      await sendWorkerStageAlert(req.ctx.db, pendingAlert.workerId, pendingAlert.input, req.ctx.config, req.ctx.deps);
+    }
     await respond(req, res);
   })
 );

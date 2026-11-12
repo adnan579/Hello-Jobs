@@ -7,6 +7,7 @@
 type Dict = Record<string, string>;
 
 const en: Dict = {
+  amWhatsappAlerts: "Send me WhatsApp alerts when I am shortlisted, called for an interview or get an offer.",
   amTitleRegisterWorker: 'Register as a Worker',
   amTitleLoginWorker: 'Worker Login',
   amSubWorker: 'Access the Jobs Feed, apply in 1 click, and manage your profile',
@@ -154,6 +155,7 @@ const en: Dict = {
 };
 
 const hi: Dict = {
+  amWhatsappAlerts: "जब मैं शॉर्टलिस्ट होऊँ, इंटरव्यू के लिए बुलाया जाऊँ या मुझे ऑफर मिले, तो मुझे WhatsApp पर अलर्ट भेजें।",
   amTitleRegisterWorker: 'कामगार के रूप में रजिस्टर करें',
   amTitleLoginWorker: 'कामगार लॉग इन',
   amSubWorker: 'नौकरियाँ देखें, एक क्लिक में अप्लाई करें और अपनी प्रोफ़ाइल संभालें',
@@ -296,6 +298,7 @@ const hi: Dict = {
 };
 
 const mr: Dict = {
+  amWhatsappAlerts: "मी शॉर्टलिस्ट झालो, मुलाखतीसाठी बोलावले गेले किंवा मला ऑफर मिळाली तर मला WhatsApp वर अलर्ट पाठवा.",
   amTitleRegisterWorker: 'कामगार म्हणून नोंदणी करा',
   amTitleLoginWorker: 'कामगार लॉग इन',
   amSubWorker: 'नोकऱ्या पहा, एका क्लिकमध्ये अर्ज करा आणि तुमची प्रोफाइल सांभाळा',
@@ -438,6 +441,7 @@ const mr: Dict = {
 };
 
 const ta: Dict = {
+  amWhatsappAlerts: "நான் தேர்வுப்பட்டியலில் சேர்ந்தால், நேர்காணலுக்கு அழைக்கப்பட்டால் அல்லது வாய்ப்பு கிடைத்தால் WhatsApp இல் அறிவிப்பு அனுப்புங்கள்.",
   amTitleRegisterWorker: 'தொழிலாளராகப் பதிவு செய்யுங்கள்',
   amTitleLoginWorker: 'தொழிலாளர் உள்நுழைவு',
   amSubWorker: 'வேலைகளைப் பாருங்கள், ஒரே கிளிக்கில் விண்ணப்பியுங்கள், உங்கள் சுயவிவரத்தை நிர்வகியுங்கள்',
@@ -580,6 +584,7 @@ const ta: Dict = {
 };
 
 const gu: Dict = {
+  amWhatsappAlerts: "હું શોર્ટલિસ્ટ થાઉં, ઇન્ટરવ્યૂ માટે બોલાવાય કે મને ઑફર મળે ત્યારે મને WhatsApp પર સૂચના મોકલો.",
   amTitleRegisterWorker: 'કામદાર તરીકે નોંધણી કરો',
   amTitleLoginWorker: 'કામદાર લૉગ ઇન',
   amSubWorker: 'નોકરીઓ જુઓ, એક ક્લિકમાં અરજી કરો અને તમારી પ્રોફાઇલ સંભાળો',

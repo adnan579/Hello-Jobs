@@ -452,22 +452,22 @@ export const WorkerProfileView: React.FC<Props> = ({
                   {worker.name}
                 </h1>
                 {worker.ncvtCertificate.isVerified ? (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-semibold">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-meta font-semibold">
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
                     NCVT Grade {worker.ncvtCertificate.grade} Certified
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-semibold">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-meta font-semibold">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                     Work-Readiness Verified
                   </span>
                 )}
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded bg-amber-500/20 border border-amber-400/30 text-amber-300 text-xs font-bold">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded bg-amber-500/20 border border-amber-400/30 text-amber-300 text-meta font-bold">
                   6-Digit OTP Verified
                 </span>
               </div>
 
-              <div className="text-xs text-slate-300 flex flex-wrap items-center gap-3">
+              <div className="text-meta text-slate-300 flex flex-wrap items-center gap-3">
                 <span className="font-bold text-amber-400">{worker.trade}</span>
                 <span aria-hidden="true">·</span>
                 <span className="flex items-center gap-1">
@@ -486,7 +486,7 @@ export const WorkerProfileView: React.FC<Props> = ({
             <button
               type="button"
               onClick={handleToggleVoiceGuide}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl border transition-colors ${
+              className={`min-h-11 inline-flex items-center gap-1.5 px-3.5 py-2 text-meta font-bold rounded-xl border transition-colors ${
                 isVoicePlaying
                   ? 'bg-amber-400 text-slate-950 border-amber-500'
                   : 'bg-slate-800 text-amber-300 border-slate-700 hover:bg-slate-700'
@@ -509,7 +509,7 @@ export const WorkerProfileView: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={onOpenDpdpModal}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl transition-colors"
+                className="min-h-11 inline-flex items-center gap-1.5 px-3.5 py-2 text-meta font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl transition-colors"
               >
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
                 <span>Privacy & Account Settings</span>
@@ -518,7 +518,7 @@ export const WorkerProfileView: React.FC<Props> = ({
 
             <button
               onClick={onBrowseJobs}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-extrabold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-colors"
+              className="min-h-11 inline-flex items-center gap-1.5 px-4 py-2 text-meta font-extrabold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-colors"
             >
               <span>Browse Jobs Feed</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -538,7 +538,7 @@ export const WorkerProfileView: React.FC<Props> = ({
         {/* Profile Completeness Meter */}
         <div className="p-4 bg-slate-950/90 border border-slate-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1 flex-1">
-            <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center justify-between text-meta">
               <span className="font-bold text-amber-400 uppercase tracking-wider">
                 {tf('whMyProfile')}
               </span>
@@ -566,7 +566,7 @@ export const WorkerProfileView: React.FC<Props> = ({
         </div>
 
         {sessionRevokedToast && (
-          <div className="p-3 bg-emerald-500/20 border border-emerald-400/40 rounded-xl text-xs text-emerald-200 font-bold">
+          <div className="p-3 bg-emerald-500/20 border border-emerald-400/40 rounded-xl text-meta text-emerald-200 font-bold">
             Signed out successfully.
           </div>
         )}
@@ -614,7 +614,7 @@ export const WorkerProfileView: React.FC<Props> = ({
       {activeTab === 'profile' && showFullForm && (
         <form onSubmit={handleSaveProfile} className="space-y-6">
           {saveToast && (
-            <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center gap-2 text-xs text-emerald-900 font-semibold shadow-xs">
+            <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center gap-2 text-meta text-emerald-900 font-semibold shadow-xs">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               <span>
                 Shareable Worker Trade Card updated and synced with the Employer Talent Hunter Directory!
@@ -635,7 +635,7 @@ export const WorkerProfileView: React.FC<Props> = ({
                       1-Tap Work-Readiness & Stamina Badges
                     </h3>
                   </div>
-                  <span className="text-xs font-semibold text-emerald-800 tabular-nums">
+                  <span className="text-meta font-semibold text-emerald-800 tabular-nums">
                     {readinessBadges.length} Active Badges
                   </span>
                 </div>
@@ -648,13 +648,13 @@ export const WorkerProfileView: React.FC<Props> = ({
                         key={badge}
                         type="button"
                         onClick={() => handleToggleBadge(badge)}
-                        className={`p-3 rounded-xl border-2 text-left transition-all flex items-center justify-between ${
+                        className={`min-h-11 p-3 rounded-xl border-2 text-left transition-all flex items-center justify-between ${
                           isSelected
                             ? 'bg-white border-emerald-600 text-slate-900 shadow-xs'
                             : 'bg-white/60 border-slate-200 text-slate-600 hover:bg-white'
                         }`}
                       >
-                        <span className="text-xs font-bold">{badge}</span>
+                        <span className="text-meta font-bold">{badge}</span>
                         <span
                           className={`w-5 h-5 rounded-full flex items-center justify-center ${
                             isSelected
@@ -678,7 +678,7 @@ export const WorkerProfileView: React.FC<Props> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    <label className="block text-meta font-semibold text-slate-700 mb-1">
                       Full Name (आपका नाम)
                     </label>
                     <input
@@ -686,11 +686,11 @@ export const WorkerProfileView: React.FC<Props> = ({
                       required
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg"
+                      className="min-h-11 w-full px-3 py-2 text-meta border border-slate-300 rounded-lg"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    <label className="block text-meta font-semibold text-slate-700 mb-1">
                       Verified Mobile Number (Masked on Public Card)
                     </label>
                     <input
@@ -698,20 +698,20 @@ export const WorkerProfileView: React.FC<Props> = ({
                       required
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      className="w-full px-3 py-2 text-xs tabular-nums border border-slate-300 rounded-lg"
+                      className="min-h-11 w-full px-3 py-2 text-meta tabular-nums border border-slate-300 rounded-lg"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    <label className="block text-meta font-semibold text-slate-700 mb-1">
                       Primary Work Role / Trade
                     </label>
                     <select
                       value={trade}
                       onChange={(e) => setTrade(e.target.value as TradeType)}
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg"
+                      className="min-h-11 w-full px-3 py-2 text-meta border border-slate-300 rounded-lg"
                     >
                       {TRADES.map((tItem) => (
                         <option key={tItem} value={tItem}>
@@ -721,7 +721,7 @@ export const WorkerProfileView: React.FC<Props> = ({
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    <label className="block text-meta font-semibold text-slate-700 mb-1">
                       Skill Category
                     </label>
                     <select
@@ -729,7 +729,7 @@ export const WorkerProfileView: React.FC<Props> = ({
                       onChange={(e) =>
                         setCategory(e.target.value as WorkerSkillCategory)
                       }
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg"
+                      className="min-h-11 w-full px-3 py-2 text-meta border border-slate-300 rounded-lg"
                     >
                       <option value="unskilled">
                         Unskilled / Helper & Packing (No Certificate Needed)
@@ -746,18 +746,18 @@ export const WorkerProfileView: React.FC<Props> = ({
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    <label className="block text-meta font-semibold text-slate-700 mb-1">
                       Current City
                     </label>
                     <input
                       type="text"
                       value={currentCity}
                       onChange={(e) => setCurrentCity(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg"
+                      className="min-h-11 w-full px-3 py-2 text-meta border border-slate-300 rounded-lg"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    <label className="block text-meta font-semibold text-slate-700 mb-1">
                       Experience (Yrs)
                     </label>
                     <input
@@ -767,11 +767,11 @@ export const WorkerProfileView: React.FC<Props> = ({
                       step={0.5}
                       value={experienceYears}
                       onChange={(e) => setExperienceYears(Number(e.target.value))}
-                      className="w-full px-3 py-2 text-xs tabular-nums border border-slate-300 rounded-lg"
+                      className="min-h-11 w-full px-3 py-2 text-meta tabular-nums border border-slate-300 rounded-lg"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    <label className="block text-meta font-semibold text-slate-700 mb-1">
                       Min In-Hand (₹)
                     </label>
                     <input
@@ -784,11 +784,11 @@ export const WorkerProfileView: React.FC<Props> = ({
                         setExpectedPayMin(v);
                         setExpectedSalary(v);
                       }}
-                      className="w-full px-3 py-2 text-xs tabular-nums font-bold text-emerald-700 border border-slate-300 rounded-lg"
+                      className="min-h-11 w-full px-3 py-2 text-meta tabular-nums font-bold text-emerald-700 border border-slate-300 rounded-lg"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    <label className="block text-meta font-semibold text-slate-700 mb-1">
                       Target In-Hand (₹)
                     </label>
                     <input
@@ -797,12 +797,12 @@ export const WorkerProfileView: React.FC<Props> = ({
                       step={500}
                       value={expectedPayMax}
                       onChange={(e) => setExpectedPayMax(Number(e.target.value))}
-                      className="w-full px-3 py-2 text-xs tabular-nums font-bold text-emerald-700 border border-slate-300 rounded-lg"
+                      className="min-h-11 w-full px-3 py-2 text-meta tabular-nums font-bold text-emerald-700 border border-slate-300 rounded-lg"
                     />
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-6 pt-2 text-xs">
+                <div className="flex flex-wrap items-center gap-6 pt-2 text-meta">
                   <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-800">
                     <input
                       type="checkbox"
@@ -824,7 +824,7 @@ export const WorkerProfileView: React.FC<Props> = ({
                     <h3 className="text-base font-bold text-slate-900">
                       Machines & Shop-Floor Tools Operated
                     </h3>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-meta text-slate-500">
                       Select the machines or tools you operate so employers can match you with suitable openings.
                     </p>
                   </div>
@@ -832,7 +832,7 @@ export const WorkerProfileView: React.FC<Props> = ({
                     <button
                       type="button"
                       onClick={() => onOpenVideoDemo(worker)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg"
+                      className="min-h-11 inline-flex items-center gap-1.5 px-3 py-1.5 text-meta font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg"
                     >
                       <Video className="w-3.5 h-3.5 text-amber-600" />
                       <span>Preview 30s Skill Video</span>
@@ -844,13 +844,13 @@ export const WorkerProfileView: React.FC<Props> = ({
                   {machines.map((m) => (
                     <span
                       key={m}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-800 rounded-lg text-xs font-semibold"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-800 rounded-lg text-meta font-semibold"
                     >
                       <span>{m}</span>
                       <button
                         type="button"
                         onClick={() => handleRemoveMachine(m)}
-                        className="text-slate-400 hover:text-red-600"
+                        className="min-h-11 text-slate-400 hover:text-red-600"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
@@ -865,12 +865,12 @@ export const WorkerProfileView: React.FC<Props> = ({
                       placeholder="Search machine in English or Hindi (e.g. Fanuc, खराद, वेल्डिंग, पैकिंग)..."
                       value={newMachineInput}
                       onChange={(e) => setNewMachineInput(e.target.value)}
-                      className="flex-1 px-3 py-2 text-xs border border-slate-300 rounded-lg"
+                      className="min-h-11 flex-1 px-3 py-2 text-meta border border-slate-300 rounded-lg"
                     />
                     <button
                       type="button"
                       onClick={() => handleAddMachine()}
-                      className="inline-flex items-center gap-1 px-4 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-lg"
+                      className="min-h-11 inline-flex items-center gap-1 px-4 py-2 text-meta font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-lg"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>Add</span>
@@ -884,7 +884,7 @@ export const WorkerProfileView: React.FC<Props> = ({
                         key={item.id}
                         type="button"
                         onClick={() => handleAddMachine(item.label)}
-                        className="px-2.5 py-1 rounded-md bg-amber-50 hover:bg-amber-100 border border-amber-200 text-[11px] font-medium text-amber-950"
+                        className="min-h-11 px-2.5 py-1 rounded-md bg-amber-50 hover:bg-amber-100 border border-amber-200 text-[11px] font-medium text-amber-950"
                       >
                         + {item.label} ({item.hindiSynonyms[0]})
                       </button>
@@ -903,7 +903,7 @@ export const WorkerProfileView: React.FC<Props> = ({
                     {pastEmployments.map((emp, idx) => (
                       <div
                         key={idx}
-                        className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs"
+                        className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-meta"
                       >
                         <div>
                           <strong className="text-slate-900">{emp.companyName}</strong> · {emp.role} ({emp.durationMonths} mos)
@@ -913,7 +913,7 @@ export const WorkerProfileView: React.FC<Props> = ({
                           onClick={() =>
                             setPastEmployments(pastEmployments.filter((_, i) => i !== idx))
                           }
-                          className="text-slate-400 hover:text-red-600"
+                          className="min-h-11 text-slate-400 hover:text-red-600"
                         >
                           Remove
                         </button>
@@ -928,19 +928,19 @@ export const WorkerProfileView: React.FC<Props> = ({
                       placeholder="Factory Name"
                       value={newEmpCompany}
                       onChange={(e) => setNewEmpCompany(e.target.value)}
-                      className="px-3 py-1.5 text-xs border border-slate-300 rounded-lg sm:col-span-2"
+                      className="min-h-11 px-3 py-1.5 text-meta border border-slate-300 rounded-lg sm:col-span-2"
                     />
                     <input
                       type="text"
                       placeholder="Role (e.g. CNC Op)"
                       value={newEmpRole}
                       onChange={(e) => setNewEmpRole(e.target.value)}
-                      className="px-3 py-1.5 text-xs border border-slate-300 rounded-lg"
+                      className="min-h-11 px-3 py-1.5 text-meta border border-slate-300 rounded-lg"
                     />
                     <button
                       type="button"
                       onClick={handleAddPastEmployer}
-                      className="px-3 py-1.5 text-xs font-bold bg-slate-900 text-white rounded-lg"
+                      className="min-h-11 px-3 py-1.5 text-meta font-bold bg-slate-900 text-white rounded-lg"
                     >
                       + Add Past Plant
                     </button>
@@ -963,7 +963,7 @@ export const WorkerProfileView: React.FC<Props> = ({
                     <h3 className="text-base font-extrabold text-slate-900">
                       No ITI Certificate Needed!
                     </h3>
-                    <p className="text-xs text-slate-600 leading-relaxed">
+                    <p className="text-meta text-slate-600 leading-relaxed">
                       Your profile is verified through your <strong>6-Digit Mobile OTP</strong> and <strong>Work-Readiness Badges</strong>.
                     </p>
                   </div>
@@ -971,7 +971,7 @@ export const WorkerProfileView: React.FC<Props> = ({
                   <button
                     type="button"
                     onClick={() => setShowNcvtEditor(true)}
-                    className="w-full py-2 px-3 text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl transition-colors"
+                    className="min-h-11 w-full py-2 px-3 text-meta font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl transition-colors"
                   >
                     + Optional: Connect Skill India / NCVT Certificate
                   </button>
@@ -985,7 +985,7 @@ export const WorkerProfileView: React.FC<Props> = ({
                         NCVT / Skill India Certificate
                       </h3>
                     </div>
-                    <label className="flex items-center gap-1.5 text-xs font-semibold text-emerald-800 cursor-pointer">
+                    <label className="flex items-center gap-1.5 text-meta font-semibold text-emerald-800 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={isNcvtVerified}
@@ -996,7 +996,7 @@ export const WorkerProfileView: React.FC<Props> = ({
                     </label>
                   </div>
 
-                  <div className="space-y-3 text-xs">
+                  <div className="space-y-3 text-meta">
                     <div>
                       <label className="block text-slate-600 font-medium mb-1">
                         DGT Certificate Number
@@ -1005,7 +1005,7 @@ export const WorkerProfileView: React.FC<Props> = ({
                         type="text"
                         value={certNo}
                         onChange={(e) => setCertNo(e.target.value)}
-                        className="w-full px-3 py-1.5 tabular-nums border border-amber-300 rounded-lg bg-white"
+                        className="min-h-11 w-full px-3 py-1.5 tabular-nums border border-amber-300 rounded-lg bg-white"
                       />
                     </div>
 
@@ -1017,7 +1017,7 @@ export const WorkerProfileView: React.FC<Props> = ({
                         type="text"
                         value={rollNo}
                         onChange={(e) => setRollNo(e.target.value)}
-                        className="w-full px-3 py-1.5 tabular-nums font-bold border border-amber-300 rounded-lg bg-white"
+                        className="min-h-11 w-full px-3 py-1.5 tabular-nums font-bold border border-amber-300 rounded-lg bg-white"
                       />
                     </div>
 
@@ -1029,7 +1029,7 @@ export const WorkerProfileView: React.FC<Props> = ({
                         type="text"
                         value={itiCollege}
                         onChange={(e) => setItiCollege(e.target.value)}
-                        className="w-full px-3 py-1.5 border border-amber-300 rounded-lg bg-white"
+                        className="min-h-11 w-full px-3 py-1.5 border border-amber-300 rounded-lg bg-white"
                       />
                     </div>
                   </div>
@@ -1039,7 +1039,7 @@ export const WorkerProfileView: React.FC<Props> = ({
                 {/* M11 Phone Camera 30-Second Skill Video Upload */}
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="space-y-0.5">
-                    <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                    <span className="text-meta font-bold text-slate-900 flex items-center gap-1.5">
                       <Camera className="w-4 h-4 text-amber-600" />
                       Optional: Record or Upload 30-Second Practical Skill Video
                     </span>
@@ -1047,7 +1047,7 @@ export const WorkerProfileView: React.FC<Props> = ({
                       {videoDemoTitle || 'Record yourself operating a lathe, CNC panel, welding torch, or packing line (Max 30s).'}
                     </p>
                   </div>
-                  <label className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs cursor-pointer shrink-0">
+                  <label className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-meta cursor-pointer shrink-0">
                     <Camera className="w-4 h-4" />
                     <span>Open Camera / Upload Video</span>
                     <input
@@ -1062,7 +1062,7 @@ export const WorkerProfileView: React.FC<Props> = ({
 
               <button
                 type="submit"
-                className="w-full py-3.5 px-5 text-xs font-extrabold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl shadow-md transition-colors flex items-center justify-center gap-2"
+                className="min-h-11 w-full py-3.5 px-5 text-meta font-extrabold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl shadow-md transition-colors flex items-center justify-center gap-2"
               >
                 <Save className="w-4 h-4" />
                 <span>Save My Worker Trade Card</span>
@@ -1083,7 +1083,7 @@ export const WorkerProfileView: React.FC<Props> = ({
                   <FileText className="w-4 h-4 text-emerald-600" />
                   <span>Digital Offer Letters ({workerOffers.length})</span>
                 </h3>
-                <span className="text-xs text-emerald-700 font-semibold">
+                <span className="text-meta text-emerald-700 font-semibold">
                   ₹0 Worker Fee Guarantee
                 </span>
               </div>
@@ -1109,7 +1109,7 @@ export const WorkerProfileView: React.FC<Props> = ({
                     >
                       {/* M6 Locked Pay Promise Warning Banner */}
                       {hasPayMismatch && (
-                        <div className="p-3 bg-red-50 border border-red-300 rounded-xl flex items-start gap-2 text-xs text-red-800 font-bold">
+                        <div className="p-3 bg-red-50 border border-red-300 rounded-xl flex items-start gap-2 text-meta text-red-800 font-bold">
                           <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
                           <span>
                             {offer.payPromiseWarning ||
@@ -1126,7 +1126,7 @@ export const WorkerProfileView: React.FC<Props> = ({
                           <h4 className="text-base font-bold text-slate-900 mt-0.5">
                             {offer.companyName}
                           </h4>
-                          <div className="text-xs text-slate-600 flex items-center gap-2 mt-0.5">
+                          <div className="text-meta text-slate-600 flex items-center gap-2 mt-0.5">
                             <span>{offer.plantLocation}</span>
                             <span aria-hidden="true">·</span>
                             <span className="tabular-nums text-slate-500">GSTIN: {offer.gstin}</span>
@@ -1134,7 +1134,7 @@ export const WorkerProfileView: React.FC<Props> = ({
                         </div>
 
                         <span
-                          className={`px-2.5 py-1 rounded text-xs font-bold ${
+                          className={`px-2.5 py-1 rounded text-meta font-bold ${
                             offer.status === 'Accepted' || offer.status === 'Joined Confirmed'
                               ? 'bg-emerald-100 text-emerald-800'
                               : offer.status === 'Declined'
@@ -1146,7 +1146,7 @@ export const WorkerProfileView: React.FC<Props> = ({
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-2 p-3 bg-slate-50 border border-slate-200/80 rounded-xl text-xs tabular-nums">
+                      <div className="grid grid-cols-3 gap-2 p-3 bg-slate-50 border border-slate-200/80 rounded-xl text-meta tabular-nums">
                         <div>
                           <span className="text-slate-500 block">Locked In-Hand</span>
                           <span className="text-sm font-extrabold text-emerald-700">
@@ -1175,7 +1175,7 @@ export const WorkerProfileView: React.FC<Props> = ({
                               <button
                                 type="button"
                                 onClick={() => window.print()}
-                                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg"
+                                className="min-h-11 inline-flex items-center gap-1 px-3 py-1.5 text-meta font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg"
                               >
                                 <Printer className="w-3.5 h-3.5" />
                                 <span>Print Offer</span>
@@ -1184,7 +1184,7 @@ export const WorkerProfileView: React.FC<Props> = ({
                               <button
                                 type="button"
                                 onClick={() => onUpdateOfferStatus(offer.id, 'Accepted')}
-                                className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-extrabold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-lg shadow-xs"
+                                className="min-h-11 inline-flex items-center gap-1.5 px-4 py-1.5 text-meta font-extrabold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-lg shadow-xs"
                               >
                                 <CheckCircle2 className="w-3.5 h-3.5" />
                                 <span>Accept Direct Offer</span>
@@ -1200,7 +1200,7 @@ export const WorkerProfileView: React.FC<Props> = ({
                                     [offer.id]: e.target.value,
                                   }))
                                 }
-                                className="flex-1 px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
+                                className="min-h-11 flex-1 px-2.5 py-1.5 text-meta border border-slate-300 rounded-lg bg-white"
                               >
                                 {DECLINE_REASONS.map((r) => (
                                   <option key={r} value={r}>
@@ -1217,7 +1217,7 @@ export const WorkerProfileView: React.FC<Props> = ({
                                     selectedDeclineReason[offer.id] || DECLINE_REASONS[0]
                                   )
                                 }
-                                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 rounded-lg"
+                                className="min-h-11 inline-flex items-center gap-1 px-3 py-1.5 text-meta font-semibold text-red-700 bg-red-50 hover:bg-red-100 rounded-lg"
                               >
                                 <XCircle className="w-3.5 h-3.5" />
                                 <span>Decline with Reason</span>
@@ -1228,7 +1228,7 @@ export const WorkerProfileView: React.FC<Props> = ({
 
                         {offer.status === 'Accepted' && !offer.workerConfirmedJoining && (
                           <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between gap-2">
-                            <span className="text-xs font-semibold text-emerald-900">
+                            <span className="text-meta font-semibold text-emerald-900">
                               Joining Confirmation: Have you reported to the plant gate?
                             </span>
                             <button
@@ -1241,7 +1241,7 @@ export const WorkerProfileView: React.FC<Props> = ({
                                   true
                                 )
                               }
-                              className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold"
+                              className="min-h-11 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-meta font-bold"
                             >
                               ✓ Confirm I Joined on Shop Floor
                             </button>
@@ -1249,7 +1249,7 @@ export const WorkerProfileView: React.FC<Props> = ({
                         )}
 
                         {offer.workerConfirmedJoining && (
-                          <div className="text-xs font-bold text-emerald-700 flex items-center gap-1.5">
+                          <div className="text-meta font-bold text-emerald-700 flex items-center gap-1.5">
                             <CheckCircle2 className="w-4 h-4" />
                             <span>
                               {offer.status === 'Joined Confirmed'
@@ -1287,7 +1287,7 @@ export const WorkerProfileView: React.FC<Props> = ({
                         <h4 className="text-sm font-bold text-slate-900 mt-0.5">
                           {app.jobTitle}
                         </h4>
-                        <div className="text-xs text-slate-600">
+                        <div className="text-meta text-slate-600">
                           {app.companyName} · {app.industrialHub}
                         </div>
                       </div>
@@ -1298,7 +1298,7 @@ export const WorkerProfileView: React.FC<Props> = ({
 
                     {/* Interview Slot Confirmation (M6) */}
                     {app.interviewSlot && (
-                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between gap-2 text-xs">
+                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between gap-2 text-meta">
                         <div>
                           <strong className="text-blue-950 block">
                             Interview Slot ({app.interviewSlot.mode}):
@@ -1323,7 +1323,7 @@ export const WorkerProfileView: React.FC<Props> = ({
                                 },
                               })
                             }
-                            className="px-3 py-1.5 rounded-lg bg-blue-700 text-white font-bold shrink-0"
+                            className="min-h-11 px-3 py-1.5 rounded-lg bg-blue-700 text-white font-bold shrink-0"
                           >
                             Confirm Slot
                           </button>
@@ -1360,31 +1360,31 @@ export const WorkerProfileView: React.FC<Props> = ({
           <div className="p-6 bg-white border-2 border-indigo-200 rounded-2xl space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-indigo-700 block">
+                <span className="text-meta font-bold uppercase tracking-wider text-indigo-700 block">
                   Post-Joining Workplace Check-In
                 </span>
                 <h3 className="text-base font-extrabold text-slate-900">
                   Day 1 / Day 7 / Day 30 / Day 90 Welfare Feedback
                 </h3>
               </div>
-              <span className="text-xs text-slate-500">
+              <span className="text-meta text-slate-500">
                 Feeds anonymized factory "Promise Kept" badge ({retentionCheckIns.length} logged)
               </span>
             </div>
 
             {checkInToast && (
-              <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-xs font-bold text-emerald-900">
+              <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-meta font-bold text-emerald-900">
                 ✓ Retention check-in recorded! Factory "Promise Kept %" updated.
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-meta">
               <div>
                 <label className="font-bold text-slate-700 block mb-1">Milestone</label>
                 <select
                   value={checkInMilestone}
                   onChange={(e) => setCheckInMilestone(e.target.value as any)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white font-semibold"
+                  className="min-h-11 w-full px-3 py-2 border border-slate-300 rounded-lg bg-white font-semibold"
                 >
                   <option value="Day1">Day 1 Joining Check</option>
                   <option value="Day7">Day 7 Hostel & Mess Check</option>
@@ -1450,14 +1450,14 @@ export const WorkerProfileView: React.FC<Props> = ({
         <div className="max-w-3xl mx-auto space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200">
             <div className="space-y-0.5">
-              <div className="text-xs font-bold text-slate-900">
+              <div className="text-meta font-bold text-slate-900">
                 Shareable Worker Trade Card Visibility
               </div>
               <p className="text-[11px] text-slate-500">
                 Your skill profile card for factory recruitment. Your phone number stays hidden on public links.
               </p>
             </div>
-            <label className="flex items-center gap-2 text-xs font-bold text-emerald-800 cursor-pointer">
+            <label className="flex items-center gap-2 text-meta font-bold text-emerald-800 cursor-pointer">
               <input
                 type="checkbox"
                 checked={isPubliclyShareable}
@@ -1470,11 +1470,11 @@ export const WorkerProfileView: React.FC<Props> = ({
 
           <div className="bg-slate-900 text-white rounded-2xl border-2 border-amber-400/80 shadow-2xl overflow-hidden">
             <div className="bg-amber-400 text-slate-950 px-6 py-3 flex items-center justify-between">
-              <div className="flex items-center gap-2 font-black text-xs uppercase tracking-wider">
+              <div className="flex items-center gap-2 font-black text-meta uppercase tracking-wider">
                 <ShieldCheck className="w-4 h-4" />
                 <span>SHRAMKART — SHAREABLE WORKER TRADE CARD</span>
               </div>
-              <span className="text-xs font-bold tabular-nums">
+              <span className="text-meta font-bold tabular-nums">
                 TOKEN: {worker.shareToken || worker.id.toUpperCase()}
               </span>
             </div>
@@ -1492,11 +1492,11 @@ export const WorkerProfileView: React.FC<Props> = ({
                         : 'Work-Readiness & Mobile OTP Verified'}
                     </span>
                     <h2 className="text-2xl font-black text-white">{worker.name}</h2>
-                    <p className="text-xs text-amber-300 font-semibold">{worker.trade}</p>
+                    <p className="text-meta text-amber-300 font-semibold">{worker.trade}</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-800 text-xs">
+                <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-800 text-meta">
                   <div>
                     <span className="text-slate-400 block">Experience & Origin</span>
                     <span className="font-bold text-white">
@@ -1551,7 +1551,7 @@ export const WorkerProfileView: React.FC<Props> = ({
             <button
               type="button"
               onClick={handleShareTradeCardWhatsApp}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl"
+              className="min-h-11 inline-flex items-center gap-1.5 px-4 py-2.5 text-meta font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl"
             >
               <Share2 className="w-4 h-4" />
               <span>Share Trade Card on WhatsApp (Phone Hidden)</span>
@@ -1559,7 +1559,7 @@ export const WorkerProfileView: React.FC<Props> = ({
             <button
               type="button"
               onClick={handleDownloadTradeCard}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-extrabold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl"
+              className="min-h-11 inline-flex items-center gap-1.5 px-4 py-2.5 text-meta font-extrabold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl"
             >
               <Download className="w-4 h-4" />
               <span>Download Trade Card (.TXT)</span>

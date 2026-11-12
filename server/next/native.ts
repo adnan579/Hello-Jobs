@@ -6,6 +6,8 @@ import { overApiLimit, TOO_MANY } from '../lib/api-limit.ts';
 import { invalidate } from '../lib/ttl-cache.ts';
 import { reportError, reporterFromEnv, reporterOf } from '../lib/monitoring.ts';
 import { ADMIN_COOKIE, COOKIE_NAME, loadAdminAuth, loadAuth, parseCookies } from '../auth/session.ts';
+import { can, type Permission } from '../lib/permissions.ts';
+import { forbidden, unauthorized } from '../lib/errors.ts';
 import { ensureBootstrapAdmin } from '../services/adminAccounts.ts';
 import { getServerContext } from '../runtime.ts';
 
@@ -26,8 +28,12 @@ export interface NativeContext {
   /** The signed-in staff member (admin console cookie), if any. */
   admin?: AuthContext;
   ip: string;
-  /** The parsed JSON body (undefined when there is none). Resolves lazily so GETs never read a body. */
+  /** The parsed JSON body (undefined when there is none). */
   body: unknown;
+  /** The exact bytes of the body (empty when there is none), for signature checks such as the Razorpay webhook. */
+  rawBody: Buffer;
+  /** Request headers, lower-case names. */
+  headers: Headers;
 }
 
 export interface NativeResult {
@@ -74,13 +80,14 @@ function reply(ctx: AppContext | undefined, result: NativeResult): Response {
 
 export const errorBody = (message: string, extra?: Record<string, unknown>) => ({ error: message, ...(extra ?? {}) });
 
-async function readJson(request: Request): Promise<unknown> {
+async function readJson(request: Request): Promise<{ json: unknown; raw: Buffer }> {
+  const none = { json: undefined, raw: Buffer.alloc(0) };
   const type = request.headers.get('content-type')?.split(';', 1)[0]?.trim().toLowerCase() ?? '';
-  if (!(type === 'application/json' || type.endsWith('+json'))) return undefined;
+  if (!(type === 'application/json' || type.endsWith('+json'))) return none;
   const declared = Number(request.headers.get('content-length'));
   if (Number.isFinite(declared) && declared > JSON_BODY_LIMIT) throw new HttpError(413, 'Request too large.');
   const reader = request.body?.getReader();
-  if (!reader) return undefined;
+  if (!reader) return none;
   const chunks: Buffer[] = [];
   let size = 0;
   for (;;) {
@@ -93,10 +100,11 @@ async function readJson(request: Request): Promise<unknown> {
     }
     chunks.push(Buffer.from(value));
   }
-  const text = Buffer.concat(chunks).toString('utf8');
-  if (!text.trim()) return undefined;
+  const raw = Buffer.concat(chunks);
+  const text = raw.toString('utf8');
+  if (!text.trim()) return { json: undefined, raw };
   try {
-    return JSON.parse(text);
+    return { json: JSON.parse(text), raw };
   } catch {
     throw new HttpError(400, 'Malformed JSON.');
   }
@@ -126,7 +134,7 @@ export function nativeRoute(handler: Handler, options: NativeOptions = {}): Next
       // 1. Rate limit, then the body (a blocked caller never costs a parse).
       const ip = clientIpOf(request);
       const limited = await overApiLimit(ctx.db, ip, request.method);
-      const body = limited ? undefined : await readJson(request);
+      const parsed = limited ? { json: undefined, raw: Buffer.alloc(0) } : await readJson(request);
       if (limited) {
         result = { status: 429, body: TOO_MANY };
       } else if (MUTATING_METHODS.has(request.method) && !isSameOrigin(request.headers.get('origin'), request.headers.get('host'), ctx.config.appUrl)) {
@@ -139,7 +147,7 @@ export function nativeRoute(handler: Handler, options: NativeOptions = {}): Next
         const admin = !options.skipAuth && cookies[ADMIN_COOKIE] ? (await loadAdminAuth(ctx, cookies[ADMIN_COOKIE])) ?? undefined : undefined;
         const raw = (await route?.params) ?? {};
         const params = Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, Array.isArray(v) ? v.join('/') : v]));
-        const out = await handler({ ctx, request, params, auth, admin, ip, body });
+        const out = await handler({ ctx, request, params, auth, admin, ip, body: parsed.json, rawBody: parsed.raw, headers: request.headers });
         result = out && typeof out === 'object' && ('body' in out || 'status' in out || 'cookies' in out || 'headers' in out) ? (out as NativeResult) : { body: out };
       }
     } catch (error) {
@@ -156,3 +164,31 @@ export function nativeRoute(handler: Handler, options: NativeOptions = {}): Next
 
 /** What Express answers for an unknown path or method, for route files that only handle some methods. */
 export const apiNotFound: NextHandler = async () => reply(undefined, { status: 404, body: errorBody('Not found.') });
+
+
+// ---- Guards. Each one throws the same error the matching Express middleware passed to next(). ----
+
+/** A signed-in worker or factory member (Express: requireAuth). Returns the session. */
+export function requireSignedIn(c: Pick<NativeContext, 'auth'>): AuthContext {
+  if (!c.auth) throw unauthorized();
+  return c.auth;
+}
+
+/** A signed-in person with one of these roles (Express: requireRole). Returns the session. */
+export function requireRoles(c: Pick<NativeContext, 'auth'>, ...roles: AuthContext['role'][]): AuthContext {
+  if (!c.auth) throw unauthorized();
+  if (!roles.includes(c.auth.role)) throw forbidden();
+  return c.auth;
+}
+
+/**
+ * A staff session that finished its password change and holds the permission (Express: requireAdmin).
+ * Returns the staff session; pass it wherever the Express handler used `req.auth`.
+ */
+export function requireStaff(c: Pick<NativeContext, 'admin'>, permission?: Permission): AuthContext {
+  const admin = c.admin;
+  if (!admin) throw unauthorized('Please sign in to the admin console.');
+  if (admin.mustChangePassword) throw new HttpError(403, 'You must choose a new password first.', { code: 'PASSWORD_CHANGE_REQUIRED' });
+  if (permission && !can(admin.adminRole, permission)) throw forbidden('Your role does not allow this.');
+  return admin;
+}

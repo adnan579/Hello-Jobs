@@ -29,6 +29,11 @@ async function initialize(): Promise<AppContext> {
   }
 }
 
+/** Tests hand the native routes their own context (database, config, fake fetch) instead of the process-wide one. */
+export function setServerContextForTests(ctx: AppContext | undefined): void {
+  contextPromise = ctx ? Promise.resolve(ctx) : undefined;
+}
+
 export function getServerContext(): Promise<AppContext> {
   contextPromise ??= initialize().catch((error) => {
     contextPromise = undefined;

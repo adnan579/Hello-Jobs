@@ -1,5 +1,6 @@
 import request from 'supertest';
 import { createApp } from '../../server/app.ts';
+import { nativeApp } from './dispatch.ts';
 import { loadConfig } from '../../server/config.ts';
 import { createDb, type Db } from '../../server/db.ts';
 import type { AppContext } from '../../server/types.ts';
@@ -10,7 +11,8 @@ import type { AdminRole } from '../../server/lib/permissions.ts';
 export interface TestEnv {
   ctx: AppContext;
   db: Db;
-  app: ReturnType<typeof createApp>;
+  /** The API as Next.js serves it: the route files in app/api, behind a node request listener. */
+  app: ReturnType<typeof nativeApp>;
   agent: () => ReturnType<typeof request.agent>;
   reset: () => Promise<void>;
   close: () => Promise<void>;
@@ -32,7 +34,8 @@ export function makeEnv(envOverrides: Record<string, string | undefined> = {}): 
       }) as typeof fetch,
     },
   };
-  const app = createApp(ctx);
+  // The native routes read their context from the runtime; give them this one (its database, config and fake fetch).
+  const app = nativeApp(ctx, createApp(ctx)); // temporary: paths with no route file yet still go to Express
   return {
     ctx, db, app, fetchCalls,
     agent: () => request.agent(app),

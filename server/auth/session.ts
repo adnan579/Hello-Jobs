@@ -52,6 +52,30 @@ export function setSessionCookie(res: Response, token: string, secure: boolean):
   });
 }
 
+interface CookieOptions { httpOnly: boolean; sameSite: 'lax' | 'strict'; secure: boolean; path: string; maxAgeSec?: number }
+
+/**
+ * A Set-Cookie header value, laid out the way Express writes it (Max-Age, Path, Expires, HttpOnly, Secure,
+ * SameSite), so browsers and the tests see the same cookie from the native routes as they did before.
+ */
+export function serializeCookie(name: string, value: string, o: CookieOptions): string {
+  const parts = [`${name}=${encodeURIComponent(value)}`];
+  if (o.maxAgeSec !== undefined) parts.push(`Max-Age=${Math.floor(o.maxAgeSec)}`);
+  parts.push(`Path=${o.path}`);
+  parts.push(`Expires=${new Date(o.maxAgeSec !== undefined ? Date.now() + o.maxAgeSec * 1000 : 0).toUTCString()}`);
+  if (o.httpOnly) parts.push('HttpOnly');
+  if (o.secure) parts.push('Secure');
+  parts.push(`SameSite=${o.sameSite === 'lax' ? 'Lax' : 'Strict'}`);
+  return parts.join('; ');
+}
+
+/** Set-Cookie value that signs a worker or factory member in. */
+export const sessionCookieHeader = (token: string, secure: boolean) =>
+  serializeCookie(COOKIE_NAME, token, { httpOnly: true, sameSite: 'lax', secure, path: '/', maxAgeSec: SESSION_TTL_SEC });
+/** Set-Cookie value that removes the session cookie. */
+export const clearSessionCookieHeader = (secure: boolean) =>
+  serializeCookie(COOKIE_NAME, '', { httpOnly: true, sameSite: 'lax', secure, path: '/' });
+
 export function clearSessionCookie(res: Response, secure: boolean): void {
   res.clearCookie(COOKIE_NAME, { httpOnly: true, sameSite: 'lax', secure, path: '/' });
 }
@@ -116,6 +140,11 @@ export async function createAdminSession(q: Queryable, input: { accountId: strin
 export function setAdminCookie(res: Response, token: string, secure: boolean): void {
   res.cookie(ADMIN_COOKIE, token, { httpOnly: true, sameSite: 'strict', secure, path: '/', maxAge: ADMIN_ABSOLUTE_SEC * 1000 });
 }
+export const adminCookieHeader = (token: string, secure: boolean) =>
+  serializeCookie(ADMIN_COOKIE, token, { httpOnly: true, sameSite: 'strict', secure, path: '/', maxAgeSec: ADMIN_ABSOLUTE_SEC });
+export const clearAdminCookieHeader = (secure: boolean) =>
+  serializeCookie(ADMIN_COOKIE, '', { httpOnly: true, sameSite: 'strict', secure, path: '/' });
+
 export function clearAdminCookie(res: Response, secure: boolean): void {
   res.clearCookie(ADMIN_COOKIE, { httpOnly: true, sameSite: 'strict', secure, path: '/' });
 }

@@ -6,6 +6,7 @@ import { employerWriter, workerId } from '../lib/guards.ts';
 import { badRequest, conflict, notFound } from '../lib/errors.ts';
 import { newId } from '../lib/ids.ts';
 import { notify } from '../lib/audit.ts';
+import { sendWorkerStageAlert, type AlertInput } from '../auth/alertDelivery.ts';
 import { respond } from '../lib/respond.ts';
 import { fmtDateTime } from '../lib/format.ts';
 import { appendHistory } from './applications.ts';
@@ -22,6 +23,7 @@ offersRouter.post(
     const eid = employerWriter(req);
     const body = parse(offerCreate, req.body);
     const offerId = newId('offer');
+    const pendingAlert: { workerId?: string; input?: AlertInput } = {};
 
     await req.ctx.db.tx(async (q) => {
       // The application must belong to one of THIS employer's jobs.
@@ -61,7 +63,13 @@ offersRouter.post(
       await q.query(`INSERT INTO offers (id, application_id, worker_id, employer_id, data) VALUES ($1,$2,$3,$4,$5)`, [offerId, app.id, app.worker_id, eid, JSON.stringify(data)]);
       await appendHistory(q, app.id, 'Offer Issued', { id: newId('ev'), stage: 'Offer Issued', toStage: 'Offer Issued', actorRole: 'employer', actor: 'employer', actorName: app.company_name, timestamp: fmtDateTime(new Date()), note: `Offer issued: ₹${body.monthlyInHand.toLocaleString('en-IN')} in-hand per month` });
       await notify(q, { role: 'worker', recipientId: app.worker_id, eventType: 'OFFER_RECEIVED', title: `New offer: ₹${body.monthlyInHand.toLocaleString('en-IN')} in-hand/month at ${app.company_name}`, body: `${app.job_title}. Open Shramkart to read and accept or decline.${warning ? ' Note: ' + warning : ''}` });
+      pendingAlert.workerId = app.worker_id;
+      pendingAlert.input = { kind: 'offer', jobTitle: app.job_title, company: app.company_name };
     });
+    // After the offer is saved. Best effort: a failed alert never undoes it.
+    if (pendingAlert.workerId && pendingAlert.input) {
+      await sendWorkerStageAlert(req.ctx.db, pendingAlert.workerId, pendingAlert.input, req.ctx.config, req.ctx.deps);
+    }
     const offer = (await req.ctx.db.query(`${OFFER_SELECT} WHERE o.id = $1`, [offerId])).rows[0];
     await respond(req, res, { offer: offerView(offer) }, 201);
   })

@@ -112,7 +112,7 @@ export default function App({ initialRole, initialData, initialAuth, initialLega
   // Notifications the person has opened the list for in this visit. The server's own `read` flag
   // still counts: a notification is unread only if neither says it was read.
   const [readNotificationIds, setReadNotificationIds] = useState<Set<string>>(new Set());
-  const [workerTab, setWorkerTab] = useState<WorkerTab>(initialWorkerTab ?? 'profile');
+  const [workerTab, setWorkerTab] = useState<WorkerTab>(initialWorkerTab ?? 'home');
   const [verificationRecords, setVerificationRecords] = useState<
     VerificationRecord[]
   >([]);
@@ -474,7 +474,11 @@ export default function App({ initialRole, initialData, initialAuth, initialLega
 
   const openWorkerTab = (tab: WorkerTab) => {
     handleRoleChange('worker-profile');
-    const path = tab === 'inbox' ? '/me/applications' : tab === 'idcard' ? '/me/id-card' : '/me';
+    const path =
+      tab === 'inbox' ? '/me/applications'
+      : tab === 'idcard' ? '/me/id-card'
+      : tab === 'profile' ? '/me/profile'
+      : '/me';
     if (window.location.pathname !== path) window.history.pushState(null, '', path);
     setWorkerTab(tab);
   };
@@ -685,6 +689,7 @@ export default function App({ initialRole, initialData, initialAuth, initialLega
         onOpenNotifications={openNotifications}
         onOpenPostJob={requestPostJob}
         onOpenAuthModal={handleOpenAuthModal}
+        onLogout={handleLogout}
       />
 
       {/* In-App Notifications Drawer */}
@@ -745,6 +750,7 @@ export default function App({ initialRole, initialData, initialAuth, initialLega
         onClose={() => setIsAuthModalOpen(false)}
         onLoginSuccess={handleLoginSuccess}
         onOpenLegalModal={handleOpenLegalModal}
+        lang={currentLang}
       />
 
       {activeWorker && (

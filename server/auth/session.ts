@@ -7,6 +7,8 @@ import { can } from '../lib/permissions.ts';
 
 export const COOKIE_NAME = 'hj_session';
 export const SESSION_TTL_SEC = 60 * 60 * 24 * 30;
+/** A phone this account has never signed in from may be shared, so its first session is short. */
+export const NEW_DEVICE_TTL_SEC = 60 * 60 * 24;
 
 export function parseCookies(header: string | undefined): Record<string, string> {
   const out: Record<string, string> = {};
@@ -29,10 +31,12 @@ export async function createSession(
   input: { accountId: string; deviceLabel: string; ip: string }
 ): Promise<{ token: string; id: string }> {
   const token = newToken(32);
+  const seen = await q.query('SELECT 1 FROM sessions WHERE account_id = $1 AND device_label = $2 LIMIT 1', [input.accountId, input.deviceLabel.slice(0, 120)]);
+  const ttl = seen.rows.length ? SESSION_TTL_SEC : NEW_DEVICE_TTL_SEC;
   const { rows } = await q.query<{ id: string }>(
     `INSERT INTO sessions (account_id, token_hash, device_label, ip, expires_at)
      VALUES ($1, $2, $3, $4, now() + make_interval(secs => $5)) RETURNING id`,
-    [input.accountId, sha256(token), input.deviceLabel.slice(0, 120), input.ip, SESSION_TTL_SEC]
+    [input.accountId, sha256(token), input.deviceLabel.slice(0, 120), input.ip, ttl]
   );
   await q.query('UPDATE accounts SET last_login_at = now() WHERE id = $1', [input.accountId]);
   return { token, id: rows[0]!.id };

@@ -38,6 +38,9 @@ export function playJobAudio(
     case 'ta':
       utterance.lang = 'ta-IN';
       break;
+    case 'gu':
+      utterance.lang = 'gu-IN';
+      break;
     case 'en':
     default:
       utterance.lang = 'en-IN';

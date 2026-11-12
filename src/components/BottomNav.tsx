@@ -5,6 +5,7 @@ import {
   Building2,
   FileText,
   LogIn,
+  LogOut,
   UserCheck,
   UserPlus,
   Users,
@@ -25,6 +26,8 @@ interface Props {
   onOpenNotifications: () => void;
   onOpenPostJob: () => void;
   onOpenAuthModal: (tab: 'worker' | 'employer', mode: 'login' | 'register') => void;
+  /** When given, signed-in people get a labelled Log out button, so a shared phone can be left safely. */
+  onLogout?: () => void;
 }
 
 interface Item {
@@ -53,6 +56,7 @@ export const BottomNav: React.FC<Props> = ({
   onOpenNotifications,
   onOpenPostJob,
   onOpenAuthModal,
+  onLogout,
 }) => {
   const icon = 'h-5 w-5';
   const onProfilePage = currentRole === 'worker-profile';
@@ -114,7 +118,7 @@ export const BottomNav: React.FC<Props> = ({
               label: t('navMyProfile'),
               icon: <UserCheck className={icon} aria-hidden="true" />,
               active: onProfilePage && workerTab !== 'inbox',
-              onClick: () => onOpenWorkerTab('profile'),
+              onClick: () => onOpenWorkerTab('home'),
             },
             alerts,
           ]
@@ -149,14 +153,24 @@ export const BottomNav: React.FC<Props> = ({
             },
           ];
 
+  if (signedInAs && onLogout) {
+    items.push({
+      key: 'logout',
+      label: t('navLogout'),
+      icon: <LogOut className={icon} aria-hidden="true" />,
+      active: false,
+      onClick: onLogout,
+    });
+  }
+
   const accent = signedInAs === 'employer' || currentRole === 'employer' ? 'bg-blue-400' : 'bg-[var(--sk-amber)]';
 
   return (
     <nav
       aria-label={t('navMobileAria')}
       data-on-dark
-      className="fixed inset-x-0 bottom-0 z-40 grid h-[var(--sk-bottom-nav-h)] grid-cols-4 border-t border-slate-800 bg-slate-950 pb-[env(safe-area-inset-bottom)] text-slate-300 lg:hidden"
-      style={{ boxSizing: 'content-box' }}
+      className="fixed inset-x-0 bottom-0 z-40 grid h-[var(--sk-bottom-nav-h)] border-t border-slate-800 bg-slate-950 pb-[env(safe-area-inset-bottom)] text-slate-300 lg:hidden"
+      style={{ boxSizing: 'content-box', gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
     >
       {items.map((item) => (
         <button

@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { TRANSLATIONS, makeT } from '../src/data/translations';
 
-const LANGS = ['en', 'hi', 'mr', 'ta'] as const;
+const LANGS = ['en', 'hi', 'mr', 'ta', 'gu'] as const;
 
 /** Every static t('key') and t(`prefix_${x}`) literal used in the touched UI files. */
 function usedKeys(): Set<string> {

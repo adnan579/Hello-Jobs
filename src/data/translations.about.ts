@@ -278,4 +278,4 @@ const ta: Dict = {
   postJobFactoryOnly: 'வேலைகளை தொழிற்சாலைக் கணக்கிலிருந்து மட்டுமே இட முடியும்.',
 };
 
-export const ABOUT_STRINGS: Record<Language, Dict> = { en, hi, mr, ta };
+export const ABOUT_STRINGS: Record<Exclude<Language, 'gu'>, Dict> = { en, hi, mr, ta };

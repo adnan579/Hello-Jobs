@@ -87,7 +87,7 @@ export function nativeApp(ctx: AppContext, fallback?: (req: IncomingMessage, res
     const hasBody = method !== 'GET' && method !== 'HEAD';
     const body = hasBody ? await readBody(req) : undefined;
     const response = await handler(
-      new Request(url, { method, headers, body: body && body.length ? new Uint8Array(body) : undefined }),
+      new Request(url, { method, headers, body: body?.length ? new Uint8Array(body) : undefined }),
       { params: Promise.resolve(found!.params) }
     );
     send(res, response.status, response.headers, Buffer.from(await response.arrayBuffer()));
